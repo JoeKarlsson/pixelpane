@@ -38,10 +38,15 @@ USER_DIR = Path(os.environ.get("PIXELPANE_PLUGINS", "/var/lib/pixelpane/plugins"
 
 
 class Plugin:
-    def __init__(self, name, description="", data=None, defaults=None):
+    def __init__(self, name, description="", data=None, defaults=None, about="", fields=None):
         """data: keys Home Assistant (or anything) may POST to /api/data/<key>, with
-        how many minutes each stays fresh. defaults: this plugin's settings."""
-        self.name, self.description = name, description
+        how many minutes each stays fresh. defaults: this plugin's settings.
+        about: a paragraph for the control page. fields: how to edit the settings
+        there, a list of {key, label, type, help, ...} where type is number, range,
+        text, list (one item per line), choices (checkboxes from options) or
+        monthday; key may be dotted ("birthday.month") for nested settings."""
+        self.name, self.description, self.about = name, description, about
+        self.fields = list(fields or [])
         self.data = dict(data or {})
         self.defaults = dict(defaults or {})
         self.scenes = []
@@ -105,6 +110,7 @@ def data_ttl(config, key):
 
 
 def describe(config):
-    return [{"name": p.name, "description": p.description, "enabled": enabled(config, p.name),
-             "scenes": p.scenes, "data": sorted(p.data), "settings": settings(config, p.name)}
+    return [{"name": p.name, "description": p.description, "about": p.about, "fields": p.fields,
+             "enabled": enabled(config, p.name), "scenes": p.scenes, "data": p.data,
+             "settings": settings(config, p.name)}
             for p in PLUGINS.values()]

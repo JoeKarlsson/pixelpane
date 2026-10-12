@@ -13,8 +13,16 @@ from ..plugin import Plugin
 
 log = logging.getLogger("pixelpane.now_playing")
 
-plugin = Plugin("now_playing", "What's playing, with album art",
-                data={"now_playing": 360}, defaults={"art_hosts": []})
+plugin = Plugin(
+    "now_playing", "What's playing, with album art",
+    data={"now_playing": 360}, defaults={"art_hosts": []},
+    about="Shows the album art full screen for a few seconds, then the title and artist "
+          "beside dancing equalizer bars. It skips itself when nothing is playing. For "
+          "art, the board downloads the image itself, so list the hosts it may fetch "
+          "from (usually your Home Assistant).",
+    fields=[{"key": "art_hosts", "label": "Album art may come from", "type": "list",
+             "placeholder": "http://homeassistant.local:8123/",
+             "help": "One URL prefix per line. Anything else is never fetched."}])
 
 
 class ArtCache:

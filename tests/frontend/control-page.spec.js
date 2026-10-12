@@ -237,3 +237,66 @@ test('live view shows what is on, where it came from, and highlights the playlis
   await expect(page.locator('#nowscene')).toHaveText('Notification · Doorbell');
   await request.put('/api/config', { data: { rotation: original, dwell: { clock: 10, gif: 20 } } });
 });
+
+test('plugin tiles open a panel with details and editable settings', async ({ page, request }) => {
+  await page.getByTestId('plugin-generative').locator('strong').click();
+  const dlg = page.getByTestId('plugin-dialog');
+  await expect(dlg).toBeVisible();
+  await expect(dlg.locator('.about')).toContainText("Game of Life");
+  await dlg.getByLabel('plasma').uncheck();
+  await dlg.locator('#pd-generative').fill('9');
+  await dlg.getByTestId('dlg-save').click();
+  await expect(dlg).toBeHidden();
+  await expect(page.locator('#toast')).toContainText('generative saved');
+  let c = await config(request);
+  expect(c.plugins.generative.scenes).not.toContain('plasma');
+  expect(c.dwell.generative).toBe(9);
+
+  await page.getByTestId('plugin-seasonal').locator('strong').click();
+  await dlg.locator('#pf-birthday-month').selectOption('6');
+  await dlg.locator('#pf-birthday-day').fill('1');
+  await dlg.locator('#pf-birthday-name').fill('Robin');
+  await dlg.locator('#pf-holiday_share').fill('0.5');
+  await dlg.getByTestId('dlg-save').click();
+  await expect(dlg).toBeHidden();
+  c = await config(request);
+  expect(c.plugins.seasonal.birthday).toEqual({ month: 6, day: 1, name: 'Robin' });
+  expect(c.plugins.seasonal.holiday_share).toBe(0.5);
+
+  await page.getByTestId('plugin-weather').locator('strong').click();
+  await expect(dlg).toContainText('POST /api/data/weather');
+  await dlg.locator('#pf-latitude').fill('51.5');
+  await dlg.locator('#pf-longitude').fill('-0.12');
+  await dlg.getByTestId('dlg-save').click();
+  await expect(dlg).toBeHidden();
+  c = await config(request);
+  expect([c.plugins.weather.latitude, c.plugins.weather.longitude]).toEqual([51.5, -0.12]);
+
+  await page.getByTestId('plugin-alerts').locator('strong').click();   // no settings: no Save
+  await expect(dlg.getByTestId('dlg-save')).toHaveCount(0);
+  await dlg.getByTestId('dlg-play-on_air').click();
+  await expect.poll(async () => (await health(request)).scene).toBe('on_air');
+  await dlg.getByTestId('dlg-close').click();
+  await expect(dlg).toBeHidden();
+
+  await request.put('/api/config', { data: { plugins: { generative: { scenes: ['fire', 'plasma', 'life', 'matrix_rain', 'starfield'] },
+    seasonal: { birthday: null, holiday_share: 0.7 }, weather: { latitude: null, longitude: null } }, dwell: { generative: 25 } } });
+});
+
+test('GIF library pages through big libraries', async ({ page, request }) => {
+  const total = (await (await request.get('/api/gifs')).json()).length;
+  expect(total).toBeGreaterThan(60);
+  const cards = page.getByTestId('gif-card');
+  await page.getByTestId('page-size').selectOption('60');
+  await expect(cards).toHaveCount(60);
+  await expect(page.locator('#gpage')).toHaveText(new RegExp(`^Page 1 of 2 · 1-60$`));
+  await expect(page.locator('#gprev')).toBeDisabled();
+  await page.locator('#gnext').click();
+  await expect(cards).toHaveCount(total - 60);
+  await expect(page.locator('#gnext')).toBeDisabled();
+  await page.getByTestId('gif-filter').selectOption('halloween');        // a new filter starts on page 1
+  await expect(page.locator('#gpage')).toHaveText(/^Page 1 of 1/);
+  await page.getByTestId('gif-filter').selectOption('everything');
+  await page.getByTestId('page-size').selectOption('300');
+  await expect(cards).toHaveCount(total);
+});

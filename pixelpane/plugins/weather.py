@@ -14,8 +14,16 @@ from ..plugin import Plugin
 
 log = logging.getLogger("pixelpane.weather")
 
-plugin = Plugin("weather", "Current conditions and today's high/low",
-                data={"weather": 180}, defaults={"latitude": None, "longitude": None})
+plugin = Plugin(
+    "weather", "Current conditions and today's high/low",
+    data={"weather": 180}, defaults={"latitude": None, "longitude": None},
+    about="An animated icon (rain falls, snow drifts, clouds roll), the temperature, "
+          "today's high and low and the chance of rain. Home Assistant can push it to "
+          "POST /api/data/weather; if nothing does, the board fetches Open-Meteo itself "
+          "for the location below.",
+    fields=[{"key": "latitude", "label": "Latitude", "type": "number", "step": 0.01,
+             "help": "Only used when nothing pushes weather."},
+            {"key": "longitude", "label": "Longitude", "type": "number", "step": 0.01}])
 
 
 WEATHER_ICON = {

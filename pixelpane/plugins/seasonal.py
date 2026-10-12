@@ -8,8 +8,18 @@ from ..gfx import H, W
 from ..kit import Fireworks, Particles, scroll_seconds, scroll_text, ticks
 from ..plugin import Plugin
 
-plugin = Plugin("seasonal", "Seasons, holidays and a birthday",
-                defaults={"holiday_share": 0.7, "birthday": None})
+plugin = Plugin(
+    "seasonal", "Seasons, holidays and a birthday",
+    defaults={"holiday_share": 0.7, "birthday": None},
+    about="A scene for each season (falling leaves, snow, flowers, beach days) and "
+          "holiday (Halloween, Thanksgiving, Christmas, New Year, Valentine's, "
+          "St. Patrick's, the Fourth of July), picked by today's date. On your birthday a "
+          "cake with candles and your name plays every fourth slot.",
+    fields=[{"key": "holiday_share", "label": "Holidays vs seasons", "type": "range",
+             "min": 0, "max": 1, "step": 0.05,
+             "help": "When a holiday is active, how often it wins over the season's scene."},
+            {"key": "birthday", "label": "Birthday", "type": "monthday",
+             "help": "Leave empty for no birthday scene."}])
 
 
 LEAVES = [(230, 90, 10), (200, 40, 10), (240, 170, 20), (150, 70, 20)]

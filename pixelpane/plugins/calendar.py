@@ -6,7 +6,12 @@ from .. import gfx
 from ..kit import animated_icon, gauge, scroll_seconds, scroll_text, ticks
 from ..plugin import Plugin
 
-plugin = Plugin("calendar", "Next event and countdown", data={"next_event": 720})
+plugin = Plugin(
+    "calendar", "Next event and countdown", data={"next_event": 720},
+    about="Shows your next timed event with a bar that empties as it gets closer, and a "
+          "ringing bell in the last ten minutes. It only appears when an event starts "
+          "within 12 hours; otherwise it quietly skips. Feed it from Home Assistant: "
+          "POST /api/data/next_event with {title, start}.")
 
 
 @plugin.scene("calendar")

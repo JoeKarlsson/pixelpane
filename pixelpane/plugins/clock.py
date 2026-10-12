@@ -7,7 +7,12 @@ from ..gfx import W
 from ..kit import ticks, time_color
 from ..plugin import Plugin
 
-plugin = Plugin("clock", "Time, date and temperature")
+plugin = Plugin(
+    "clock", "Time, date and temperature",
+    about="Big digits with a blinking colon, the date, the outside temperature (from the "
+          "weather plugin) and a seconds bar along the bottom. The color follows the "
+          "day: warm in the morning, white by day, amber in the evening and dim red at "
+          "night so it never lights up a dark room.")
 
 
 @plugin.scene("clock")

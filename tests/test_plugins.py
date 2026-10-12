@@ -26,6 +26,18 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(SCENES["halloween"].plugin, "seasonal")
         self.assertIn("weather", PLUGINS["weather"].data)
 
+    def test_every_plugin_explains_itself_and_its_settings(self):
+        for p in PLUGINS.values():
+            if p.name not in plugin.BUILTIN:
+                continue
+            self.assertGreater(len(p.about), 40, p.name)
+            for f in p.fields:
+                self.assertIn(f["key"].split(".")[0], p.defaults, (p.name, f["key"]))
+                self.assertIn(f["type"], ("number", "range", "text", "list", "choices", "monthday"), p.name)
+        rows = {r["name"]: r for r in plugin.describe({})}
+        self.assertEqual(rows["seasonal"]["fields"][1]["type"], "monthday")
+        self.assertEqual(rows["weather"]["data"], {"weather": 180})
+
     def test_settings_merge_defaults_and_config(self):
         cfg = {"plugins": {"generative": {"scenes": ["fire"]}}}
         s = plugin.settings(cfg, "generative")

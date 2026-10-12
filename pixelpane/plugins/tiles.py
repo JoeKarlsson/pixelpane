@@ -5,7 +5,11 @@ from .. import gfx
 from ..kit import animated_icon, gauge, scroll_seconds, scroll_text, ticks
 from ..plugin import Plugin
 
-plugin = Plugin("tiles", "Info cards (temperature, AQI, anything)", data={"tiles": 240})
+plugin = Plugin(
+    "tiles", "Info cards (temperature, AQI, anything)", data={"tiles": 240},
+    about="Small cards pushed from anywhere: an animated icon, a line of text and an "
+          "optional gauge. Good for room temperature, air quality, laundry, weather "
+          "warnings. POST /api/data/tiles with {items: [{icon, text, color, level}]}.")
 
 
 @plugin.scene("tiles")

@@ -9,8 +9,14 @@ from ..gfx import H, W
 from ..kit import palette, ticks
 from ..plugin import Plugin
 
-plugin = Plugin("generative", "Endless generative art",
-                defaults={"scenes": ["fire", "plasma", "life", "matrix_rain", "starfield"]})
+plugin = Plugin(
+    "generative", "Endless generative art",
+    defaults={"scenes": ["fire", "plasma", "life", "matrix_rain", "starfield"]},
+    about="Art that's computed, not stored: a fire, a plasma of drifting color, "
+          "Conway's Game of Life, matrix rain and a starfield. The playlist's "
+          "\"generative\" slot picks one of the scenes you tick below.",
+    fields=[{"key": "scenes", "label": "Scenes to pick from", "type": "choices",
+             "options": ["fire", "plasma", "life", "matrix_rain", "starfield"]}])
 
 
 FIRE = palette([(0, 0, 0), (90, 0, 0), (220, 40, 0), (255, 140, 0), (255, 230, 80), (255, 255, 220)])

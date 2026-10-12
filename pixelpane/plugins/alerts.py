@@ -8,7 +8,13 @@ from ..gfx import H, W
 from ..kit import animated_icon, scroll_seconds, scroll_text, ticks
 from ..plugin import Plugin
 
-plugin = Plugin("alerts", "Notifications, ON AIR and messages")
+plugin = Plugin(
+    "alerts", "Notifications, ON AIR and messages",
+    about="Things that need your attention right now. A notification (POST /api/notify) "
+          "jumps the queue, plays to the end with an animated icon, then the playlist "
+          "resumes. ON AIR and messages are modes: they stay up until cleared or until "
+          "their minutes run out. Home Assistant uses these for the doorbell, laundry, "
+          "meetings and weather warnings.")
 
 
 @plugin.scene("notify", "interrupt")

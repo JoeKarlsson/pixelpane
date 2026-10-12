@@ -7,7 +7,12 @@ from .. import gfx
 from ..kit import scroll_text, ticks
 from ..plugin import Plugin
 
-plugin = Plugin("homelab", "Animated homelab dashboard", data={"homelab": 60})
+plugin = Plugin(
+    "homelab", "Animated homelab dashboard", data={"homelab": 60},
+    about="Up to six animated pages: alerts (always first), health checks with a "
+          "blinking server rack, Proxmox host CPU, NAS space and transfer, network "
+          "latency and DNS, UPS batteries and Plex. Each page appears only when its data "
+          "is pushed to POST /api/data/homelab; see docs/HOME_ASSISTANT.md for the fields.")
 
 
 @plugin.scene("homelab")

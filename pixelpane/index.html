@@ -106,6 +106,25 @@
   .gif .theme { display: inline-block; margin-top: 4px; font-size: 10px; padding: 1px 7px; color: #d9cfff; background: rgba(169,139,255,.18); }
   .gif .row { justify-content: center; gap: 4px; margin-top: 4px; }
   .gif button { padding: 2px 8px; font-size: 12px; }
+  .plugin { cursor: pointer; transition: border-color .15s, transform .15s; }
+  .plugin:hover { border-color: rgba(169,139,255,.55); transform: translateY(-1px); }
+  .pager { justify-content: center; margin-top: 14px; }
+  .pager button:disabled { opacity: .35; cursor: default; }
+  dialog { width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; color: var(--text);
+    background: var(--bg2); border: 1px solid var(--line); border-radius: 20px; padding: 22px; box-shadow: var(--shadow); }
+  dialog::backdrop { background: rgba(5,6,12,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  dialog h3 { font: 700 18px/1.2 Silkscreen, monospace; margin: 0; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  dialog .about { color: var(--dim); margin: 10px 0 16px; }
+  dialog .block { margin: 16px 0; }
+  dialog .field { display: grid; gap: 4px; margin: 10px 0; }
+  dialog .field label { color: var(--text); font-size: 14px; }
+  dialog .field small { color: var(--dim); }
+  dialog textarea { font: inherit; color: var(--text); background: var(--glass2); border: 0; border-radius: 8px; padding: 8px; min-height: 64px; }
+  dialog .checks { display: flex; flex-wrap: wrap; gap: 10px; }
+  dialog .checks label { display: flex; gap: 4px; align-items: center; color: var(--text); }
+  dialog .md { display: flex; gap: 6px; flex-wrap: wrap; }
+  dialog .md input[type=number] { width: 70px; }
+  dialog .foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
   #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--glass2); border: 1px solid var(--line);
     backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); padding: 9px 16px; border-radius: 12px; opacity: 0; transition: opacity .3s; box-shadow: var(--shadow); }
 </style>
@@ -184,7 +203,16 @@
       <span class="stat" id="gcount"></span>
     </div>
     <div class="gifs" id="gifs"></div>
+    <div class="row pager" id="gpager">
+      <button id="gprev" aria-label="Previous page">‹ Prev</button>
+      <span class="stat" id="gpage"></span>
+      <button id="gnext" aria-label="Next page">Next ›</button>
+      <label>per page <select id="gsize" data-testid="page-size">
+        <option value="60">60</option><option value="120">120</option><option value="300" selected>300</option>
+      </select></label>
+    </div>
   </section>
+  <dialog id="pdlg" data-testid="plugin-dialog"></dialog>
 </main>
 <div id="toast"></div>
 <script>
@@ -192,7 +220,7 @@ const $ = s => document.querySelector(s);
 const api = (path, method='GET', body) => fetch(path, {method, headers: body ? {'Content-Type':'application/json'} : {},
   body: body ? JSON.stringify(body) : undefined}).then(async r => { if (!r.ok) throw new Error(await r.text()); return r.json(); });
 const toast = t => { const el = $('#toast'); el.textContent = t; el.style.opacity = 1; setTimeout(() => el.style.opacity = 0, 1800); };
-let S = {}, C = {}, rotation = [], gifFilter = 'everything';
+let S = {}, C = {}, rotation = [], gifFilter = 'everything', gifPage = 0;
 
 function btn(label, fn, cls, testid) {
   const b = document.createElement('button'); b.textContent = label; b.onclick = fn;
@@ -226,9 +254,93 @@ async function init() {
   drawRot(); drawDwell(); drawPlugins(); loadGifs(); pollNow();
 }
 
+function el(tag, props = {}, ...kids) {
+  const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e;
+}
+const ago = s => s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)}m ago` : `${Math.round(s / 3600)}h ago`;
+
+function fieldInput(f, value) {
+  const id = 'pf-' + f.key;
+  if (f.type === 'range') {
+    const out = el('span', {className: 'stat', textContent: value ?? ''});
+    const inp = el('input', {type: 'range', id, min: f.min ?? 0, max: f.max ?? 1, step: f.step ?? .05, value: value ?? f.min ?? 0});
+    inp.oninput = () => out.textContent = inp.value;
+    return [el('div', {className: 'row'}, inp, out), () => +inp.value];
+  }
+  if (f.type === 'number') {
+    const inp = el('input', {type: 'number', id, step: f.step ?? 'any', value: value ?? ''});
+    return [inp, () => inp.value === '' ? null : +inp.value];
+  }
+  if (f.type === 'list') {
+    const ta = el('textarea', {id, placeholder: f.placeholder || '', value: (value || []).join('\n')});
+    return [ta, () => ta.value.split('\n').map(x => x.trim()).filter(Boolean)];
+  }
+  if (f.type === 'choices') {
+    const boxes = f.options.map(o => el('label', {}, el('input', {type: 'checkbox', value: o, checked: (value || []).includes(o)}), o.replace('_', ' ')));
+    return [el('div', {className: 'checks', id}, ...boxes), () => boxes.map(b => b.firstChild).filter(c => c.checked).map(c => c.value)];
+  }
+  if (f.type === 'monthday') {
+    const v = value || {};
+    const m = el('select', {id: id + '-month'}, new Option('Month', ''), ...['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((n, i) => new Option(n, i + 1)));
+    m.value = v.month || '';
+    const d = el('input', {type: 'number', id: id + '-day', min: 1, max: 31, placeholder: 'Day', value: v.day || ''});
+    const n = el('input', {id: id + '-name', placeholder: 'Name', value: v.name || ''});
+    return [el('div', {className: 'md'}, m, d, n), () => m.value && d.value ? {month: +m.value, day: +d.value, name: n.value.trim()} : null];
+  }
+  const inp = el('input', {id, value: value ?? ''});
+  return [inp, () => inp.value];
+}
+
+function openPlugin(name) {
+  const p = S.plugins.find(x => x.name === name), dlg = $('#pdlg');
+  const readers = {};
+  const kids = [el('h3', {textContent: p.name.replace('_', ' ')}), el('div', {className: 'stat', textContent: p.description}),
+    el('p', {className: 'about', textContent: p.about || ''})];
+  const dwellKeys = [...new Set([...p.scenes.filter(sc => sc in C.dwell), ...(p.name in C.dwell ? [p.name] : [])])];
+  if (p.scenes.length) {
+    kids.push(el('div', {className: 'block'}, el('h2', {textContent: 'Scenes'}),
+      el('div', {className: 'row'}, ...p.scenes.map(sc => btn('▶ ' + sc.replace('_', ' '),
+        () => api('/api/play', 'POST', {scene: sc}).then(() => toast('Up next: ' + sc)), '', 'dlg-play-' + sc)))));
+  }
+  if (dwellKeys.length) {
+    kids.push(el('div', {className: 'block'}, el('h2', {textContent: 'Seconds on screen'}), el('div', {className: 'dwell'},
+      ...dwellKeys.map(k => { const inp = el('input', {type: 'number', min: 3, value: C.dwell[k], id: 'pd-' + k});
+        readers['dwell:' + k] = () => +inp.value; return el('label', {}, k.replace('_', ' ') + ' ', inp); }))));
+  }
+  const keys = Object.keys(p.data || {});
+  if (keys.length) {
+    kids.push(el('div', {className: 'block'}, el('h2', {textContent: 'Data it takes'}),
+      ...keys.map(k => el('div', {className: 'stat', textContent:
+        `POST /api/data/${k} · ` + (k in S.data ? `last received ${ago(S.data[k])}` : 'nothing received yet') + ` · fresh for ${p.data[k]} min`}))));
+  }
+  if (p.fields.length) {
+    const form = el('div', {className: 'block'}, el('h2', {textContent: 'Settings'}));
+    for (const f of p.fields) {
+      const [input, read] = fieldInput(f, p.settings[f.key]);
+      readers[f.key] = read;
+      form.append(el('div', {className: 'field'}, el('label', {htmlFor: 'pf-' + f.key, textContent: f.label}), input,
+        ...(f.help ? [el('small', {textContent: f.help})] : [])));
+    }
+    kids.push(form);
+  }
+  const save = btn('Save', async () => {
+    const settings = {}, dwell = {};
+    for (const [k, read] of Object.entries(readers)) (k.startsWith('dwell:') ? (dwell[k.slice(6)] = read()) : (settings[k] = read()));
+    C = await api('/api/config', 'PUT', {plugins: {[p.name]: settings}, ...(Object.keys(dwell).length ? {dwell} : {})});
+    toast(`${p.name} saved`); dlg.close(); init();
+  }, 'on', 'dlg-save');
+  const toggle = btn(p.enabled ? 'Turn off' : 'Turn on', () =>
+    api('/api/config', 'PUT', {plugins: {[p.name]: {enabled: !p.enabled}}}).then(() => { dlg.close(); init(); }), '', 'dlg-toggle');
+  kids.push(el('div', {className: 'foot'}, toggle, btn('Close', () => dlg.close(), '', 'dlg-close'),
+    ...(p.fields.length || dwellKeys.length ? [save] : [])));
+  dlg.replaceChildren(...kids);
+  dlg.showModal();
+}
+
 function drawPlugins() {
   $('#plugins').replaceChildren(...S.plugins.map(p => {
     const row = document.createElement('div'); row.className = 'plugin'; row.dataset.testid = 'plugin-' + p.name;
+    row.title = 'Details and settings'; row.onclick = e => { if (!e.target.closest('button')) openPlugin(p.name); };
     const info = document.createElement('div');
     const name = document.createElement('strong'); name.textContent = p.name;
     const desc = document.createElement('small'); desc.textContent = p.description;
@@ -271,8 +383,13 @@ async function loadGifs() {
     ...Object.entries(S.theme_names).map(([k, v]) => [k, v])];
   $('#gfilter').replaceChildren(...opts.map(([v, label]) => new Option(`${label} (${count(v)})`, v)));
   $('#gfilter').value = gifFilter;
-  const shown = list.filter(match(gifFilter));
-  $('#gcount').textContent = `${shown.length} shown · ${list.length} in the library`;
+  const all = list.filter(match(gifFilter));
+  const size = +$('#gsize').value, pages = Math.max(1, Math.ceil(all.length / size));
+  gifPage = Math.min(gifPage, pages - 1);
+  const shown = all.slice(gifPage * size, (gifPage + 1) * size);
+  $('#gcount').textContent = `${all.length} match · ${list.length} in the library`;
+  $('#gpage').textContent = `Page ${gifPage + 1} of ${pages}` + (all.length ? ` · ${gifPage * size + 1}-${gifPage * size + shown.length}` : '');
+  $('#gprev').disabled = gifPage === 0; $('#gnext').disabled = gifPage >= pages - 1;
   $('#gifs').replaceChildren(...shown.map(g => {
     const d = document.createElement('div'); d.className = 'gif' + (g.hidden ? ' hidden' : ''); d.dataset.testid = 'gif-card';
     const cap = document.createElement('div'); cap.className = 'stat'; cap.style.fontSize = '11px';
@@ -293,7 +410,10 @@ async function loadGifs() {
 
 function confirmDelete(g) { api('/api/gifs/' + encodeURI(g.id), 'DELETE').then(() => { toast('Deleted ' + g.name); loadGifs(); }); }
 
-$('#gfilter').onchange = e => { gifFilter = e.target.value; loadGifs(); };
+$('#gfilter').onchange = e => { gifFilter = e.target.value; gifPage = 0; loadGifs(); };
+$('#gsize').onchange = () => { gifPage = 0; loadGifs(); };
+$('#gprev').onclick = () => { gifPage = Math.max(0, gifPage - 1); loadGifs(); };
+$('#gnext').onclick = () => { gifPage += 1; loadGifs(); };
 $('#gup').onclick = async () => {
   const files = $('#gfile').files; if (!files.length) return toast('Pick a file first');
   const fd = new FormData(); for (const f of files) fd.append('file', f);
