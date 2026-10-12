@@ -48,8 +48,13 @@ has the same length, at most 32. Coordinates are 0-31, (0,0) is the top left.
 Make it read from across a room: one big clear subject, bold saturated colors, dark
 background, simple shapes, smooth motion that loops seamlessly."""
 
-IDEA = ("Invent one delightful idea for the panel yourself, something that suits {when} "
-        "and looks great as tiny pixel art. Then design it.")
+IDEA = ("Invent one delightful idea for the panel yourself, from the world of {topic}. "
+        "It's {when}, which you may nod to or ignore. Surprise me: skip the obvious first "
+        "idea. Then design it.")
+TOPICS = ["animals", "outer space", "food and drink", "weather", "the ocean", "retro video games",
+          "robots and machines", "music", "sports", "plants and gardens", "vehicles", "birds",
+          "insects", "cozy home life", "cities at night", "mythical creatures", "dinosaurs",
+          "optical illusions and patterns", "camping and the outdoors", "the season and its holidays"]
 
 EFFECTS = {"stars", "snow", "rain", "confetti", "bubbles", "sparkles", "fire"}
 FONTS = {"tom-thumb", "4x6", "5x7", "5x8", "6x10"}
@@ -66,7 +71,7 @@ def ask(settings: dict, prompt: str, when: str, timeout: float = 120) -> dict:
     base = (settings.get("base_url") or "").rstrip("/")
     if not base or not settings.get("model"):
         raise GenerateError("set the generator's server and model first (Plugins, generator)")
-    user = prompt.strip() or IDEA.format(when=when)
+    user = prompt.strip() or IDEA.format(when=when, topic=random.choice(TOPICS))
     # A fresh tag each time: gateways like LiteLLM cache identical requests, which
     # would make Try again and Surprise me repeat themselves.
     user += f"\n\n(variation {uuid.uuid4().hex[:8]})"
