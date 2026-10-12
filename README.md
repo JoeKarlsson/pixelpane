@@ -45,7 +45,8 @@ What it shows, panel's-eye view:
 - **GIFs from a prompt.** Type "a cat chasing a laser dot" (or press Surprise
   me) and a chat model (any OpenAI-compatible server such as LiteLLM,
   OpenRouter or Ollama, or Anthropic's API) designs a looping animation. Preview
-  it, refine it, then save it to your library or throw it out.
+  it, refine it, then save it to your library or throw it out. See
+  [which models draw best](docs/GIFS.md#choosing-a-model).
 - **An HTTP API** for notifications, modes (ON AIR, messages) and data.
 - **Home Assistant ready**: a light entity, a feed automation and notification
   examples in [docs/HOME_ASSISTANT.md](docs/HOME_ASSISTANT.md).

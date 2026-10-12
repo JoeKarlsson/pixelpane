@@ -162,6 +162,57 @@ Set it up in the **generator** plugin's panel:
 | OpenAI-compatible: Ollama | `http://<ollama-host>:11434/v1` | `qwen3:14b` (no key) |
 | Anthropic | leave empty (`https://api.anthropic.com`) | a Claude model |
 
-Bigger models draw much better than small local ones. One draft is one or two
-requests of a few thousand tokens. The board makes the requests itself, so it
-needs a network path to that server.
+Bigger models draw much better than small local ones. One draft is one request,
+or two with the self-check. The board makes the requests itself, so it needs a
+network path to that server.
+
+### Choosing a model
+
+We gave several models the same prompt, "a tuxedo cat chasing a red laser dot",
+on 2026-10-12, through an OpenAI-compatible gateway with the self-check off.
+These are single runs, so read them as a rough guide, not a benchmark. The last
+row is the same idea designed by hand with the same renderer, to show what the
+format can do.
+
+![The same prompt from four models, and by hand](images/generator-models.png)
+
+| Model | Time | Cost | What it made |
+|-------|------|------|--------------|
+| Qwen3.8 (open weights, via OpenRouter) | about 90 s | about $0.10 | the biggest, clearest cat and the best motion; in a second run the dot trailed the cat instead of leading it |
+| DeepSeek V4 Pro (open weights) | about 4 min | about $0.09 | a good tuxedo cat with the dot just ahead on the floor; slow |
+| DeepSeek V4.1 Flash (open weights) | about 85 s | about $0.01 | a readable cat, but the dot floats above its head |
+| GLM 5.3 Flash (open weights) | about 10 s | under $0.001 | follows the format, but the cat is tiny and crude |
+| Claude Sonnet 5.5 (Anthropic) | 6 to 15 s | about $0.03 | in earlier rounds of testing, the most reliable: clear subjects that follow the motion rules |
+
+The self-check roughly doubles time and cost; Qwen3.8 took about 2 minutes 45
+seconds for a checked draft. It needs a model that can read images (Qwen3.8 and
+Claude can).
+
+Reasoning models (Qwen3.8 and both DeepSeeks here) think before they answer,
+often 10,000 to 27,000 tokens for one design. With an 8,000-token output limit
+they ran out mid-thought and returned nothing, so the generator asks for up to
+32,000 tokens (you pay only for what is used) and waits up to 5 minutes.
+
+### What made the designs better
+
+The first version made weak GIFs. These changes made the difference:
+
+- **Describe, don't paint.** Chat models are poor at placing 1,024 pixels, but
+  good at writing a short description: sprites, shapes, paths, motion. The
+  board renders it, so every frame lines up and the loop is seamless.
+- **Poses cycle on their own.** A sprite's frames (legs, wings, flames) now
+  repeat about every 0.15 seconds. At first they played once per loop, so a
+  two-pose walk changed every second or two and looked frozen.
+- **Motion that matches the idea.** Paths, a `phase` offset (a chaser uses the
+  same path as the dot, a little behind), `face` to turn toward the direction of
+  travel, and groups so parts move together.
+- **Joints.** A tail swings around a `pivot` at its base, by 15 to 35 degrees,
+  pointing away from the body; larger swings sweep straight through the body.
+- **A worked example** in the instructions (a puppy chasing a ball), checked by
+  rendering it first; the model copies its structure.
+- **Letting the model see its work.** The self-check sends a picture of the
+  render: a row of consecutive frames for fast motion such as wags and flaps,
+  and a row spread over the whole loop. With evenly spaced frames alone, a tail
+  wagging six times a loop looked frozen, to us and to the model.
+- **Fresh requests.** Gateways like LiteLLM cache identical requests, so each one
+  carries a random tag; otherwise Try again and Surprise me repeat themselves.
