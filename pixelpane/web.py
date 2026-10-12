@@ -58,6 +58,13 @@ def create_app(state, gifs, health):
                 return jsonify(error="token required"), 401
         return None
 
+    @app.after_request
+    def one_date_header(response):
+        """The HTTP server adds Date itself; file responses would carry a second one,
+        which reverse proxies (nginx) log as a warning on every request."""
+        response.headers.pop("Date", None)
+        return response
+
     def body():
         return request.get_json(silent=True) or {}
 

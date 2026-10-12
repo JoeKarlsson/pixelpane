@@ -281,7 +281,12 @@ async function pollNow() {
     li.classList.toggle('current', n.source === 'playlist' && +li.dataset.index === n.index));
 }
 
-setInterval(() => { $('#preview').src = '/preview.png?t=' + Date.now(); }, 500);
-setInterval(() => pollNow().catch(() => {}), 1000);
-setInterval(refresh, 5000);
+// Live updates, paused while the tab is in the background so an open tab costs nothing.
+const live = fn => () => { if (!document.hidden) fn(); };
+setInterval(live(() => { $('#preview').src = '/preview.png?t=' + Date.now(); }), 1000);
+setInterval(live(() => pollNow().catch(() => {})), 2000);
+setInterval(live(refresh), 10000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) { refresh(); pollNow().catch(() => {}); }
+});
 init().catch(e => $('#stat').textContent = 'error: ' + e.message);
