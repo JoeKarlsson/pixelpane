@@ -28,7 +28,7 @@ const api = (path, method = 'GET', body) => send(path, {method, headers: body ? 
   body: body ? JSON.stringify(body) : undefined}).then(r => r.json());
 const toast = t => { const el = $('#toast'); el.textContent = t; el.style.opacity = 1; setTimeout(() => el.style.opacity = 0, 1800); };
 let S = {}, C = {}, rotation = [], gifFilter = 'everything', gifPage = 0;
-let gifList = [], gifShown = [], selecting = false;
+let gifList = [], gifShown = [], selecting = false, lastPick = null;
 const picked = new Set();
 
 function btn(label, fn, cls, testid) {
@@ -215,12 +215,12 @@ async function loadGifs() {
   $('#gprev').disabled = gifPage === 0; $('#gnext').disabled = gifPage >= pages - 1;
   $('#gifs').replaceChildren(...shown.map(g => {
     const d = document.createElement('div'); d.dataset.testid = 'gif-card'; d.dataset.id = g.id;
-    d.className = 'gif' + (g.hidden ? ' hidden' : '') + (picked.has(g.id) ? ' picked' : '');
-    if (selecting) {
-      const box = el('input', {type: 'checkbox', className: 'pick', checked: picked.has(g.id), title: 'Select'});
-      box.setAttribute('aria-label', 'Select ' + g.name);
-      box.onchange = () => { box.checked ? picked.add(g.id) : picked.delete(g.id); d.classList.toggle('picked', box.checked); drawPicked(); };
-      d.append(box);
+    d.className = 'gif' + (g.hidden ? ' hidden' : '') + (selecting ? ' selecting' : '') + (picked.has(g.id) ? ' picked' : '');
+    if (selecting) {   // the whole card is the checkbox; shift-click picks a range
+      d.tabIndex = 0; d.setAttribute('role', 'checkbox'); d.setAttribute('aria-checked', picked.has(g.id));
+      d.setAttribute('aria-label', g.name);
+      d.onclick = e => togglePick(g, e.shiftKey);
+      d.onkeydown = e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); togglePick(g, e.shiftKey); } };
     }
     const cap = document.createElement('div'); cap.className = 'stat'; cap.style.fontSize = '11px';
     cap.style.overflowWrap = 'anywhere'; cap.textContent = g.name.replace(/\.gif$/i, '');
@@ -240,10 +240,27 @@ async function loadGifs() {
   }));
 }
 
+function togglePick(g, range) {
+  const on = !picked.has(g.id), ids = gifShown.map(x => x.id);
+  const from = range && lastPick ? ids.indexOf(lastPick) : -1, to = ids.indexOf(g.id);
+  const span = from < 0 ? [g.id] : ids.slice(Math.min(from, to), Math.max(from, to) + 1);
+  span.forEach(id => on ? picked.add(id) : picked.delete(id));
+  lastPick = g.id;
+  document.querySelectorAll('#gifs .gif').forEach(card => {
+    const p = picked.has(card.dataset.id);
+    card.classList.toggle('picked', p); card.setAttribute('aria-checked', p);
+  });
+  drawPicked();
+}
+
 function drawPicked() {
   $('#gbulk').hidden = !selecting;
-  $('#gselcount').textContent = `${picked.size} selected`;
-  $('#gmove').disabled = !picked.size;
+  const here = gifShown.filter(g => picked.has(g.id)).length;
+  $('#gselcount').textContent = picked.size
+    ? `${picked.size} selected` + (here < picked.size ? ` (${here} on this page)` : '') : 'Click GIFs to pick them';
+  const whole = gifShown.length && here === gifShown.length;
+  $('#gselall').textContent = whole ? 'Unselect page' : 'Select page';
+  $('#gmove').disabled = $('#gclear').disabled = !picked.size;
 }
 
 function themeOptions(keep) {
@@ -278,10 +295,15 @@ function openClassify(gs) {
 }
 
 $('#gselect').onclick = () => {
-  selecting = !selecting; if (!selecting) picked.clear();
+  selecting = !selecting; if (!selecting) { picked.clear(); lastPick = null; }
+  $('#gselect').textContent = selecting ? 'Done' : 'Select';
   $('#gselect').setAttribute('aria-pressed', selecting); loadGifs();
 };
-$('#gselall').onclick = () => { gifShown.forEach(g => picked.add(g.id)); loadGifs(); };
+$('#gselall').onclick = () => {
+  const whole = gifShown.every(g => picked.has(g.id));
+  gifShown.forEach(g => whole ? picked.delete(g.id) : picked.add(g.id)); loadGifs();
+};
+$('#gclear').onclick = () => { picked.clear(); lastPick = null; loadGifs(); };
 $('#gmove').onclick = () => openClassify(gifList.filter(g => picked.has(g.id)));
 $('#grename').onclick = () => {
   const old = gifFilter.slice(4), dlg = $('#rdlg');

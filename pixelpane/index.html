@@ -80,9 +80,11 @@
       <button id="gselect" data-testid="select-mode" aria-pressed="false">Select</button>
     </div>
     <div class="row bulk" id="gbulk" hidden data-testid="bulk-bar">
-      <span class="stat" id="gselcount">0 selected</span>
-      <button id="gselall">Select page</button>
+      <span class="stat" id="gselcount" data-testid="selected-count">Click GIFs to pick them</span>
+      <button id="gselall" data-testid="select-page">Select page</button>
+      <button id="gclear" data-testid="select-clear">Clear selection</button>
       <button id="gmove" class="on" data-testid="bulk-move">Move…</button>
+      <small class="hint">Shift-click picks a range</small>
     </div>
     <div class="row" style="margin-bottom:10px">
       <label for="gtheme">Upload to</label><select id="gtheme" data-testid="upload-theme"></select>

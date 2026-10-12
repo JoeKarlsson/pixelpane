@@ -85,15 +85,35 @@ test('GIFs can be moved to another category or theme, one at a time or in bulk',
   await page.getByTestId('select-mode').click();
   await expect(page.getByTestId('bulk-bar')).toBeVisible();
   await expect(page.getByTestId('bulk-move')).toBeDisabled();
-  await page.getByRole('button', { name: 'Select page' }).click();
-  await expect(page.locator('#gselcount')).toHaveText(`${n} selected`);
+  await expect(cards.first().getByRole('button', { name: '▶' })).toBeHidden();   // no stray plays
+  const count = page.getByTestId('selected-count');
+  // click picks a card, a second click unpicks it
+  await cards.nth(0).click();
+  await expect(cards.nth(0)).toHaveAttribute('aria-checked', 'true');
+  await expect(count).toHaveText('1 selected');
+  await cards.nth(0).click();
+  await expect(cards.nth(0)).toHaveClass(/selecting/);
+  await expect(cards.nth(0)).not.toHaveClass(/picked/);
+  await expect(count).toHaveText('Click GIFs to pick them');
+  // shift-click picks the range in between
+  await cards.nth(0).click();
+  await cards.nth(n - 1).click({ modifiers: ['Shift'] });
+  await expect(count).toHaveText(`${n} selected`);
+  await expect(page.getByTestId('select-page')).toHaveText('Unselect page');
+  await page.getByTestId('select-page').click();
+  await expect(count).toHaveText('Click GIFs to pick them');
+  await page.getByTestId('select-page').click();
+  await page.getByTestId('select-clear').click();
+  await expect(count).toHaveText('Click GIFs to pick them');
+  await page.getByTestId('select-page').click();
+  await expect(count).toHaveText(`${n} selected`);
   await page.getByTestId('bulk-move').click();
   await dlg.getByTestId('classify-category').fill('arcade');
   await dlg.getByTestId('classify-save').click();
   await expect(page.locator('#toast')).toContainText(`Moved ${n} GIFs`);
   const arcade = (await (await request.get('/api/gifs')).json()).filter((g) => g.category === 'arcade');
   expect(arcade.map((g) => g.theme)).toEqual(Array(n).fill('all'));   // bulk kept each GIF's theme
-  await expect(page.locator('#gselcount')).toHaveText('0 selected');
+  await expect(count).toHaveText('Click GIFs to pick them');
 
   await page.getByTestId('gif-filter').selectOption('cat:arcade');
   await expect(cards).toHaveCount(n);
@@ -104,6 +124,9 @@ test('GIFs can be moved to another category or theme, one at a time or in bulk',
   await expect.poll(async () => (await config(request)).gif_meta).toEqual({});
   await expect(page.getByTestId('gif-filter')).toHaveValue('cat:retro');
   await expect(cards).toHaveCount(n);
+  await page.getByTestId('select-mode').click();   // now reads Done
+  await expect(page.getByTestId('bulk-bar')).toBeHidden();
+  await expect(cards.first().getByRole('button', { name: '▶' })).toBeVisible();
 });
 
 test('every Play now button plays its scene', async ({ page, request }) => {
