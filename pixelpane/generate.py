@@ -100,6 +100,9 @@ class GenerateError(Exception):
 PROVIDERS = {"openai": "OpenAI-compatible (LiteLLM, OpenRouter, OpenAI, Ollama...)",
              "anthropic": "Anthropic (Claude API)"}
 ANTHROPIC_URL = "https://api.anthropic.com"
+# Room for reasoning models, which think (often 10-25k tokens) before they write the JSON.
+# Only what is used is billed, so a non-reasoning model costs the same either way.
+MAX_TOKENS = 32000
 
 REVIEW = """Above is how your design actually rendered, 4x bigger. Top row: {n} frames in a
 row ({ms} ms apart), to judge fast motion. Bottom row: {n} frames spread evenly over the whole
@@ -133,7 +136,7 @@ def _chat(settings: dict, system: str, turns: list, timeout: float) -> str:
             return {"type": "text", "text": x}
         url = (base[:-3] if base.endswith("/v1") else base) + "/v1/messages"
         headers = {"x-api-key": key or "", "anthropic-version": "2023-06-01"}
-        body = {"model": model, "max_tokens": 8000, "temperature": 0.8, "system": system,
+        body = {"model": model, "max_tokens": MAX_TOKENS, "temperature": 0.8, "system": system,
                 "messages": [{"role": r, "content": [part(x) for x in xs]} for r, xs in turns]}
     else:
         def part(x):
@@ -146,7 +149,7 @@ def _chat(settings: dict, system: str, turns: list, timeout: float) -> str:
             return xs[0] if len(xs) == 1 and isinstance(xs[0], str) else [part(x) for x in xs]
         url = base + "/chat/completions"
         headers = {"Authorization": "Bearer " + key} if key else {}
-        body = {"model": model, "max_tokens": 8000, "temperature": 0.8,
+        body = {"model": model, "max_tokens": MAX_TOKENS, "temperature": 0.8,
                 "messages": [{"role": "system", "content": system}]
                 + [{"role": r, "content": content(xs)} for r, xs in turns]}
     req = urllib.request.Request(url, json.dumps(body).encode(), {"Content-Type": "application/json", **headers})
@@ -160,10 +163,17 @@ def _chat(settings: dict, system: str, turns: list, timeout: float) -> str:
         raise GenerateError(f"could not reach {base}: {getattr(e, 'reason', e)}") from e
     try:
         if provider == "anthropic":
-            return "".join(c.get("text", "") for c in reply["content"] if c.get("type") == "text")
-        return reply["choices"][0]["message"]["content"] or ""
+            text = "".join(c.get("text", "") for c in reply["content"] if c.get("type") == "text")
+            ran_out = reply.get("stop_reason") == "max_tokens"
+        else:
+            text = reply["choices"][0]["message"].get("content") or ""
+            ran_out = reply["choices"][0].get("finish_reason") == "length"
     except (KeyError, IndexError, TypeError, AttributeError) as e:
         raise GenerateError("the model's reply had no message") from e
+    if ran_out and "{" not in text:
+        raise GenerateError(f"the model used its whole {MAX_TOKENS}-token budget thinking and never answered; "
+                            "try a model that thinks less")
+    return text
 
 
 def contact_sheet(frames, n: int = 8, zoom: int = 4) -> bytes:
@@ -182,7 +192,7 @@ def contact_sheet(frames, n: int = 8, zoom: int = 4) -> bytes:
     return buf.getvalue()
 
 
-def ask(settings: dict, prompt: str, when: str, timeout: float = 150, log=None,
+def ask(settings: dict, prompt: str, when: str, timeout: float = 300, log=None,
         base: dict | None = None, change: str = "") -> dict:
     """Design an animation for prompt (or the model's own idea when prompt is empty), or
     with base and change, rework an earlier design ("make the cat bigger").
@@ -206,7 +216,7 @@ def ask(settings: dict, prompt: str, when: str, timeout: float = 150, log=None,
             frames = render(spec)
             break
         except GenerateError as e:
-            if attempt == 2 or "server" in str(e) or "reach" in str(e):
+            if attempt == 2 or any(w in str(e) for w in ("server", "reach", "budget")):
                 raise
             say(f"draft unusable ({e}), asking again")
     draft, checked = spec, False

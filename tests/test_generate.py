@@ -35,6 +35,7 @@ class Stub(BaseHTTPRequestHandler):
     """A tiny OpenAI-compatible chat endpoint."""
     reply = json.dumps(SPEC)
     seen = []
+    thinking_only = False   # act like a reasoning model that ran out of tokens mid-thought
 
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
@@ -42,6 +43,8 @@ class Stub(BaseHTTPRequestHandler):
         text = "Here you go:\n```json\n" + Stub.reply + "\n```"
         if self.path.endswith("/messages"):   # Anthropic's API
             out = {"content": [{"type": "text", "text": text}]}
+        elif Stub.thinking_only:
+            out = {"choices": [{"message": {"content": ""}, "finish_reason": "length"}]}
         else:
             out = {"choices": [{"message": {"content": text}}]}
         self.send_response(200)
@@ -121,6 +124,16 @@ class GenerateTest(unittest.TestCase):
         self.assertEqual((path, headers["x-api-key"], headers["anthropic-version"]), ("/v1/messages", "sk-ant", "2023-06-01"))
         self.assertIn("32x32", body["system"])
         self.assertEqual(review["messages"][-1]["content"][0]["type"], "image")
+
+    def test_a_model_that_only_thinks_gets_a_clear_error(self):
+        Stub.thinking_only = True
+        try:
+            with self.assertRaises(generate.GenerateError) as e:
+                generate.ask({"base_url": self.base, "model": "m", "review": False}, "x", "")
+            self.assertIn("budget thinking", str(e.exception))
+            self.assertEqual(Stub.seen[-1][2]["max_tokens"], generate.MAX_TOKENS)
+        finally:
+            Stub.thinking_only = False
 
     def test_refine_sends_the_earlier_design(self):
         Stub.seen.clear()
