@@ -33,7 +33,7 @@ SCENES = {}    # scene name -> generator function (with .kind and .plugin)
 PLUGINS = {}   # plugin name -> Plugin
 
 BUILTIN = ["alerts", "clock", "weather", "now_playing", "calendar", "homelab", "tiles",
-           "gifs", "seasonal", "generative"]
+           "gifs", "seasonal", "generative", "sky"]
 USER_DIR = Path(os.environ.get("PIXELPANE_PLUGINS", "/var/lib/pixelpane/plugins"))
 
 

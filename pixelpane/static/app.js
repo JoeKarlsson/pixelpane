@@ -58,7 +58,7 @@ async function init() {
   rotation = [...C.rotation];
   const cats = S.categories.map(c => 'gif:' + c);
   const scenes = [...(S.scenes.widget||[]), 'gif', ...cats, 'seasonal', 'generative'];
-  $('#playnow').replaceChildren(...['clock','weather','now_playing','calendar','homelab','tiles','gif', ...cats, 'seasonal','generative',
+  $('#playnow').replaceChildren(...[...(S.scenes.widget||[]), 'gif', ...cats, 'seasonal','generative',
     ...Object.keys(S.theme_names), ...(S.scenes.generative||[])].map(s => btn(s.replace('_',' ').replace('gif:', 'gif: '),
       () => api('/api/play','POST',{scene:s}).then(() => toast('Up next: '+s)), '', 'play-' + s)));
   $('#nicon').replaceChildren(...S.icons.map(i => new Option(i, i)));

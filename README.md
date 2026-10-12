@@ -108,6 +108,7 @@ pixelpane-library/
 | gifs | gif, gif:&lt;category&gt; | |
 | seasonal | a scene per season and holiday, plus your birthday | |
 | generative | fire, plasma, life, matrix_rain, starfield | |
+| sky | moon (phase, named full moons, supermoons, blue moons), zodiac | |
 
 Switch plugins on or off on the control page, or in the config. Writing your
 own takes one Python file: see **[docs/PLUGINS.md](docs/PLUGINS.md)**.

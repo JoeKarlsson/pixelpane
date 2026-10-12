@@ -3,6 +3,21 @@
 All notable changes to PixelPane. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project uses [semantic versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Sky plugin, calculated on the board with no network: a `moon` scene that
+  draws tonight's moon with its real shape, the phase and the days to the next
+  full moon, and names each full moon (Harvest, Hunter's, Wolf and the rest),
+  calling out supermoons and blue moons; a `zodiac` scene with the sun sign's
+  symbol, dates and element, and the sign the moon is in.
+
+### Fixed
+- File responses (GIFs, the preview, static files) sent two `Date` headers,
+  which reverse proxies log as an error on every request.
+- The control page polls half as often and stops polling in a background tab.
+- GIFs that are not square keep their whole subject instead of being cropped.
+
 ## [0.1.0] - 2026-10-12
 
 First public release.
