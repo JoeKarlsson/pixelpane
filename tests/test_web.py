@@ -157,6 +157,12 @@ class WebTest(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(self.post("/api/state", {"power": True}).status_code, 200)
 
+    def test_preview_follows_the_panel(self):
+        self.state.update_config({"panel": {"cols": 64, "rows": 32}})
+        with Image.open(io.BytesIO(self.client.get("/preview.png").data)) as im:
+            self.assertEqual(im.size, (320, 160))
+        self.assertEqual(self.client.get("/api/state").get_json()["panel"], [64, 32])
+
     def test_preview_png(self):
         r = self.client.get("/preview.png?scale=4")
         self.assertEqual(r.mimetype, "image/png")

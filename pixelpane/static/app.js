@@ -41,6 +41,11 @@ async function refresh() {
   if (document.activeElement !== $('#bright')) $('#bright').value = S.brightness;
   $('#bv').textContent = S.brightness;
   $('#scene').textContent = S.pinned ? `pinned: ${S.pinned.scene}` : S.scene;
+  if (S.panel) {   // preview takes the panel's shape; the LED grid matches its pixels
+    const [cols, rows] = S.panel, w = cols >= rows ? 256 : Math.round(256 * cols / rows);
+    $('#preview').style.width = w + 'px';
+    $('.panel').style.setProperty('--led', (w / cols) + 'px');
+  }
   $('#footver').textContent = S.version ? `version ${S.version}` : '';
   $('#stat').textContent = [S.temp_c ? S.temp_c.toFixed(0) + '°C' : null, S.throttled ? `throttled ${S.throttled}` : null,
     `up ${Math.round(S.uptime_s/3600)}h`, S.version].filter(Boolean).join(' · ');

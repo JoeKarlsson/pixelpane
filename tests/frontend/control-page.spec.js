@@ -324,4 +324,10 @@ test('footer links to the project on GitHub', async ({ page }) => {
   await expect(link).toHaveAttribute('href', 'https://github.com/JoeKarlsson/pixelpane');
   await expect(link).toHaveAttribute('rel', /noopener/);
   await expect(page.locator('#footver')).toHaveText('version dev');
+  const maker = page.getByTestId('maker');
+  for (const [name, href] of [['Joe Karlsson', 'https://www.joekarlsson.com'], ['Newsletter', 'https://www.joekarlsson.com/newsletter'],
+    ['Bluesky', 'https://bsky.app/profile/joekarlsson.com'], ['LinkedIn', 'https://www.linkedin.com/in/joekarlsson/'],
+    ['YouTube', 'https://www.youtube.com/joekarlsson']]) {
+    await expect(maker.getByRole('link', { name })).toHaveAttribute('href', href);
+  }
 });

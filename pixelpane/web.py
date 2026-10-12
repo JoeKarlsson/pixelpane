@@ -12,6 +12,7 @@ import hmac
 import os
 
 from . import gfx, plugin, schema, seasons
+from .display import compose, panel_size
 from .plugin import SCENES
 from .state import VAR, convert_upload
 
@@ -81,7 +82,7 @@ def create_app(state, gifs, health):
         return jsonify(health(state) | {
             "scenes": kinds, "theme_names": seasons.THEMES, "icons": gfx.ICONS,
             "pinnable": sorted(PINNABLE), "categories": gifs.categories(),
-            "plugins": plugin.describe(state.config),
+            "plugins": plugin.describe(state.config), "panel": panel_size(state.config),
             "auth": bool(state.config.get("api_token") or os.environ.get("PIXELPANE_TOKEN")),
             "data": {k: int(time.time() - v[0]) for k, v in state.data.items()}})
 
@@ -199,10 +200,11 @@ def create_app(state, gifs, health):
 
     @app.get("/preview.png")
     def preview():
-        scale = max(1, min(16, int(request.args.get("scale", 10))))
-        img = state.last_frame if state.power else Image.new("RGB", (32, 32))
+        cols, rows = panel_size(state.config)
+        img = compose(state.last_frame if state.power else Image.new("RGB", (32, 32)), cols, rows)
+        scale = max(1, min(16, int(request.args.get("scale", max(1, 320 // cols)))))
         buf = io.BytesIO()
-        img.resize((32 * scale, 32 * scale), Image.NEAREST).save(buf, "PNG")
+        img.resize((cols * scale, rows * scale), Image.NEAREST).save(buf, "PNG")
         buf.seek(0)
         return send_file(buf, mimetype="image/png", max_age=0)
 

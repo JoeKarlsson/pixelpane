@@ -243,13 +243,20 @@ class GifLibrary:
         files = self.pool()
         return self._draw("all", files) if files else None
 
+    def gif_size(self):
+        """GIFs play at full resolution on a bigger square panel (64x64); otherwise 32x32."""
+        p = self.state.config.get("panel") or {}
+        cols, rows = int(p.get("cols", 32)), int(p.get("rows", 32))
+        return (cols, rows) if cols == rows and cols > W else (W, H)
+
     def frames(self, path):
-        key = str(path)
+        size = self.gif_size()
+        key = f"{path}@{size[0]}"
         if key in self.cache:
             self.cache.move_to_end(key)
             return self.cache[key]
         try:
-            frames = decode_gif(path)
+            frames = decode_gif(path, size=size)
         except (OSError, ValueError):
             frames = []
         self.cache[key] = frames
@@ -258,17 +265,17 @@ class GifLibrary:
         return frames
 
 
-def fit(img, smooth=False):
-    """Center-crop to square and scale to the panel."""
+def fit(img, smooth=False, size=(W, H)):
+    """Center-crop to square and scale to `size` (the 32x32 canvas by default)."""
     w, h = img.size
-    if (w, h) == (W, H):
+    if (w, h) == tuple(size):
         return img
     s = min(w, h)
     img = img.crop(((w - s) // 2, (h - s) // 2, (w - s) // 2 + s, (h - s) // 2 + s))
-    return img.resize((W, H), Image.LANCZOS if smooth else Image.NEAREST)
+    return img.resize(tuple(size), Image.LANCZOS if smooth else Image.NEAREST)
 
 
-def decode_gif(path, smooth=False, limit=400):
+def decode_gif(path, smooth=False, limit=400, size=(W, H)):
     out = []
     with Image.open(path) as im:
         for i, frame in enumerate(ImageSequence.Iterator(im)):
@@ -276,7 +283,7 @@ def decode_gif(path, smooth=False, limit=400):
                 break
             rgba = frame.convert("RGBA")
             bg = Image.new("RGBA", rgba.size, (0, 0, 0, 255))
-            img = fit(Image.alpha_composite(bg, rgba).convert("RGB"), smooth)
+            img = fit(Image.alpha_composite(bg, rgba).convert("RGB"), smooth, size)
             ms = frame.info.get("duration") or 100
             out.append((img, max(20, ms) / 1000))
     return out

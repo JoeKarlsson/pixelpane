@@ -47,12 +47,12 @@
   .grid2 > * { min-width: 0; }
   @media (max-width: 680px) { .grid2 { grid-template-columns: minmax(0, 1fr); } .panel { justify-self: center; } }
   /* the LED pane */
-  .panel { position: relative; width: 272px; height: 272px; padding: 8px; border-radius: 18px; background: #05060c;
+  .panel { position: relative; width: max-content; padding: 8px; border-radius: 18px; background: #05060c;
     box-shadow: 0 0 0 1px var(--line), 0 0 50px rgba(169,139,255,.28), inset 0 0 30px rgba(0,0,0,.8); }
-  #preview { width: 256px; height: 256px; image-rendering: pixelated; display: block; border-radius: 6px; background: #000; }
+  #preview { width: 256px; height: auto; image-rendering: pixelated; display: block; border-radius: 6px; background: #000; }
   .panel::after { content: ""; position: absolute; inset: 8px; border-radius: 6px; pointer-events: none;
     background-image: linear-gradient(rgba(5,6,12,.55) 1px, transparent 1px), linear-gradient(90deg, rgba(5,6,12,.55) 1px, transparent 1px);
-    background-size: 8px 8px; }
+    background-size: var(--led, 8px) var(--led, 8px); }
   button, select, input { font: inherit; color: var(--text); background: var(--glass2); border: 0; padding: 7px 12px;
     clip-path: var(--px); transition: background .15s, transform .1s; }
   button { cursor: pointer; }
@@ -119,3 +119,5 @@
 .foot-bar { display: flex; justify-content: center; align-items: center; gap: 14px; padding: 8px 0 4px; color: var(--dim); font-size: 13px; }
 .foot-bar a { display: inline-flex; align-items: center; gap: 6px; color: var(--dim); text-decoration: none; }
 .foot-bar a:hover { color: var(--text); }
+.foot-bar.maker { flex-wrap: wrap; gap: 6px 16px; padding-top: 0; font-size: 12px; }
+.foot-bar.maker span a { color: var(--text); }
