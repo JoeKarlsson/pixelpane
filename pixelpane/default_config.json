@@ -1,0 +1,18 @@
+{
+  "brightness": 60,
+  "rotation": ["clock", "gif", "seasonal", "weather", "gif", "generative", "now_playing",
+               "clock", "gif", "seasonal", "calendar", "tiles", "gif", "homelab"],
+  "dwell": {
+    "gif": 20, "clock": 10, "weather": 12, "seasonal": 20, "generative": 25,
+    "now_playing": 15, "calendar": 10, "homelab": 24, "tiles": 12
+  },
+  "plugins": {},
+  "data_ttl_minutes": {},
+  "hidden_gifs": [],
+  "display": "auto",
+  "adafruit_board": "hat",
+  "hardware_mapping": "adafruit-hat",
+  "panel_bgr": false,
+  "gpio_slowdown": null,
+  "refresh_hz": null
+}

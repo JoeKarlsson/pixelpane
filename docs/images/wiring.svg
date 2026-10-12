@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 380" font-family="Helvetica, Arial, sans-serif" font-size="14">
+  <rect width="880" height="380" fill="#ffffff"/>
+  <text x="440" y="34" text-anchor="middle" font-size="20" font-weight="bold" fill="#1f2330">Wiring</text>
+  <!-- PSU -->
+  <rect x="40" y="150" width="150" height="80" rx="8" fill="#3a3f4f"/>
+  <text x="115" y="185" text-anchor="middle" fill="#fff">5 V 4 A+</text><text x="115" y="205" text-anchor="middle" fill="#fff">power supply</text>
+  <!-- Pi + HAT -->
+  <rect x="300" y="110" width="200" height="160" rx="8" fill="#2f8f4e"/>
+  <rect x="300" y="110" width="200" height="34" rx="8" fill="#1d6b3a"/>
+  <text x="400" y="133" text-anchor="middle" fill="#fff">Adafruit RGB Matrix HAT</text>
+  <text x="400" y="200" text-anchor="middle" fill="#fff">on the Raspberry Pi's</text><text x="400" y="220" text-anchor="middle" fill="#fff">40-pin header</text>
+  <circle cx="300" cy="190" r="9" fill="#111"/><text x="290" y="170" text-anchor="end" fill="#1f2330" font-size="12">DC jack</text>
+  <rect x="440" y="240" width="40" height="20" fill="#111"/><text x="440" y="290" text-anchor="end" fill="#1f2330" font-size="12">+5V / GND terminal</text>
+  <rect x="500" y="160" width="14" height="50" fill="#111"/><text x="507" y="228" fill="#1f2330" font-size="12">HUB75 out</text>
+  <!-- panel -->
+  <rect x="660" y="100" width="180" height="180" rx="4" fill="#22252f"/>
+  <text x="750" y="185" text-anchor="middle" fill="#fff">32x32 HUB75 panel</text><text x="750" y="205" text-anchor="middle" fill="#ccc" font-size="12">(back: IN connector + power)</text>
+  <!-- wires -->
+  <path d="M190 190 L291 190" stroke="#c0392b" stroke-width="5"/>
+  <text x="240" y="180" text-anchor="middle" font-size="12" fill="#c0392b">barrel plug</text>
+  <path d="M514 185 C 590 185, 600 160, 660 160" stroke="#7a7f8f" stroke-width="8" fill="none"/>
+  <text x="590" y="128" text-anchor="middle" font-size="12" fill="#555">16-pin ribbon to IN</text>
+  <path d="M480 245 C 600 245, 600 260, 660 260" stroke="#c0392b" stroke-width="4" fill="none"/>
+  <path d="M480 255 C 600 255, 600 270, 660 270" stroke="#111" stroke-width="4" fill="none"/>
+  <text x="600" y="312" text-anchor="middle" font-size="12" fill="#555">panel power cable (red +5V, black GND)</text>
+  <text x="440" y="355" text-anchor="middle" font-size="13" fill="#1f2330">The HAT feeds the Pi from the same 5 V supply: no USB power needed. Ribbon goes to the panel's IN connector (arrows point away from it).</text>
+</svg>

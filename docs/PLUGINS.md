@@ -1,0 +1,115 @@
+# Writing a plugin
+
+Every scene on the board comes from a plugin. A plugin is one Python file: it
+creates a `Plugin`, registers scenes on it, and can declare the data it accepts,
+default settings and background tasks. The built-in plugins in
+[`pixelpane/plugins/`](../pixelpane/plugins) are good examples; `clock.py` and
+`tiles.py` are the shortest.
+
+## A complete example
+
+Save this as `/var/lib/pixelpane/plugins/countdown.py` on the Pi (or any folder
+set in `PIXELPANE_PLUGINS`), then `sudo systemctl restart pixelpane`:
+
+```python
+"""Countdown: days until a date, with a little rocket that climbs as it gets closer."""
+from datetime import date
+
+from pixelpane import gfx
+from pixelpane.kit import animated_icon, gauge, scroll_text, ticks
+from pixelpane.plugin import Plugin
+
+plugin = Plugin(
+    "countdown",
+    "Days until a date",
+    data={"countdown": 24 * 60},            # POST /api/data/countdown, fresh for a day
+    defaults={"label": "VACATION", "date": None, "color": "#ff5fa2"},
+)
+
+
+@plugin.scene("countdown")
+def countdown(ctx, secs):
+    settings = ctx.settings("countdown")
+    pushed = ctx.data("countdown") or {}     # pushed data wins over settings
+    when = pushed.get("date") or settings["date"]
+    if not when:
+        return                               # nothing to show: the player skips us
+    days = (date.fromisoformat(when) - ctx.now().date()).days
+    if days < 0:
+        return
+    color = gfx.hex_color(pushed.get("color") or settings["color"])
+    label = str(pushed.get("label") or settings["label"]).upper()
+    for i, t in ticks(secs, 10):             # 10 frames a second for `secs` seconds
+        img = gfx.blank()
+        animated_icon(img, "calendar", (12, 1), t)
+        gfx.text_center(img, 11, f"{days}D", color, "6x10")
+        scroll_text(img, 22, label, (200, 200, 220), "tom-thumb", t)
+        gauge(img, 29, 1 - min(days, 100) / 100, t, color)
+        yield img, 0.1
+```
+
+Then add it to the playlist (`"rotation": [..., "countdown"]`) or press its
+button on the control page, and configure it:
+
+```bash
+curl -X PUT http://pixelpane.local/api/config -H 'Content-Type: application/json' \
+  -d '{"plugins": {"countdown": {"date": "2027-04-13", "label": "BIRTHDAY"}}}'
+```
+
+## The contract
+
+**A scene** is a generator `scene(ctx, secs, **params)` that yields
+`(image, seconds_to_hold)` pairs: a 32x32 RGB Pillow image and how long to show
+it. Yield until `secs` is used up (`ticks(secs, fps)` does the bookkeeping). If
+there is nothing to show, return without yielding and the player moves on.
+Scenes must not block or sleep; the player does the timing.
+
+**`Plugin(name, description, data=None, defaults=None)`**
+
+| Argument | Meaning |
+|----------|---------|
+| `data` | `{key: minutes}`: keys accepted at `POST /api/data/<key>`, and how long each stays fresh. Keys of disabled plugins are refused |
+| `defaults` | your settings; users override them under `config["plugins"][name]`. `enabled` is added for you |
+
+| Method | Use |
+|--------|-----|
+| `@plugin.scene(name, kind="widget")` | register a scene. Kinds: `widget`, `gif`, `generative`, `seasonal`, `interrupt`, `mode` |
+| `@plugin.task` | a background function `fn(ctx, stop)` run in its own thread (fetch an API, poll a sensor). Loop with `while not stop.wait(seconds):` and catch your own errors |
+
+**`ctx`**, what a scene or task can use:
+
+| | |
+|-|-|
+| `ctx.data(key)` | the latest pushed data for `key`, or `None` if missing or stale |
+| `ctx.settings(name)` | a plugin's settings (defaults plus config) |
+| `ctx.now()` | the current local time (use it instead of `datetime.now()` so tests can freeze time) |
+| `ctx.rng` | a `random.Random` |
+| `ctx.store(name)` | a dict for caches that should live as long as the process |
+| `ctx.state.put_data(key, value)` | for tasks that fetch their own data |
+
+**The toolkit** (`pixelpane.kit` and `pixelpane.gfx`):
+
+| | |
+|-|-|
+| `gfx.blank(color)`, `gfx.text`, `gfx.text_center`, `gfx.text_width` | drawing; fonts `tom-thumb`, `4x6`, `5x7`, `5x8`, `6x10` |
+| `gfx.hsv`, `gfx.scale`, `gfx.hex_color` | colors |
+| `gfx.sprite(name)`, `gfx.paste(img, name, xy)` | the built-in pixel sprites (add your own to `gfx.SPRITES` as rows of characters) |
+| `ticks(secs, fps)` | frame index and elapsed time |
+| `scroll_text(img, y, text, color, font, t)` | text that scrolls only if it does not fit |
+| `animated_icon(img, name, xy, t, level)` | the animated 8x8 icons (bell rings, washer spins, ...) |
+| `gauge(img, y, level, t, color)` | a bar that fills to `level` (0-1) |
+| `Particles`, `Fireworks`, `palette` | effects used by the seasonal and generative plugins |
+
+## Good plugin manners
+
+- **Animate.** Every status scene on this board moves; even a static number
+  can have a pulsing icon or a filling gauge.
+- **Skip when empty.** Return without yielding when there's nothing to show.
+- **Fit 32x32.** `tom-thumb` gives 8 characters per line; use `scroll_text` for
+  anything longer.
+- **Push, don't poll, when you can.** Let Home Assistant (or a cron job) POST to
+  `/api/data/<key>`; use a task only for data the board must fetch itself.
+- **Test it** without a panel: `python -m pixelpane.preview gif /tmp/out.gif countdown 6`
+  renders your scene to an animated GIF (put your plugin in `PIXELPANE_PLUGINS`).
+- A plugin that fails to import is logged and skipped; a scene that raises is
+  logged and the playlist moves on. Neither takes the board down.

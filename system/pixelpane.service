@@ -1,0 +1,22 @@
+[Unit]
+Description=PixelPane LED matrix controller (scenes, GIFs, web UI on :80)
+After=network-online.target time-sync.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Starts as root to open the GPIO and port 80, then drops to the pixelpane user.
+User=root
+WorkingDirectory=/opt/pixelpane
+Environment=PYTHONPATH=/opt/pixelpane PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+Environment=PIXELPANE_CACHE=/var/lib/pixelpane/cache
+ExecStart=/opt/pixelpane/venv/bin/python -m pixelpane.app
+Restart=always
+RestartSec=3
+ProtectHome=yes
+ProtectSystem=full
+PrivateTmp=yes
+ReadWritePaths=/var/lib/pixelpane
+
+[Install]
+WantedBy=multi-user.target

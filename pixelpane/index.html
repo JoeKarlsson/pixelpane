@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PixelPane</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta name="theme-color" content="#0b0e1a">
+<style>
+  /* PixelPane: modern mist with pixel-art accents. */
+  @font-face { font-family: Silkscreen; src: url(/static/fonts/silkscreen-400.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+  @font-face { font-family: Silkscreen; src: url(/static/fonts/silkscreen-700.woff2) format("woff2"); font-weight: 700; font-display: swap; }
+  :root {
+    --bg: #0b0e1a; --bg2: #121630; --text: #eef0ff; --dim: #9aa3c7; --line: rgba(255,255,255,.10);
+    --glass: rgba(255,255,255,.055); --glass2: rgba(255,255,255,.09); --shadow: 0 10px 40px rgba(0,0,0,.35);
+    --lav: #a98bff; --peri: #6f9cff; --mint: #58e0c8; --rose: #ff7ac0;
+    --grad: linear-gradient(100deg, var(--lav), var(--peri) 40%, var(--mint) 72%, var(--rose));
+    --fog1: rgba(169,139,255,.42); --fog2: rgba(88,224,200,.28); --fog3: rgba(255,122,192,.24);
+    --on-text: #0b0e1a;
+    --px: polygon(0 6px,3px 6px,3px 3px,6px 3px,6px 0,calc(100% - 6px) 0,calc(100% - 6px) 3px,calc(100% - 3px) 3px,calc(100% - 3px) 6px,100% 6px,100% calc(100% - 6px),calc(100% - 3px) calc(100% - 6px),calc(100% - 3px) calc(100% - 3px),calc(100% - 6px) calc(100% - 3px),calc(100% - 6px) 100%,6px 100%,6px calc(100% - 3px),3px calc(100% - 3px),3px calc(100% - 6px),0 calc(100% - 6px));
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #eef1f8; --bg2: #e3e8f6; --text: #1b1f33; --dim: #5d6588; --line: rgba(27,31,51,.10);
+      --glass: rgba(255,255,255,.55); --glass2: rgba(255,255,255,.8); --shadow: 0 10px 40px rgba(60,70,120,.12);
+      --fog1: rgba(169,139,255,.35); --fog2: rgba(88,224,200,.30); --fog3: rgba(255,122,192,.22); --on-text: #fff; color-scheme: light; }
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body { margin: 0; min-height: 100vh; color: var(--text); font: 15px/1.45 -apple-system, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+    background: radial-gradient(1200px 700px at 10% -10%, var(--bg2), transparent 60%), var(--bg); overflow-x: hidden; }
+  /* drifting mist */
+  body::before, body::after { content: ""; position: fixed; inset: -20vmax; z-index: -2; pointer-events: none; filter: blur(60px);
+    background: radial-gradient(28vmax 22vmax at 20% 25%, var(--fog1), transparent 70%),
+                radial-gradient(30vmax 24vmax at 80% 30%, var(--fog2), transparent 70%),
+                radial-gradient(26vmax 20vmax at 55% 85%, var(--fog3), transparent 70%);
+    animation: drift 38s ease-in-out infinite alternate; }
+  body::after { animation-duration: 55s; animation-direction: alternate-reverse; opacity: .6; }
+  @keyframes drift { from { transform: translate3d(-3%, -2%, 0) scale(1); } to { transform: translate3d(3%, 3%, 0) scale(1.08); } }
+  @media (prefers-reduced-motion: reduce) { body::before, body::after { animation: none; } }
+  /* faint pixel grid over everything */
+  main::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .5;
+    background-image: radial-gradient(circle, var(--line) 1px, transparent 1.2px); background-size: 22px 22px; }
+  main { max-width: 1000px; margin: 0 auto; padding: 22px 16px 60px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 12px; margin: 0; font-weight: 300; }
+  .brand img { width: 40px; height: 40px; border-radius: 10px; box-shadow: 0 0 24px rgba(169,139,255,.35); }
+  .brand .px { font: 700 22px/1 Silkscreen, monospace; letter-spacing: 1px; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .brand .pn { font-size: 26px; line-height: 1; letter-spacing: -.5px; }
+  h2 { font: 400 11px/1 Silkscreen, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+  h2::before { content: ""; width: 7px; height: 7px; background: var(--grad); box-shadow: 7px 0 0 -1px transparent; }
+  section, .card { background: var(--glass); border: 1px solid var(--line); border-radius: 20px; padding: 18px;
+    backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2); box-shadow: var(--shadow); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .grid2 { display: grid; grid-template-columns: auto 1fr; gap: 22px; align-items: start; }
+  .grid2 > * { min-width: 0; }
+  @media (max-width: 680px) { .grid2 { grid-template-columns: minmax(0, 1fr); } .panel { justify-self: center; } }
+  /* the LED pane */
+  .panel { position: relative; width: 272px; height: 272px; padding: 8px; border-radius: 18px; background: #05060c;
+    box-shadow: 0 0 0 1px var(--line), 0 0 50px rgba(169,139,255,.28), inset 0 0 30px rgba(0,0,0,.8); }
+  #preview { width: 256px; height: 256px; image-rendering: pixelated; display: block; border-radius: 6px; background: #000; }
+  .panel::after { content: ""; position: absolute; inset: 8px; border-radius: 6px; pointer-events: none;
+    background-image: linear-gradient(rgba(5,6,12,.55) 1px, transparent 1px), linear-gradient(90deg, rgba(5,6,12,.55) 1px, transparent 1px);
+    background-size: 8px 8px; }
+  button, select, input { font: inherit; color: var(--text); background: var(--glass2); border: 0; padding: 7px 12px;
+    clip-path: var(--px); transition: background .15s, transform .1s; }
+  button { cursor: pointer; }
+  button:hover { background: rgba(169,139,255,.28); }
+  button:active { transform: translateY(1px); }
+  button.on { background: var(--grad); color: var(--on-text); font-weight: 600; }
+  input[type=checkbox] { clip-path: none; accent-color: var(--lav); }
+  input[type=color] { padding: 2px; width: 44px; height: 34px; }
+  input[type=range] { width: 100%; padding: 0; background: none; clip-path: none; accent-color: var(--lav); }
+  ::placeholder { color: var(--dim); }
+  .pill { font-size: 12px; padding: 3px 10px; border-radius: 99px; background: var(--glass2); color: var(--dim); border: 1px solid var(--line); }
+  .stat { color: var(--dim); font-size: 13px; }
+  label { color: var(--dim); font-size: 13px; }
+  /* now */
+  .now .src { background: var(--grad); color: var(--on-text); font: 700 10px/1.4 Silkscreen, monospace; letter-spacing: .06em; border: 0; padding: 4px 9px; }
+  .now strong { font-size: 17px; font-weight: 600; }
+  .bar { position: relative; height: 8px; margin: 10px 0 6px; background: var(--glass2); overflow: hidden; }
+  .bar div { height: 100%; width: 0; background: var(--grad); transition: width .9s linear; }
+  .bar::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 8px, var(--bg) 8px 10px); }
+  /* playlist, plugins, timings */
+  .rot { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
+  .rot li { display: flex; gap: 6px; align-items: center; padding: 4px 6px; border-radius: 10px; }
+  .rot li span { flex: 1; }
+  .rot li button { padding: 4px 10px; }
+  .rot li.current { background: linear-gradient(90deg, rgba(169,139,255,.22), transparent); box-shadow: inset 3px 0 0 var(--lav); }
+  .rot li.current span { font-weight: 600; }
+  .rot li.current span::before { content: "▶ "; color: var(--lav); }
+  .plugins { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+  .plugin { display: flex; gap: 8px; align-items: center; justify-content: space-between; background: var(--glass); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+  .plugin strong { font: 400 12px Silkscreen, monospace; letter-spacing: .04em; }
+  .plugin small { display: block; color: var(--dim); }
+  .dwell { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+  .dwell input { width: 72px; margin-left: 4px; }
+  /* gif library */
+  .gifs { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+  .gif { background: rgba(5,6,12,.75); border: 1px solid var(--line); border-radius: 14px; padding: 8px; text-align: center; }
+  .gif img { width: 64px; height: 64px; image-rendering: pixelated; border-radius: 4px; }
+  .gif.hidden img { opacity: .25; }
+  .gif .stat { color: #aab2d8; }
+  .gif .theme { display: inline-block; margin-top: 4px; font-size: 10px; padding: 1px 7px; color: #d9cfff; background: rgba(169,139,255,.18); }
+  .gif .row { justify-content: center; gap: 4px; margin-top: 4px; }
+  .gif button { padding: 2px 8px; font-size: 12px; }
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--glass2); border: 1px solid var(--line);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); padding: 9px 16px; border-radius: 12px; opacity: 0; transition: opacity .3s; box-shadow: var(--shadow); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1 class="brand"><img src="/static/favicon.svg" alt=""><span class="px">PIXEL</span><span class="pn">pane</span></h1>
+    <span class="pill" id="stat">connecting…</span>
+  </header>
+
+  <section class="grid2">
+    <div class="panel"><img id="preview" alt="live panel preview" src="/preview.png"></div>
+    <div style="display:grid;gap:12px">
+      <div class="row"><button id="power">Power</button><span class="pill" id="scene">…</span></div>
+      <div><label for="bright">Brightness <span id="bv"></span></label>
+        <input type="range" id="bright" min="1" max="100"></div>
+      <div class="now" data-testid="now">
+        <h2>Now</h2>
+        <div class="row"><span class="pill src" id="nowsrc">…</span><strong id="nowscene">…</strong>
+          <button id="skip" title="Skip to the next scene">Skip ⏭</button></div>
+        <div class="bar"><div id="nowbar"></div></div>
+        <div class="stat" id="nownext"></div>
+      </div>
+      <div><h2>Today</h2><div class="row" id="themes"></div></div>
+      <div><h2>Play now</h2><div class="row" id="playnow"></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Modes (stay on until cleared)</h2>
+    <div class="row">
+      <button data-pin="on_air">On Air</button>
+      <input id="msg" placeholder="Message to show" style="flex:1;min-width:160px">
+      <button id="pinmsg">Show message</button>
+      <label>for <input id="mins" type="number" min="0" placeholder="∞" style="width:64px"> min</label>
+      <button id="unpin">Clear</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Send a notification</h2>
+    <div class="row">
+      <input id="ntext" placeholder="Laundry is done" style="flex:1;min-width:160px">
+      <select id="nicon"></select>
+      <input id="ncolor" type="color" value="#ffffff">
+      <label><input id="nflash" type="checkbox"> flash</label>
+      <button id="nsend">Send</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Playlist</h2>
+    <ul class="rot" id="rot"></ul>
+    <div class="row" style="margin-top:8px"><select id="addsel"></select><button id="add">Add</button>
+      <button id="saverot" class="on">Save playlist</button></div>
+    <h2 style="margin-top:16px">Seconds per scene</h2>
+    <div class="dwell" id="dwell"></div>
+  </section>
+
+  <section>
+    <h2>Plugins</h2>
+    <div id="plugins" class="plugins"></div>
+  </section>
+
+  <section>
+    <h2>GIF library</h2>
+    <div class="row" style="margin-bottom:10px">
+      <label for="gfilter">Show</label><select id="gfilter" data-testid="gif-filter"></select>
+    </div>
+    <div class="row" style="margin-bottom:10px">
+      <label for="gtheme">Upload to</label><select id="gtheme" data-testid="upload-theme"></select>
+      <input type="file" id="gfile" accept="image/*" multiple>
+      <label><input type="checkbox" id="gsmooth"> smooth (photos)</label>
+      <button id="gup">Upload</button>
+      <span class="stat" id="gcount"></span>
+    </div>
+    <div class="gifs" id="gifs"></div>
+  </section>
+</main>
+<div id="toast"></div>
+<script>
+const $ = s => document.querySelector(s);
+const api = (path, method='GET', body) => fetch(path, {method, headers: body ? {'Content-Type':'application/json'} : {},
+  body: body ? JSON.stringify(body) : undefined}).then(async r => { if (!r.ok) throw new Error(await r.text()); return r.json(); });
+const toast = t => { const el = $('#toast'); el.textContent = t; el.style.opacity = 1; setTimeout(() => el.style.opacity = 0, 1800); };
+let S = {}, C = {}, rotation = [], gifFilter = 'everything';
+
+function btn(label, fn, cls, testid) {
+  const b = document.createElement('button'); b.textContent = label; b.onclick = fn;
+  if (cls) b.className = cls; if (testid) b.dataset.testid = testid; return b;
+}
+
+async function refresh() {
+  S = await api('/api/state');
+  $('#power').textContent = S.power ? 'Power: ON' : 'Power: OFF';
+  $('#power').className = S.power ? 'on' : '';
+  if (document.activeElement !== $('#bright')) $('#bright').value = S.brightness;
+  $('#bv').textContent = S.brightness;
+  $('#scene').textContent = S.pinned ? `pinned: ${S.pinned.scene}` : S.scene;
+  $('#stat').textContent = [S.temp_c ? S.temp_c.toFixed(0) + '°C' : null, S.throttled ? `throttled ${S.throttled}` : null,
+    `up ${Math.round(S.uptime_s/3600)}h`, S.version].filter(Boolean).join(' · ');
+  $('#themes').replaceChildren(...S.themes.map(t => { const s = document.createElement('span'); s.className = 'pill'; s.textContent = S.theme_names[t] || t; return s; }));
+}
+
+async function init() {
+  await refresh();
+  C = await api('/api/config');
+  rotation = [...C.rotation];
+  const cats = S.categories.map(c => 'gif:' + c);
+  const scenes = [...(S.scenes.widget||[]), 'gif', ...cats, 'seasonal', 'generative'];
+  $('#playnow').replaceChildren(...['clock','weather','now_playing','calendar','homelab','tiles','gif', ...cats, 'seasonal','generative',
+    ...Object.keys(S.theme_names), ...(S.scenes.generative||[])].map(s => btn(s.replace('_',' ').replace('gif:', 'gif: '),
+      () => api('/api/play','POST',{scene:s}).then(() => toast('Up next: '+s)), '', 'play-' + s)));
+  $('#nicon').replaceChildren(...S.icons.map(i => new Option(i, i)));
+  $('#addsel').replaceChildren(...scenes.map(s => new Option(s, s)));
+  $('#gtheme').replaceChildren(new Option('all year', 'all'), ...Object.entries(S.theme_names).map(([k, v]) => new Option(v, k)));
+  drawRot(); drawDwell(); drawPlugins(); loadGifs(); pollNow();
+}
+
+function drawPlugins() {
+  $('#plugins').replaceChildren(...S.plugins.map(p => {
+    const row = document.createElement('div'); row.className = 'plugin'; row.dataset.testid = 'plugin-' + p.name;
+    const info = document.createElement('div');
+    const name = document.createElement('strong'); name.textContent = p.name;
+    const desc = document.createElement('small'); desc.textContent = p.description;
+    info.append(name, desc);
+    row.append(info, btn(p.enabled ? 'On' : 'Off', () =>
+      api('/api/config', 'PUT', {plugins: {[p.name]: {enabled: !p.enabled}}})
+        .then(() => init()).then(() => toast(`${p.name} ${p.enabled ? 'off' : 'on'}`)), p.enabled ? 'on' : ''));
+    return row;
+  }));
+}
+
+function drawRot() {
+  $('#rot').replaceChildren(...rotation.map((s, i) => {
+    const li = document.createElement('li'); li.dataset.index = i;
+    const span = document.createElement('span'); span.textContent = `${i+1}. ${s}`; span.style.flex = 1;
+    li.append(span, btn('↑', () => { if (i) { [rotation[i-1], rotation[i]] = [rotation[i], rotation[i-1]]; drawRot(); } }),
+      btn('↓', () => { if (i < rotation.length-1) { [rotation[i+1], rotation[i]] = [rotation[i], rotation[i+1]]; drawRot(); } }),
+      btn('✕', () => { rotation.splice(i, 1); drawRot(); }));
+    return li;
+  }));
+}
+
+function drawDwell() {
+  $('#dwell').replaceChildren(...Object.entries(C.dwell).map(([k, v]) => {
+    const l = document.createElement('label'); l.textContent = k + ' ';
+    const inp = document.createElement('input'); inp.type = 'number'; inp.min = 3; inp.value = v;
+    inp.onchange = () => api('/api/config', 'PUT', {dwell: {[k]: +inp.value}}).then(c => { C = c; toast('Saved'); });
+    l.append(inp); return l;
+  }));
+}
+
+async function loadGifs() {
+  const list = await api('/api/gifs');
+  const match = f => g => f === 'everything' ? true : f === 'all' ? g.theme === 'all'
+    : f.startsWith('cat:') ? g.theme === 'all' && g.category === f.slice(4) : g.theme === f;
+  const count = f => list.filter(match(f)).length;
+  // Every option shows how many GIFs it holds, so nothing looks missing.
+  const opts = [['everything', 'Everything'], ['all', 'All year (every day)'],
+    ...S.categories.map(c => ['cat:' + c, `  All year: ${c}`]),
+    ...Object.entries(S.theme_names).map(([k, v]) => [k, v])];
+  $('#gfilter').replaceChildren(...opts.map(([v, label]) => new Option(`${label} (${count(v)})`, v)));
+  $('#gfilter').value = gifFilter;
+  const shown = list.filter(match(gifFilter));
+  $('#gcount').textContent = `${shown.length} shown · ${list.length} in the library`;
+  $('#gifs').replaceChildren(...shown.map(g => {
+    const d = document.createElement('div'); d.className = 'gif' + (g.hidden ? ' hidden' : ''); d.dataset.testid = 'gif-card';
+    const cap = document.createElement('div'); cap.className = 'stat'; cap.style.fontSize = '11px';
+    cap.style.overflowWrap = 'anywhere'; cap.textContent = g.name.replace(/\.gif$/i, '');
+    const img = document.createElement('img'); img.loading = 'lazy'; img.src = '/gif/' + encodeURI(g.id); img.title = g.name;
+    const r = document.createElement('div'); r.className = 'row';
+    r.append(btn('▶', () => api('/api/play', 'POST', {scene:'gif', params:{id:g.id}}).then(() => toast('Up next'))),
+      btn(g.hidden ? 'show' : 'hide', () => api('/api/gifs/hide', 'POST', {id:g.id, hidden:!g.hidden}).then(loadGifs)));
+    if (g.upload) r.append(btn('🗑', () => confirmDelete(g)));
+    d.append(img, cap);
+    if (g.theme !== 'all') {
+      const tag = document.createElement('span'); tag.className = 'pill theme'; tag.textContent = g.theme.replace('_', ' ');
+      d.append(tag);
+    }
+    d.append(r); return d;
+  }));
+}
+
+function confirmDelete(g) { api('/api/gifs/' + encodeURI(g.id), 'DELETE').then(() => { toast('Deleted ' + g.name); loadGifs(); }); }
+
+$('#gfilter').onchange = e => { gifFilter = e.target.value; loadGifs(); };
+$('#gup').onclick = async () => {
+  const files = $('#gfile').files; if (!files.length) return toast('Pick a file first');
+  const fd = new FormData(); for (const f of files) fd.append('file', f);
+  fd.append('theme', $('#gtheme').value); if ($('#gsmooth').checked) fd.append('smooth', '1');
+  const r = await fetch('/api/gifs', {method:'POST', body:fd});
+  if (!r.ok) return toast(await r.text());
+  toast('Uploaded'); $('#gfile').value = ''; loadGifs();
+};
+$('#power').onclick = () => api('/api/state', 'POST', {power: !S.power}).then(refresh);
+$('#bright').oninput = e => $('#bv').textContent = e.target.value;
+$('#bright').onchange = e => api('/api/state', 'POST', {brightness: +e.target.value}).then(refresh);
+document.querySelectorAll('[data-pin]').forEach(b => b.onclick = () =>
+  api('/api/pin', 'POST', {scene: b.dataset.pin, minutes: +$('#mins').value || null}).then(refresh));
+$('#pinmsg').onclick = () => api('/api/pin', 'POST', {scene:'message', params:{text: $('#msg').value || 'HELLO'}, minutes: +$('#mins').value || null}).then(refresh);
+$('#unpin').onclick = () => api('/api/pin', 'DELETE').then(refresh);
+$('#nsend').onclick = () => api('/api/notify', 'POST', {text: $('#ntext').value, icon: $('#nicon').value,
+  color: $('#ncolor').value, flash: $('#nflash').checked}).then(() => toast('Sent'));
+$('#skip').onclick = () => api('/api/skip', 'POST').then(() => toast('Skipped'));
+$('#add').onclick = () => { rotation.push($('#addsel').value); drawRot(); };
+$('#saverot').onclick = () => api('/api/config', 'PUT', {rotation}).then(c => { C = c; toast('Playlist saved'); });
+
+const SOURCE = {playlist: n => `Playlist ${n.index + 1}/${n.length}`, requested: () => 'Requested',
+  notification: () => 'Notification', pinned: () => 'Pinned', birthday: () => 'Birthday bonus',
+  off: () => 'Off', starting: () => 'Starting'};
+
+function prettyScene(label, entry) {
+  if (!label) return '…';
+  if (label.startsWith('gif: ')) {
+    const name = label.slice(5).replace(/\.gif$/i, '');
+    const [cat, ...rest] = name.split('-');
+    return rest.length ? `GIF · ${cat} · ${rest.join(' ')}` : `GIF · ${name}`;
+  }
+  if (label.startsWith('empty: ')) return `${label.slice(7).replace('_', ' ')} (nothing to show)`;
+  const nice = label.replace(/_/g, ' ');
+  if (entry === 'seasonal') return `Seasonal · ${nice}`;
+  if (entry === 'generative') return `Generative · ${nice}`;
+  return nice.charAt(0).toUpperCase() + nice.slice(1);
+}
+
+async function pollNow() {
+  const h = await api('/api/health');
+  const n = h.now || {};
+  $('#nowsrc').textContent = (SOURCE[n.source] || (() => n.source || '…'))(n);
+  $('#nowscene').textContent = n.source === 'notification' ? `Notification · ${n.text || ''}` : prettyScene(h.scene, n.entry);
+  const pct = n.seconds ? Math.min(100, 100 * (n.elapsed || 0) / n.seconds) : (n.source === 'pinned' ? 100 : 0);
+  $('#nowbar').style.width = pct + '%';
+  $('#nownext').textContent = n.next ? `Up next in the playlist: ${n.next.replace('_', ' ')}` : '';
+  document.querySelectorAll('#rot li').forEach(li =>
+    li.classList.toggle('current', n.source === 'playlist' && +li.dataset.index === n.index));
+}
+
+setInterval(() => { $('#preview').src = '/preview.png?t=' + Date.now(); }, 500);
+setInterval(() => pollNow().catch(() => {}), 1000);
+setInterval(refresh, 5000);
+init().catch(e => $('#stat').textContent = 'error: ' + e.message);
+</script>
+</body>
+</html>

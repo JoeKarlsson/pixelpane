@@ -1,0 +1,14 @@
+<!doctype html>
+<!-- Wordmark source for docs/images/logo-*.png (render with tools/render-logo.js). -->
+<html><head><meta charset="utf-8"><style>
+@font-face { font-family: Silkscreen; src: url(../pixelpane/static/fonts/silkscreen-700.woff2) format("woff2"); font-weight: 700; }
+html, body { margin: 0; background: transparent; }
+.logo { display: inline-flex; align-items: center; gap: 34px; padding: 24px 32px; }
+.logo img { width: 156px; height: 156px; image-rendering: pixelated; }
+.word { display: flex; align-items: baseline; gap: 6px; line-height: 1; }
+.pixel { font: 700 104px/1 Silkscreen, monospace; letter-spacing: 2px;
+  background: linear-gradient(100deg, #a98bff, #6f9cff 40%, #58e0c8 70%, #ff7ac0); -webkit-background-clip: text; color: transparent; }
+.pane { font: 300 112px/1 -apple-system, "SF Pro Display", "Inter", "Helvetica Neue", Arial, sans-serif; letter-spacing: -2px; }
+body.dark .pane { color: #eef0ff; } body.light .pane { color: #1b1f33; }
+</style></head>
+<body><div class="logo"><img src="../pixelpane/static/favicon.svg" alt=""><div class="word"><span class="pixel">PIXEL</span><span class="pane">pane</span></div></div></body></html>

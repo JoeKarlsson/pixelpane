@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 420" font-family="Helvetica, Arial, sans-serif" font-size="14">
+  <rect width="880" height="420" fill="#ffffff"/>
+  <text x="440" y="34" text-anchor="middle" font-size="20" font-weight="bold" fill="#1f2330">Inside the shadow box (side view)</text>
+  <text x="70" y="390" font-size="13" fill="#555">viewer</text>
+  <path d="M60 372 L60 352 M60 352 l-6 8 M60 352 l6 8" stroke="#555" stroke-width="2" fill="none"/>
+  <!-- shadow box frame -->
+  <path d="M100 80 L100 330 M100 80 L790 80 M100 330 L790 330 M790 80 L790 330" stroke="#6b4f2a" stroke-width="10" fill="none"/>
+  <!-- layers, front (left) to back (right) -->
+  <rect x="140" y="95" width="14" height="220" fill="#9fb7c9" stroke="#46667d"/>
+  <rect x="168" y="95" width="6" height="220" fill="#f4f1e8" stroke="#b9b29c"/>
+  <g fill="#3a3f4f">
+    <rect x="190" y="95" width="70" height="220" fill="#d9dbe3" stroke="#7a7f8f"/>
+    <rect x="190" y="105" width="70" height="3"/><rect x="190" y="135" width="70" height="3"/>
+    <rect x="190" y="165" width="70" height="3"/><rect x="190" y="195" width="70" height="3"/>
+    <rect x="190" y="225" width="70" height="3"/><rect x="190" y="255" width="70" height="3"/>
+    <rect x="190" y="285" width="70" height="3"/>
+  </g>
+  <rect x="262" y="95" width="16" height="220" fill="#22252f"/>
+  <g fill="#ff5fa2"><circle cx="262" cy="120" r="3"/><circle cx="262" cy="150" r="3" fill="#4ade80"/><circle cx="262" cy="180" r="3" fill="#60a5fa"/><circle cx="262" cy="210" r="3" fill="#facc15"/><circle cx="262" cy="240" r="3"/><circle cx="262" cy="270" r="3" fill="#4ade80"/><circle cx="262" cy="300" r="3" fill="#60a5fa"/></g>
+  <rect x="330" y="150" width="120" height="16" fill="#1d6b3a"/>
+  <rect x="330" y="170" width="120" height="70" rx="4" fill="#2f8f4e" stroke="#1d6b3a"/>
+  <text x="390" y="210" text-anchor="middle" fill="#fff" font-size="13">Pi + HAT</text>
+  <path d="M278 200 C 300 200, 305 180, 330 180" stroke="#7a7f8f" stroke-width="5" fill="none"/>
+  <rect x="560" y="180" width="110" height="60" rx="6" fill="#3a3f4f"/>
+  <text x="615" y="215" text-anchor="middle" fill="#fff" font-size="13">5 V 4 A PSU</text>
+  <path d="M450 205 L560 205" stroke="#c0392b" stroke-width="4"/>
+  <path d="M670 210 L760 210 L760 330" stroke="#3a3f4f" stroke-width="3" stroke-dasharray="6 4" fill="none"/>
+  <text x="752" y="300" fill="#555" font-size="12" text-anchor="end">to wall</text>
+  <!-- labels -->
+  <g font-size="13" fill="#1f2330">
+    <path d="M147 95 L147 62" stroke="#999"/>
+    <text x="147" y="56" text-anchor="middle">1 two-way mirror</text>
+    <path d="M171 315 L171 360" stroke="#999"/><text x="171" y="376" text-anchor="middle">2 diffuser (optional)</text>
+    <path d="M225 95 L225 70" stroke="#999"/><text x="300" y="64" text-anchor="middle">3 printed light grid</text>
+    <path d="M270 315 L300 360" stroke="#999"/><text x="330" y="376" text-anchor="middle">4 LED panel (LEDs face front)</text>
+    <path d="M390 150 L390 120" stroke="#999"/><text x="390" y="114" text-anchor="middle">5 Raspberry Pi + RGB Matrix HAT</text>
+    <path d="M615 180 L615 140" stroke="#999"/><text x="615" y="134" text-anchor="middle">6 power supply</text>
+  </g>
+</svg>
