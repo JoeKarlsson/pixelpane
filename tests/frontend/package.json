@@ -2,5 +2,5 @@
   "name": "pixelpane-frontend-tests",
   "private": true,
   "scripts": { "test": "playwright test" },
-  "devDependencies": { "@playwright/test": "1.62.1" }
+  "devDependencies": { "@playwright/test": "1.64.0" }
 }
