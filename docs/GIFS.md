@@ -77,7 +77,7 @@ tools/ingest-gif.sh --name retro-coin-spin ~/Downloads/coin.gif   # pixel art: c
 tools/ingest-gif.sh --smooth ~/Downloads/loop.gif                  # photos and smooth art
 ```
 
-Or just upload on the control page: it does the same conversion.
+Or just upload on the GIFs page: it does the same conversion.
 
 **Sprite sheets** (a PNG strip of frames) need slicing first. With ImageMagick:
 
@@ -108,7 +108,7 @@ birthday.
 
 ### Moving GIFs without renaming files
 
-On the control page, ✎ on a GIF moves it to another category (pick one or type a
+On the GIFs page, ✎ on a GIF moves it to another category (pick one or type a
 new name) or theme (or to "All year"). **Select** picks several GIFs, or a whole
 page, and moves them together; with a category showing, **Rename category**
 renames it on every GIF in it (an existing name merges the two). The files stay
@@ -131,7 +131,7 @@ repo" in the README); `tools/deploy.sh` copies it to the board.
 
 ## Make one from a prompt
 
-**Make a GIF** on the control page asks a chat model to design one: type an idea
+**Make a GIF** on the GIFs page asks a chat model to design one: type an idea
 and press Generate, or press **Surprise me**. The model doesn't paint pixels; it
 writes a short description (pixel sprites with walk or flap poses, shapes,
 paths to follow, parts that swing at a joint, snow, stars, fire) and the board

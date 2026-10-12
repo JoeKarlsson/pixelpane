@@ -16,7 +16,7 @@
     <h1 class="brand"><img src="/static/favicon.svg" alt=""><span class="px">PIXEL</span><span class="pn">pane</span></h1>
     <div class="row">
       <span class="pill" id="stat">connecting…</span>
-      <a class="navlink" href="/settings" data-testid="settings-link">⚙ Settings</a>
+      <nav class="row" aria-label="Pages"><a class="navlink" href="/" data-testid="home-link" aria-current="page">Control</a><a class="navlink" href="/library" data-testid="library-link">GIFs</a><a class="navlink" href="/settings" data-testid="settings-link">Settings</a></nav>
     </div>
   </header>
 
@@ -68,7 +68,8 @@
     <div class="row" style="margin-top:8px"><select id="addsel" aria-label="Scene to add"></select><button id="add">Add</button>
       <button id="saverot" class="on">Save playlist</button>
       <span class="stat warn" id="rotdirty" hidden data-testid="playlist-unsaved">unsaved changes</span></div>
-    <p class="stat">Seconds per scene, quiet hours and time-of-day playlists are in <a href="/settings">Settings</a>.</p>
+    <p class="stat">Drag entries to reorder them, or use the arrows. Seconds per scene, quiet hours and time-of-day
+      playlists are in <a href="/settings">Settings</a>.</p>
   </section>
 
   <section>
@@ -77,130 +78,19 @@
     <div id="plugins" class="plugins"></div>
   </section>
 
-  <section class="studio" data-testid="studio">
-    <h2>Make a GIF</h2>
-    <p class="about">Describe an idea and a model designs a looping animation. You see it first;
-      nothing goes in the library until you save it.</p>
-    <div class="row gen">
-      <input id="gprompt" maxlength="500" placeholder="a tuxedo cat chasing a red laser dot" autocomplete="off"
-        aria-label="Your idea" data-testid="generate-prompt">
-      <button id="ggo" class="on" data-testid="generate">Generate</button>
-      <button id="gsurprise" data-testid="surprise">Surprise me</button>
-      <button id="gsetup" hidden data-testid="generate-setup">Set up the generator</button>
-    </div>
-    <div class="stat gen-status" id="ggenstat" role="status" data-testid="generate-status"></div>
-    <div class="draft" id="sdraft" hidden data-testid="draft">
-      <div class="draft-view"><img id="sdimg" alt="the draft, animated"></div>
-      <div class="draft-side">
-        <div class="title" id="sdtitle"></div>
-        <div class="stat" id="sdmeta"></div>
-        <div class="row">
-          <button id="sdplay" data-testid="draft-play">▶ Show on the panel</button>
-          <button id="sdagain" data-testid="draft-again">Try again</button>
-          <button id="sddiscard" data-testid="draft-discard">Discard</button>
-        </div>
-        <div class="row refine">
-          <input id="sdchange" maxlength="500" placeholder="Change something: make the cat bigger" autocomplete="off"
-            aria-label="What to change" data-testid="draft-change">
-          <button id="sdrefine" data-testid="draft-refine">Refine</button>
-        </div>
-        <div class="save-box">
-          <div class="row">
-            <input id="sdname" aria-label="Name" placeholder="name" data-testid="draft-name">
-            <input id="sdcat" list="gcats" aria-label="Category" placeholder="category" data-testid="draft-category">
-            <select id="sdtheme" aria-label="When it plays" data-testid="draft-theme"></select>
-            <button id="sdsave" class="on" data-testid="draft-save">Save to library</button>
-          </div>
-          <div class="stat" id="sdsaved" data-testid="draft-saved"></div>
-        </div>
-      </div>
-    </div>
-    <div class="recent-head" id="srecenthead" hidden><h2>Recent drafts</h2>
-      <span class="stat">kept on the board for reference; saved ones are marked</span></div>
-    <div class="drafts" id="sdrafts" data-testid="drafts"></div>
-  </section>
-  <section>
-    <h2>GIF library</h2>
-    <div class="row" style="margin-bottom:10px">
-      <label for="gfilter">Show</label><select id="gfilter" data-testid="gif-filter"></select>
-      <label for="gsort">Sort</label><select id="gsort" data-testid="gif-sort">
-        <option value="newest">Recently added</option><option value="oldest">Oldest first</option>
-        <option value="name">Name, A to Z</option><option value="namedesc">Name, Z to A</option>
-        <option value="category">Category</option><option value="theme">Season and theme</option>
-        <option value="most">Most played</option><option value="least">Least played</option>
-        <option value="recent">Recently played</option>
-      </select>
-      <input id="gsearch" type="search" placeholder="Search names" aria-label="Search GIFs" data-testid="gif-search">
-      <label for="gthumb">Size</label><select id="gthumb" data-testid="gif-thumb">
-        <option value="48">small</option><option value="64" selected>medium</option><option value="112">large</option>
-      </select>
-      <button id="grename" hidden data-testid="rename-category">Rename category</button>
-      <button id="gselect" data-testid="select-mode" aria-pressed="false">Select</button>
-    </div>
-    <div class="row bulk" id="gbulk" hidden data-testid="bulk-bar">
-      <span class="stat" id="gselcount" data-testid="selected-count">Click GIFs to pick them</span>
-      <button id="gselall" data-testid="select-page">Select page</button>
-      <button id="gclear" data-testid="select-clear">Clear selection</button>
-      <button id="gmove" class="on" data-testid="bulk-move">Move…</button>
-      <small class="hint">Shift-click picks a range</small>
-    </div>
-    <div class="row" style="margin-bottom:10px">
-      <label for="gtheme">Upload to</label><select id="gtheme" data-testid="upload-theme"></select>
-      <input type="file" id="gfile" accept="image/*" multiple>
-      <label><input type="checkbox" id="gsmooth"> smooth (photos)</label>
-      <button id="gup">Upload</button>
-      <span class="stat" id="gcount"></span>
-    </div>
-    <div class="gifs" id="gifs"></div>
-    <div class="row pager" id="gpager">
-      <button id="gprev" aria-label="Previous page">‹ Prev</button>
-      <span class="stat" id="gpage"></span>
-      <button id="gnext" aria-label="Next page">Next ›</button>
-      <label>per page <select id="gsize" data-testid="page-size">
-        <option value="60">60</option><option value="120">120</option><option value="300" selected>300</option>
-      </select></label>
-    </div>
-  </section>
   <dialog id="pdlg" data-testid="plugin-dialog"></dialog>
-  <dialog id="gdlg" data-testid="classify-dialog">
-    <h3 id="gdlgtitle">Move GIF</h3>
-    <p class="about" id="gdlgabout"></p>
-    <div class="field"><label for="gdlgcat">Category</label>
-      <input id="gdlgcat" list="gcats" autocomplete="off" data-testid="classify-category">
-      <small>Pick one or type a new name. Leave it empty to keep each GIF's category.</small></div>
-    <div class="field"><label for="gdlgtheme">Plays</label>
-      <select id="gdlgtheme" data-testid="classify-theme"></select>
-      <small>All year plays any day; a theme plays only on its dates.</small></div>
-    <div class="foot"><button id="gdlgreset" data-testid="classify-reset">Back to where the file is</button>
-      <button id="gdlgcancel">Cancel</button><button id="gdlgsave" class="on" data-testid="classify-save">Save</button></div>
-  </dialog>
-  <dialog id="rdlg" data-testid="rename-dialog">
-    <h3>Rename category</h3>
-    <p class="about" id="rdlgabout"></p>
-    <div class="field"><label for="rdlgname">New name</label>
-      <input id="rdlgname" list="gcats" autocomplete="off" data-testid="rename-input">
-      <small>Use an existing name to merge the two categories.</small></div>
-    <div class="foot"><button id="rdlgcancel">Cancel</button><button id="rdlgsave" class="on" data-testid="rename-save">Rename</button></div>
-  </dialog>
-  <datalist id="gcats"></datalist>
   <dialog id="tokdlg" data-testid="token-dialog">
     <h3>Token needed</h3>
     <p class="about">This board asks for a token before it accepts changes. It's the <code>api_token</code> in its config.</p>
     <input id="tokinput" type="password" autocomplete="off" placeholder="Token" style="width:100%">
     <div class="foot"><button id="tokcancel">Cancel</button><button id="toksave" class="on">Use token</button></div>
   </dialog>
-  <footer class="foot-bar">
+  <footer class="foot-bar" data-testid="footer">
     <a href="https://github.com/JoeKarlsson/pixelpane" target="_blank" rel="noopener" data-testid="github-link">
       <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
       PixelPane on GitHub</a>
+    <span data-testid="maker">Made by <a href="https://www.joekarlsson.com" target="_blank" rel="noopener">Joe Karlsson</a></span>
     <span class="stat" id="footver"></span>
-  </footer>
-  <footer class="foot-bar maker" data-testid="maker">
-    <span>Made by <a href="https://www.joekarlsson.com" target="_blank" rel="noopener">Joe Karlsson</a></span>
-    <a href="https://www.joekarlsson.com/newsletter" target="_blank" rel="noopener">Newsletter</a>
-    <a href="https://bsky.app/profile/joekarlsson.com" target="_blank" rel="noopener">Bluesky</a>
-    <a href="https://www.linkedin.com/in/joekarlsson/" target="_blank" rel="noopener">LinkedIn</a>
-    <a href="https://www.youtube.com/joekarlsson" target="_blank" rel="noopener">YouTube</a>
   </footer>
 </main>
 <div id="toast" role="status" aria-live="polite"></div>

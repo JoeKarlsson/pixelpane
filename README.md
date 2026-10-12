@@ -38,10 +38,14 @@ What it shows, panel's-eye view:
   dashboard cycles through six animated pages.
 - **Seasons and holidays.** Autumn leaves, snow, flowers, beach days, Halloween,
   Thanksgiving, Christmas, New Year, Valentine's, St. Patrick's, the Fourth of
-  July and your birthday, each with a scene and its own GIF folder.
-- **A web control page** with a live preview, a "now playing" view that follows
-  the playlist, a playlist editor, GIF library
-  (upload converts anything to 32x32) and plugin switches.
+  July and your birthday, each with a scene and its own GIF folder. Add your
+  own holidays (Diwali, Lunar New Year, an anniversary), switch built-in ones
+  off, or flip the seasons for the southern hemisphere.
+- **A web app in three pages**: a control page (live preview, a "now playing"
+  view that follows the playlist, a drag-and-drop playlist editor and plugin
+  switches), a GIFs page (the generator and the library; uploads convert
+  anything to 32x32) and Settings. Dark, light or match-the-device, in an accent
+  color you pick.
 - **GIFs from a prompt.** Type "a cat chasing a laser dot" (or press Surprise
   me) and a chat model (any OpenAI-compatible server such as LiteLLM,
   OpenRouter or Ollama, or Anthropic's API) designs a looping animation. Preview
@@ -125,8 +129,9 @@ own takes one Python file: see **[docs/PLUGINS.md](docs/PLUGINS.md)**.
 ## Configuration
 
 Settings live on the Pi in `/var/lib/pixelpane/config.json` and are edited from
-the page (the **Settings** page has the schedule, timings, display hardware,
-access, backup and system status) or `PUT /api/config`. Defaults are in
+the pages (the **Settings** page has the schedule, timings, holidays, appearance,
+display hardware, access, backup and system status) or `PUT /api/config`. Every
+key is described in **[docs/CONFIG.md](docs/CONFIG.md)**; defaults are in
 [`pixelpane/default_config.json`](pixelpane/default_config.json). An example:
 
 ```json
@@ -140,6 +145,8 @@ access, backup and system status) or `PUT /api/config`. Defaults are in
     "now_playing": {"art_hosts": ["http://homeassistant.local:8123/"]},
     "generative": {"enabled": false}
   },
+  "themes": {"off": ["july4"], "custom": [{"name": "Diwali", "dates": [["2026-11-08", "2026-11-12"]]}]},
+  "ui": {"theme": "auto", "accent": "#8bcbc8"},
   "display": "auto",
   "adafruit_board": "hat",
   "schedule": [
@@ -211,7 +218,7 @@ pixelpane/fonts/      BDF fonts (public domain, tom-thumb MIT)
 install.sh           idempotent installer and hardening, runs on the Pi
 tools/               deploy.sh, ingest-gif.sh, test.sh
 hardware/            led-grid.scad, the parametric 3D-printed light grid
-docs/                hardware, plugins, Home Assistant, GIFs
+docs/                hardware, configuration, plugins, Home Assistant, GIFs
 tests/               backend tests and tests/frontend (Playwright)
 ```
 

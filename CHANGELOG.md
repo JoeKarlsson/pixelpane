@@ -26,6 +26,16 @@ and the project uses [semantic versioning](https://semver.org/).
 ### Added
 - A `color` field type for plugin settings forms, and a table of every field type
   in docs/PLUGINS.md.
+- Your own holidays (Settings, Holidays): a name and date ranges, every year
+  (`11-08 to 11-12`) or one year only (`2027-02-06 to 2027-02-10`), with their own
+  GIF folder. Built-in holidays can be switched off, and the seasons flipped for the
+  southern hemisphere (`themes` in the config).
+- Appearance (Settings, Appearance): dark, light or match the device, and an accent
+  color; text on the accent turns dark or light to stay readable (`ui` in the config).
+- The clock's digits can be one color you pick instead of following the time of
+  day (dimmed at night).
+- Drag and drop to reorder the playlist.
+- docs/CONFIG.md, a reference for every config key.
 - A Settings page: a schedule (quiet hours, dimming and time-of-day playlists, by
   day of the week), seconds per scene and data freshness, display hardware, access
   (token and allowed host names), backup and restore, and system status with
@@ -66,6 +76,10 @@ and the project uses [semantic versioning](https://semver.org/).
   your uploads and saved GIFs, a Hidden filter, and three thumbnail sizes.
 
 ### Changed
+- Make a GIF and the GIF library moved to their own page, `/library` (GIFs in the
+  header). The control page keeps the live controls, playlist and plugins.
+- Play now is grouped: scenes, art, then holidays and GIF categories folded away.
+- The footer is just the GitHub link and the maker's credit.
 - Deleting a GIF takes a second click to confirm.
 - The playlist editor marks unsaved changes, and the browser warns before you
   leave the page with some.

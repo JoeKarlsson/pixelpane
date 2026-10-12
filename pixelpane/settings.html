@@ -16,11 +16,12 @@
     <h1 class="brand"><img src="/static/favicon.svg" alt=""><span class="px">PIXEL</span><span class="pn">settings</span></h1>
     <div class="row">
       <span class="pill" id="stat">connecting…</span>
-      <a class="navlink" href="/" data-testid="home-link">← Control page</a>
+      <nav class="row" aria-label="Pages"><a class="navlink" href="/" data-testid="home-link">Control</a><a class="navlink" href="/library" data-testid="library-link">GIFs</a><a class="navlink" href="/settings" data-testid="settings-link" aria-current="page">Settings</a></nav>
     </div>
   </header>
   <nav class="toc" aria-label="Sections">
-    <a href="#schedule">Schedule</a><a href="#playback">Playback</a><a href="#display">Display</a>
+    <a href="#schedule">Schedule</a><a href="#playback">Playback</a><a href="#holidays">Holidays</a>
+    <a href="#appearance">Appearance</a><a href="#display">Display</a>
     <a href="#access">Access</a><a href="#backup">Backup</a><a href="#system">System</a>
   </nav>
 
@@ -51,6 +52,41 @@
     <h2 style="margin-top:16px">Data stays fresh for (minutes)</h2>
     <p class="stat">How long pushed data (POST /api/data/&lt;key&gt;) is shown before a scene treats it as stale. Empty uses the plugin's default.</p>
     <div class="dwell" id="ttl"></div>
+  </section>
+
+  <section id="holidays" data-testid="holidays">
+    <h2>Holidays and seasons</h2>
+    <p class="stat">Each season and holiday has a scene and a GIF folder; they play while it's on.</p>
+    <div class="form">
+      <div class="field"><label for="hemi">Seasons</label>
+        <select id="hemi" data-testid="hemisphere"><option value="north">Northern hemisphere</option>
+          <option value="south">Southern hemisphere</option></select></div>
+      <div class="field wide"><label>Built-in holidays</label><div class="checks" id="builtins" data-testid="builtin-holidays"></div>
+        <small>Untick one to skip it: no scene and no GIFs from its folder.</small></div>
+    </div>
+    <h2 style="margin-top:16px">Your holidays</h2>
+    <p class="stat">Add Diwali, Lunar New Year, an anniversary, a team's game days. Upload GIFs to one on the GIFs
+      page and they play while it's on. Dates go one range per line: <code>11-08 to 11-12</code> every year, or
+      <code>2027-02-06 to 2027-02-10</code> for that year only. A single date is one day.</p>
+    <div class="rules" id="customs"></div>
+    <div class="row" style="margin-top:12px">
+      <button id="addholiday" data-testid="add-holiday">Add holiday</button>
+      <button id="saveholidays" class="on" data-testid="save-holidays">Save holidays</button>
+    </div>
+  </section>
+
+  <section id="appearance" data-testid="appearance">
+    <h2>Appearance</h2>
+    <div class="form">
+      <div class="field"><label for="uitheme">Theme</label>
+        <select id="uitheme" data-testid="ui-theme"><option value="dark">Dark</option><option value="light">Light</option>
+          <option value="auto">Match the device</option></select></div>
+      <div class="field"><label for="uiaccent">Accent color</label>
+        <div class="row"><input id="uiaccent" type="color" data-testid="ui-accent">
+          <button id="uidefault" data-testid="ui-default">Default</button></div>
+        <small>Buttons, links and highlights. Text on it turns dark or light to stay readable.</small></div>
+    </div>
+    <div class="row" style="margin-top:12px"><button id="saveui" class="on" data-testid="save-appearance">Save</button></div>
   </section>
 
   <section id="display" data-testid="display">
@@ -112,6 +148,13 @@
     <input id="tokinput" type="password" autocomplete="off" placeholder="Token" style="width:100%">
     <div class="foot"><button id="tokcancel">Cancel</button><button id="toksave" class="on">Use token</button></div>
   </dialog>
+  <footer class="foot-bar" data-testid="footer">
+    <a href="https://github.com/JoeKarlsson/pixelpane" target="_blank" rel="noopener" data-testid="github-link">
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      PixelPane on GitHub</a>
+    <span data-testid="maker">Made by <a href="https://www.joekarlsson.com" target="_blank" rel="noopener">Joe Karlsson</a></span>
+    <span class="stat" id="footver"></span>
+  </footer>
 </main>
 <div id="toast" role="status" aria-live="polite"></div>
 <script src="/static/common.js"></script>

@@ -6,4 +6,6 @@ GIFs in `themes/<theme>/` only play while that theme is active (see
 can also upload straight to a theme; those uploads live only on the Pi.
 
 Themes: autumn, winter, spring, summer, halloween, thanksgiving, christmas,
-new_year, valentines, st_patricks, july4, birthday.
+new_year, valentines, st_patricks, july4, birthday, plus any holidays you add
+in Settings, Holidays (their folder is the holiday's key, like `diwali/`). See
+[docs/CONFIG.md](../../docs/CONFIG.md#holidays-and-seasons).

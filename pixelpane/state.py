@@ -72,6 +72,7 @@ class State:
         if moved:
             _atomic_write(self.config_path, saved)
         self.config = merge(DEFAULTS, saved)
+        seasons.configure(self.config.get("themes"))
         saved = _read(self.state_path)
         self.power = saved.get("power", True)
         self.brightness = saved.get("brightness", self.config["brightness"])
@@ -101,6 +102,7 @@ class State:
                 saved[k] = changes[k]
             _atomic_write(self.config_path, saved)
             self.config = merge(DEFAULTS, saved)
+            seasons.configure(self.config.get("themes"))
 
     # -- controls (each wakes the player) --
     def set(self, power=None, brightness=None):

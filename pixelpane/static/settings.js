@@ -1,4 +1,5 @@
-// PixelPane settings page: schedule, timings, display hardware, access, backup, system.
+// PixelPane settings page: schedule, timings, holidays, appearance, display hardware,
+// access, backup, system.
 // $, api, send, toast, el, btn and clockTime come from common.js.
 let S = {}, C = {}, rules = [];
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -15,12 +16,11 @@ const PRESETS = {
 async function load() {
   [S, C] = await Promise.all([api('/api/state'), api('/api/config')]);
   rules = (C.schedule || []).map(r => ({...r}));
-  drawStatus(); drawRules(); drawPlayback(); drawHardware(); drawAccess(); drawSystem();
+  drawStatus(); drawRules(); drawPlayback(); drawHolidays(); drawAppearance(); drawHardware(); drawAccess(); drawSystem();
 }
 
 function drawStatus() {
-  $('#stat').textContent = [S.temp_c ? S.temp_c.toFixed(0) + '°C' : null, `up ${Math.round(S.uptime_s / 3600)}h`,
-    S.version].filter(Boolean).join(' · ');
+  showStatus(S);
   const sch = S.schedule || {};
   $('#schednow').textContent = !(sch.rules || []).length ? 'No rule is on right now.'
     : `On now: ${sch.rules.join(', ')}.` + (sch.off ? ` The board is off until ${clockTime(sch.until)}.` : '')
@@ -271,6 +271,65 @@ async function loadLogs() {
 }
 $('#loadlogs').onclick = loadLogs;
 $('#onlyproblems').onchange = () => { if (!$('#logs').hidden) loadLogs(); };
+
+// --- holidays and seasons ----------------------------------------------------------
+
+let customs = [];
+const DEFAULT_ACCENT = '#fdae84';
+
+function drawHolidays() {
+  const t = C.themes || {};
+  $('#hemi').value = t.hemisphere || 'north';
+  const off = new Set(t.off || []);
+  $('#builtins').replaceChildren(...S.holidays.map(h => el('label', {},
+    el('input', {type: 'checkbox', value: h, checked: !off.has(h)}), ' ' + S.theme_names[h].split(' (')[0])));
+  customs = (t.custom || []).map(c => ({...c}));
+  drawCustoms();
+}
+
+// "11-08 to 11-12" lines <-> [["11-08", "11-12"]]
+const rangesText = dates => dates.map(([a, b]) => a === b ? a : `${a} to ${b}`).join('\n');
+const parseRanges = text => text.split('\n').map(l => l.trim()).filter(Boolean)
+  .map(l => { const [a, b] = l.split(/\s+to\s+/); return [a.trim(), (b || a).trim()]; });
+
+function drawCustoms() {
+  $('#customs').replaceChildren(...(customs.length ? customs.map((c, i) => {
+    const name = el('input', {value: c.name || '', placeholder: 'Name, like Diwali', maxLength: 40, className: 'label'});
+    name.oninput = () => c.name = name.value;
+    const dates = el('textarea', {rows: 2, value: rangesText(c.dates || []), placeholder: '11-08 to 11-12'});
+    dates.oninput = () => c.text = dates.value;
+    const row = el('div', {className: 'rule'}, el('div', {className: 'row'}, name,
+      btn('✕', () => { customs.splice(i, 1); drawCustoms(); }, '', 'delete-holiday', 'Delete this holiday')), dates);
+    row.dataset.testid = 'holiday';
+    return row;
+  }) : [el('div', {className: 'stat', textContent: 'None yet.'})]));
+}
+
+$('#addholiday').onclick = () => { customs.push({name: '', dates: []}); drawCustoms(); };
+$('#saveholidays').onclick = async () => {
+  const custom = customs.map(c => ({...(c.key ? {key: c.key} : {}), name: c.name.trim(),
+    dates: c.text != null ? parseRanges(c.text) : c.dates}));
+  const off = [...document.querySelectorAll('#builtins input')].filter(b => !b.checked).map(b => b.value);
+  try { C = await api('/api/config', 'PUT', {themes: {hemisphere: $('#hemi').value, off, custom}}); }
+  catch (e) { return toast(e.message); }
+  S = await api('/api/state');
+  drawHolidays(); toast('Holidays saved');
+};
+
+// --- appearance --------------------------------------------------------------------
+
+function drawAppearance() {
+  const ui = C.ui || {};
+  $('#uitheme').value = ui.theme || 'dark';
+  $('#uiaccent').value = ui.accent || DEFAULT_ACCENT;
+}
+$('#uidefault').onclick = () => { $('#uiaccent').value = DEFAULT_ACCENT; };
+$('#saveui').onclick = async () => {
+  try { await api('/api/config', 'PUT', {ui: {theme: $('#uitheme').value, accent: $('#uiaccent').value}}); }
+  catch (e) { return toast(e.message); }
+  location.hash = '#appearance';
+  location.reload();   // the board paints the page in the new colors
+};
 
 load().then(() => {
   // scene names for the playlist rules

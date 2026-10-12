@@ -20,8 +20,7 @@ from .plugin import PICKERS, SCENES
 from .state import VAR, _read, convert_upload
 from .state import now as local_now
 
-INDEX = Path(__file__).with_name("index.html")
-SETTINGS = Path(__file__).with_name("settings.html")
+PAGES = {name: Path(__file__).with_name(f"{name}.html") for name in ("index", "library", "settings")}
 MAX_STREAMS = 6   # live previews at once; each one costs the Pi a little CPU
 # Reads that give away more than the board's status: when a token is set they need it too.
 PRIVATE_READS = {"/api/logs", "/api/backup"}
@@ -63,6 +62,12 @@ def host_allowed(host, extra=()):
         pass
     env = {h.strip().lower() for h in os.environ.get("PIXELPANE_ALLOWED_HOSTS", "").split(",") if h.strip()}
     return name.rstrip(".") in local_names() | env | {h.lower() for h in extra}
+
+
+def on_accent(hex_color):
+    """Text color that reads on the accent: near-black on a light accent, white on a dark one."""
+    r, g, b = gfx.hex_color(hex_color)
+    return "#0a0a0a" if 0.2126 * r + 0.7152 * g + 0.0722 * b > 140 else "#ffffff"
 
 
 def _exit_soon():
@@ -123,13 +128,27 @@ def create_app(state, gifs, health, restart=_exit_soon):
     def body():
         return request.get_json(silent=True) or {}
 
+    def page(name):
+        """A page with the look from config["ui"] on <html>, so it paints in the right
+        colors at once. Both values were validated (a theme name, a #rrggbb color)."""
+        ui = state.config.get("ui") or {}
+        accent = ui.get("accent") or "#fdae84"
+        html = PAGES[name].read_text().replace(
+            '<html lang="en">', f'<html lang="en" data-theme="{ui.get("theme") or "dark"}" '
+                                f'style="--accent:{accent};--on-accent:{on_accent(accent)}">', 1)
+        return html, 200, {"Content-Type": "text/html; charset=utf-8"}
+
     @app.get("/")
     def index():
-        return INDEX.read_text(), 200, {"Content-Type": "text/html; charset=utf-8"}
+        return page("index")
+
+    @app.get("/library")
+    def library_page():
+        return page("library")
 
     @app.get("/settings")
     def settings_page():
-        return SETTINGS.read_text(), 200, {"Content-Type": "text/html; charset=utf-8"}
+        return page("settings")
 
     @app.get("/favicon.ico")
     def favicon():
@@ -146,7 +165,7 @@ def create_app(state, gifs, health, restart=_exit_soon):
             if plugin.enabled(state.config, fn.plugin):
                 kinds.setdefault(fn.kind, []).append(name)
         return jsonify(health(state) | {
-            "scenes": kinds, "theme_names": seasons.THEMES, "icons": gfx.ICONS,
+            "scenes": kinds, "theme_names": seasons.THEMES, "holidays": seasons.HOLIDAYS, "icons": gfx.ICONS,
             "pinnable": sorted(s for s in [*SCENES, *PICKERS] if plugin.pinnable(s)),
             "categories": gifs.categories(),
             "plugins": plugin.describe(state.config), "plugin_errors": plugin.ERRORS,

@@ -49,3 +49,10 @@ window.addEventListener('unhandledrejection', e => toast(e.reason?.message || 'S
 const ago = s => s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)}m ago` : `${Math.round(s / 3600)}h ago`;
 // "until" from the API is local wall time, "2026-10-16T07:00": show it as 7:00 AM
 const clockTime = iso => iso ? new Date(iso).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}) : '';
+// The header's status pill and the footer's version, from /api/state or /api/health.
+function showStatus(S) {
+  $('#stat').textContent = [S.temp_c ? S.temp_c.toFixed(0) + '°C' : null, S.throttled ? `throttled ${S.throttled}` : null,
+    `up ${Math.round(S.uptime_s / 3600)}h`, S.version].filter(Boolean).join(' · ');
+  const v = document.getElementById('footver');
+  if (v) v.textContent = S.version ? `version ${S.version}` : '';
+}

@@ -6,7 +6,7 @@ from PIL import ImageDraw
 from .. import gfx
 from ..gfx import H, W
 from ..kit import Fireworks, Particles, scroll_seconds, scroll_text, ticks
-from ..plugin import Plugin
+from ..plugin import SCENES, Plugin
 
 plugin = Plugin(
     "seasonal", "Seasons, holidays and a birthday",
@@ -27,7 +27,7 @@ def pick(ctx):
     """The playlist's "seasonal" slot: your birthday, else a holiday (holiday_share of
     the time) or the season."""
     themes = ctx.state.themes()
-    holidays = themes[1:]
+    holidays = [t for t in themes[1:] if t in SCENES]   # your own holidays play GIFs, not a scene
     if "birthday" in holidays:
         return "birthday"
     if holidays and ctx.rng.random() < ctx.settings("seasonal")["holiday_share"]:

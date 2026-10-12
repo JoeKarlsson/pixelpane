@@ -1,3 +1,4 @@
+from datetime import datetime
 import random
 import textwrap
 import unittest
@@ -33,7 +34,7 @@ class RegistryTest(unittest.TestCase):
             self.assertGreater(len(p.about), 40, p.name)
             for f in p.fields:
                 self.assertIn(f["key"].split(".")[0], p.defaults, (p.name, f["key"]))
-                self.assertIn(f["type"], ("number", "range", "text", "list", "choices", "monthday", "secret", "select", "toggle"), p.name)
+                self.assertIn(f["type"], ("number", "range", "text", "list", "choices", "monthday", "secret", "select", "toggle", "color"), p.name)
         rows = {r["name"]: r for r in plugin.describe({})}
         self.assertEqual(rows["seasonal"]["fields"][1]["type"], "monthday")
         self.assertEqual(rows["weather"]["data"], {"weather": 180})
@@ -252,6 +253,18 @@ class DocsExampleTest(unittest.TestCase):
         self.assertGreater(len({f.tobytes() for f in frames}), 1)   # it animates
         state.update_config({"plugins": {"countdown": {"date": None}}})
         self.assertEqual(list(player.resolve("countdown")[1]), [])  # nothing set: skips
+
+
+class ClockColorTest(unittest.TestCase):
+    def colors(self, hour, **settings):
+        from pixelpane.testing import render
+        frames = render("clock", 0.5, settings={"faces": ["classic"], **settings}, now=datetime(2026, 10, 12, hour, 30))
+        return set(frames[0][0].getdata())
+
+    def test_fixed_color_by_day_and_dimmed_at_night(self):
+        self.assertIn((0, 255, 0), self.colors(12, color_mode="fixed", color="#00ff00"))
+        self.assertIn((0, 102, 0), self.colors(23, color_mode="fixed", color="#00ff00"))
+        self.assertNotIn((0, 255, 0), self.colors(12))   # the default follows the time of day
 
 
 if __name__ == "__main__":

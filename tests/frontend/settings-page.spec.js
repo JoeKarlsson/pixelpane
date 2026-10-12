@@ -114,3 +114,53 @@ test('backup downloads, restores and system shows status and logs', async ({ pag
   await page.getByTestId('load-logs').click();
   await expect(page.getByTestId('logs')).toBeVisible();
 });
+
+test('holidays: your own, built-ins switched off, and the southern hemisphere', async ({ page, request }) => {
+  const today = new Date();
+  const mmdd = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  try {
+    await page.getByTestId('add-holiday').click();
+    const row = page.getByTestId('holiday');
+    await row.locator('input').fill('Test Day');
+    await row.locator('textarea').fill(mmdd);   // one day: today, every year
+    await page.getByTestId('builtin-holidays').getByLabel('Fourth of July').uncheck();
+    await page.getByTestId('hemisphere').selectOption('south');
+    await page.getByTestId('save-holidays').click();
+    await expect(page.locator('#toast')).toContainText('Holidays saved');
+    const { themes } = await config(request);
+    expect(themes).toEqual({ hemisphere: 'south', off: ['july4'],
+      custom: [{ key: 'test_day', name: 'Test Day', dates: [[mmdd, mmdd]] }] });
+    expect((await health(request)).themes).toContain('test_day');
+    // GIFs can go in it: the GIFs page offers it as a theme
+    await page.goto('/library');
+    await expect(page.getByTestId('upload-theme').locator('option[value="test_day"]')).toHaveText('Test Day');
+    await page.goto('/settings');
+    await expect(page.getByTestId('holiday').locator('textarea')).toHaveValue(mmdd);
+    // a bad date is refused with the reason
+    await page.getByTestId('holiday').locator('textarea').fill('02-30');
+    await page.getByTestId('save-holidays').click();
+    await expect(page.locator('#toast')).toContainText('not a real date');
+    page.errors = page.errors.filter((e) => !e.includes('400'));   // the expected refusal
+  } finally {
+    await request.put('/api/config', { data: { themes: { hemisphere: 'north', off: [], custom: [] } } });
+  }
+});
+
+test('appearance: light theme and an accent color repaint every page', async ({ page, request }) => {
+  try {
+    await page.getByTestId('ui-theme').selectOption('light');
+    await page.getByTestId('ui-accent').fill('#1d4ed8');
+    await page.getByTestId('save-appearance').click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    const look = () => page.evaluate(() => {
+      const css = getComputedStyle(document.documentElement);
+      return [css.getPropertyValue('--accent').trim(), css.getPropertyValue('--on-accent').trim(), getComputedStyle(document.body).backgroundColor];
+    });
+    expect(await look()).toEqual(['#1d4ed8', '#ffffff', 'rgb(244, 244, 242)']);   // white text on a dark accent
+    await page.goto('/');
+    expect(await look()).toEqual(['#1d4ed8', '#ffffff', 'rgb(244, 244, 242)']);
+    expect((await request.put('/api/config', { data: { ui: { accent: 'blue' } } })).status()).toBe(400);
+  } finally {
+    await request.put('/api/config', { data: { ui: { theme: 'dark', accent: '#fdae84' } } });
+  }
+});

@@ -1,6 +1,7 @@
 import unittest
 from datetime import date
 
+from pixelpane import seasons
 from pixelpane.seasons import active_themes, thanksgiving
 
 
@@ -30,6 +31,27 @@ class SeasonsTest(unittest.TestCase):
 
     def test_birthday_is_configurable(self):
         self.assertIn("birthday", active_themes(date(2027, 6, 1), (6, 1)))
+
+
+class CustomThemesTest(unittest.TestCase):
+    def tearDown(self):
+        seasons.configure(None)
+
+    def test_custom_holidays_and_switching_built_ins_off(self):
+        seasons.configure({"off": ["july4"], "custom": [
+            {"key": "diwali", "name": "Diwali", "dates": [["2026-11-08", "2026-11-12"]]},
+            {"key": "winter_break", "name": "Winter break", "dates": [["12-30", "01-02"]]}]})
+        self.assertEqual(seasons.THEMES["diwali"], "Diwali")
+        self.assertEqual(active_themes(date(2026, 11, 10)), ["autumn", "diwali"])
+        self.assertEqual(active_themes(date(2027, 11, 10)), ["autumn"])          # 2026 only
+        self.assertEqual(active_themes(date(2027, 1, 2)), ["winter", "winter_break"])  # wraps the year
+        self.assertEqual(active_themes(date(2027, 7, 4)), ["summer"])            # switched off
+
+    def test_southern_hemisphere_flips_seasons(self):
+        seasons.configure({"hemisphere": "south"})
+        self.assertEqual(active_themes(date(2027, 7, 15)), ["winter"])
+        self.assertEqual(active_themes(date(2026, 12, 25)), ["summer", "christmas"])
+        self.assertIn("Jun to Aug", seasons.THEMES["winter"])
 
 
 if __name__ == "__main__":

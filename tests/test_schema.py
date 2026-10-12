@@ -39,6 +39,17 @@ class SchemaTest(unittest.TestCase):
         self.bad({"plugins": {"gifs": {"color": "red"}}}, "not a setting")
         self.bad({"plugins": {"nope": {}}}, "unknown plugin")
 
+    def test_themes(self):
+        c = self.ok({"themes": {"hemisphere": "south", "off": ["july4"],
+                                "custom": [{"name": "Lunar New Year", "dates": [["2027-02-06", "2027-02-10"]]}]}})
+        self.assertEqual(c["themes"]["custom"][0]["key"], "lunar_new_year")
+        self.bad({"themes": {"hemisphere": "east"}}, "north or south")
+        self.bad({"themes": {"off": ["winter"]}}, "not built-in holidays")
+        self.bad({"themes": {"custom": [{"key": "halloween", "dates": [["10-01", "10-31"]]}]}}, "taken")
+        self.bad({"themes": {"custom": [{"key": "x", "dates": [["02-30", "03-01"]]}]}}, "not a real date")
+        self.bad({"themes": {"custom": [{"key": "x", "dates": [["2027-02-10", "2027-02-06"]]}]}}, "in order")
+        self.bad({"themes": {"custom": [{"key": "x", "dates": []}]}}, "ranges")
+
     def test_color_field(self):
         f = {"key": "color", "type": "color"}
         self.assertEqual(schema._field(f, "#FF5FA2", "color"), "#ff5fa2")

@@ -6,6 +6,7 @@ so a typo becomes a clear 400 instead of a scene that breaks later.
 from __future__ import annotations
 
 import re
+from datetime import date
 from typing import Any
 
 from . import plugin, schedule, seasons
@@ -150,6 +151,64 @@ def reset_secrets(changes: dict, config: dict) -> dict:
             if any(k in clean and clean[k] != current.get(k) for k in f.get("reset_on", ())):
                 clean[f["key"]] = None
     return changes
+
+
+DAY = re.compile(r"(\d{4}-)?\d{2}-\d{2}")
+
+
+def _day(v: Any, what: str) -> str:
+    """"MM-DD" (every year) or "YYYY-MM-DD" (that year only)."""
+    if not isinstance(v, str) or not DAY.fullmatch(v):
+        raise ConfigError(f"{what} must be a date like 11-08 or 2027-02-06")
+    try:
+        date.fromisoformat(v if len(v) == 10 else f"2024-{v}")   # 2024 has a Feb 29
+    except ValueError:
+        raise ConfigError(f"{what}: {v} is not a real date") from None
+    return v
+
+
+def _themes(v: Any) -> dict:
+    if not isinstance(v, dict) or set(v) - {"hemisphere", "off", "custom"}:
+        raise ConfigError("themes must be {hemisphere, off, custom}")
+    out = {}
+    if "hemisphere" in v:
+        if v["hemisphere"] not in ("north", "south"):
+            raise ConfigError("themes.hemisphere must be north or south")
+        out["hemisphere"] = v["hemisphere"]
+    if "off" in v:
+        off = _str_list(v["off"], "themes.off")
+        bad = [x for x in off if x not in seasons.HOLIDAYS]
+        if bad:
+            raise ConfigError(f"themes.off: {bad} are not built-in holidays ({', '.join(seasons.HOLIDAYS)})")
+        out["off"] = off
+    if "custom" in v:
+        if not isinstance(v["custom"], list) or len(v["custom"]) > 50:
+            raise ConfigError("themes.custom must be a list of up to 50 holidays")
+        out["custom"], keys = [], set()
+        for i, c in enumerate(v["custom"]):
+            what = f"themes.custom[{i}]"
+            if not isinstance(c, dict) or set(c) - {"key", "name", "dates"}:
+                raise ConfigError(f"{what} must be {{key, name, dates}}")
+            key = category_name(c.get("key") or c.get("name"), f"{what}.key")
+            if key in seasons.BUILTIN or key == "all" or key in keys:
+                raise ConfigError(f"{what}.key {key!r} is taken")
+            keys.add(key)
+            name = c.get("name") or key
+            if not isinstance(name, str) or len(name) > 40:
+                raise ConfigError(f"{what}.name must be text up to 40 characters")
+            dates = c.get("dates")
+            if not isinstance(dates, list) or not dates or len(dates) > 50:
+                raise ConfigError(f"{what}.dates must be a list of [from, to] ranges")
+            clean = []
+            for j, r in enumerate(dates):
+                if not isinstance(r, list) or len(r) != 2:
+                    raise ConfigError(f"{what}.dates[{j}] must be [from, to]")
+                a, b = (_day(x, f"{what}.dates[{j}]") for x in r)
+                if len(a) != len(b) or (len(a) == 10 and b < a):
+                    raise ConfigError(f"{what}.dates[{j}]: use two yearly dates or two full dates, in order")
+                clean.append([a, b])
+            out["custom"].append({"key": key, "name": name, "dates": clean})
+    return out
 
 
 def _hosts(v: Any) -> list[str]:
@@ -303,6 +362,15 @@ def validate(changes: Any) -> dict:
             out[key] = v
         elif key == "schedule":
             out[key] = _schedule(v)
+        elif key == "ui":
+            if not isinstance(v, dict) or set(v) - {"theme", "accent"}:
+                raise ConfigError("ui must be {theme, accent}")
+            if "theme" in v and v["theme"] not in ("dark", "light", "auto"):
+                raise ConfigError("ui.theme must be dark, light or auto")
+            out[key] = {**({"theme": v["theme"]} if "theme" in v else {}),
+                        **({"accent": _field({"type": "color"}, v["accent"], "ui.accent")} if "accent" in v else {})}
+        elif key == "themes":
+            out[key] = _themes(v)
         elif key == "allowed_hosts":
             out[key] = _hosts(v)
         elif key == "api_token":

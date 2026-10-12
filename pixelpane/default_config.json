@@ -11,6 +11,8 @@
   "api_token": null,
   "allowed_hosts": [],
   "schedule": [],
+  "ui": {"theme": "dark", "accent": "#fdae84"},
+  "themes": {"hemisphere": "north", "off": [], "custom": []},
   "data_ttl_minutes": {},
   "hidden_gifs": [],
   "gif_meta": {},

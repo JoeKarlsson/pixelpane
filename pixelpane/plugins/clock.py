@@ -13,20 +13,34 @@ FACES = ["classic", "frame", "arcade", "sky"]
 
 plugin = Plugin(
     "clock", "Time, date and temperature",
-    defaults={"faces": list(FACES)},
+    defaults={"faces": list(FACES), "color_mode": "day", "color": "#ffffff"},
     about="Big digits with a blinking colon, the date and the outside temperature (from the "
           "weather plugin), on a face picked from the ones you tick below each time the clock "
           "comes up. Classic has a seconds bar; frame sends a comet around a glowing border "
           "once a minute; arcade has a little hero running, hopping slimes and grabbing coins; "
           "sky paints the real sky behind it, with the sun or moon crossing it. The color "
           "follows the day: warm in the morning, white by day, amber in the evening and dim "
-          "red at night. At night (10 pm to 6 am) frame and arcade switch to classic so the "
-          "board never lights up a dark room.",
-    fields=[{"key": "faces", "label": "Faces to pick from", "type": "choices", "options": FACES}])
+          "red at night, or one color you pick (dimmed at night). At night (10 pm to 6 am) frame "
+          "and arcade switch to classic so the board never lights up a dark room.",
+    fields=[{"key": "faces", "label": "Faces to pick from", "type": "choices", "options": FACES},
+            {"key": "color_mode", "label": "Digit color", "type": "select",
+             "options": [{"label": "Follows the time of day", "value": "day"},
+                         {"label": "The color below", "value": "fixed"}]},
+            {"key": "color", "label": "Color", "type": "color",
+             "help": "Used when Digit color is set to it. Dimmed at night."}])
 
 
 def is_night(now):
     return now.hour >= 22 or now.hour < 6
+
+
+def face_color(ctx, now):
+    """The digits' color: the time of day's, or the one picked in settings (dimmed at night)."""
+    cfg = ctx.settings("clock")
+    if cfg.get("color_mode") != "fixed":
+        return time_color(now)
+    col = gfx.hex_color(cfg.get("color"))
+    return gfx.scale(col, 0.4) if is_night(now) else col
 
 
 def draw_time(img, now, col, y, t, shadow=None):
@@ -69,7 +83,7 @@ def classic(ctx, secs):
     for i, t in ticks(secs, 4):
         now = ctx.now()
         img = gfx.blank()
-        col = time_color(now)
+        col = face_color(ctx, now)
         draw_time(img, now, col, 2, t)
         gfx.text_center(img, 15, date_text(now), gfx.scale(col, 0.7), "4x6")
         temp = temp_text(ctx)
@@ -99,7 +113,7 @@ def frame(ctx, secs):
         now = ctx.now()
         img = gfx.blank()
         px = img.load()
-        col = time_color(now)
+        col = face_color(ctx, now)
         for k, xy in enumerate(PERIMETER):  # a rainbow that slowly turns around the edge
             px[xy] = gfx.hsv(k / n - t / 20, 0.85, 0.45)
         head = (now.second + now.microsecond / 1e6) / 60 * n
@@ -192,7 +206,7 @@ def arcade(ctx, secs):
         now = ctx.now()
         img = gfx.blank()
         d = ImageDraw.Draw(img)
-        col = time_color(now)
+        col = face_color(ctx, now)
         dx = SPEED / 12
         for c in clouds:  # far clouds drift at a quarter of the speed
             c[0] -= dx / 4
@@ -284,7 +298,7 @@ def sky(ctx, secs):
         for x in range(W):
             for y in range(hills(x + t * 0.5), H):
                 px[x, y] = ground
-        col = time_color(now)
+        col = face_color(ctx, now)
         draw_time(img, now, col, 2, t, shadow=(0, 0, 0))
         gfx.text_center(img, 13, date_text(now), gfx.scale(col, 0.75), "4x6")
         yield img, 1 / 6
