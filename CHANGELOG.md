@@ -6,6 +6,13 @@ and the project uses [semantic versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- The clock has animated faces, picked at random from the ones you tick:
+  classic, frame (a rainbow border with a comet that laps it once a minute),
+  arcade (a little hero runs under the time, hopping slimes and grabbing coins)
+  and sky (the real sky for the hour, with the sun or moon crossing it). Frame
+  and arcade switch to classic at night.
+- More places to find GIFs in docs/GIFS.md: specific CC0 game-sprite packs,
+  pixel-art galleries, hearts and level-up effects, and LED-panel art.
 - Sky plugin, calculated on the board with no network: a `moon` scene that
   draws tonight's moon with its real shape, the phase and the days to the next
   full moon, and names each full moon (Harvest, Hunter's, Wolf and the rest),

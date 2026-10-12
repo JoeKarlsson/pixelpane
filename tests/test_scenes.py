@@ -97,6 +97,30 @@ class ScenesTest(unittest.TestCase):
         colors = [c for _, c in img.getcolors(1024) if c != (0, 0, 0)]
         self.assertTrue(all(r >= g and r >= b for r, g, b in colors))
 
+    def test_every_clock_face_renders_and_fills_its_time(self):
+        ctx = support.ctx_with({"weather": {"temp": 52}})
+        for hour in (9, 13, 19, 23):
+            for face in ("classic", "frame", "arcade", "sky"):
+                with self.subTest(face=face, hour=hour), \
+                        mock.patch.object(ctx, "now", return_value=datetime(2026, 10, 12, hour, 5)):
+                    out = frames("clock", ctx, secs=4, face=face)
+                    self.assert_frames(out, face)
+                    self.assertAlmostEqual(sum(h for _, h in out), 4, delta=0.3)
+
+    def test_clock_picks_from_the_ticked_faces(self):
+        ctx = support.ctx_with()
+        ctx.state.update_config({"plugins": {"clock": {"faces": ["sky"]}}})
+        with mock.patch.object(ctx, "now", return_value=datetime(2026, 10, 12, 12, 0)):
+            img, hold = frames("clock", ctx, secs=0.5)[0]
+        self.assertLess(hold, 0.25)                # sky's frame rate, not classic's
+        self.assertNotEqual(img.getpixel((0, 0)), (0, 0, 0))  # and its sky
+
+    def test_busy_clock_faces_go_classic_at_night(self):
+        ctx = support.ctx_with()
+        with mock.patch.object(ctx, "now", return_value=datetime(2026, 10, 12, 23, 30)):
+            for face in ("frame", "arcade"):
+                self.assertEqual(frames("clock", ctx, secs=0.25, face=face)[0][1], 0.25, face)
+
     def test_birthday_uses_configured_name(self):
         ctx = support.ctx_with()
         ctx.state.update_config({"plugins": {"seasonal": {"birthday": {"month": 1, "day": 2, "name": "Pearl"}}}})

@@ -3,8 +3,8 @@
 Every scene on the board comes from a plugin. A plugin is one Python file: it
 creates a `Plugin`, registers scenes on it, and can declare the data it accepts,
 default settings and background tasks. The built-in plugins in
-[`pixelpane/plugins/`](../pixelpane/plugins) are good examples; `clock.py` and
-`tiles.py` are the shortest.
+[`pixelpane/plugins/`](../pixelpane/plugins) are good examples; `tiles.py` and
+`calendar.py` are the shortest.
 
 ## A complete example
 

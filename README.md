@@ -101,7 +101,7 @@ pixelpane-library/
 
 | Plugin | Scenes | Takes data |
 |--------|--------|------------|
-| clock | clock | |
+| clock | clock, on a classic, frame, arcade or sky face | |
 | weather | weather (+ Open-Meteo fallback) | `weather` |
 | now_playing | now_playing, with album art | `now_playing` |
 | calendar | calendar, with a countdown | `next_event` |
