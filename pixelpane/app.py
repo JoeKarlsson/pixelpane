@@ -54,6 +54,9 @@ class Ctx:
     def gif_frames(self, path):
         return self.gifs.frames(path)
 
+    def gif_played(self, path):
+        self.gifs.played(path)
+
 
 # Shown when one of these is asked for but has no data yet (a setup problem worth
 # seeing). Now playing and calendar are left out on purpose: nothing playing and no

@@ -131,25 +131,37 @@ repo" in the README); `tools/deploy.sh` copies it to the board.
 
 ## Make one from a prompt
 
-The GIF library's **Make one** box asks a chat model to design a GIF: type an
-idea and press Generate, or press **Surprise me** for one that suits the date
-(it knows the season and any holiday). The model doesn't paint pixels; it writes
-a short description (shapes, little pixel sprites, motion, snow, stars, fire)
-and the board renders that into a seamless loop. The result is saved like an
-upload, in the category the model picked, so you can play, move or delete it.
+**Make a GIF** on the control page asks a chat model to design one: type an idea
+and press Generate, or press **Surprise me**. The model doesn't paint pixels; it
+writes a short description (pixel sprites with walk or flap poses, shapes,
+paths to follow, parts that swing at a joint, snow, stars, fire) and the board
+renders that into a seamless loop. With **Check its own work** on, the board
+then shows the model a picture of its render and lets it fix what it sees
+(a hidden laser dot, a tail that sweeps through the body). That takes about
+twice as long and needs a model that can read images.
 
-Set it up in the **generator** plugin's panel: the server's OpenAI-compatible
-base URL, an API key, and a model.
+Nothing goes in the library on its own. Each result is a **draft** with a big
+preview, and you choose:
 
-| Server | Base URL | Model, for example |
-|--------|----------|--------------------|
-| LiteLLM | `http://<litellm-host>:4000/v1` | an alias you defined, e.g. `claude-sonnet` |
-| OpenRouter | `https://openrouter.ai/api/v1` | any model on its list |
-| OpenAI | `https://api.openai.com/v1` | `gpt-4.1` |
-| Ollama | `http://<ollama-host>:11434/v1` | `qwen3:14b` (no key) |
+- **Show on the panel**: play it on the real LEDs once.
+- **Refine**: say what to change ("make the cat bigger") for a new draft built on this one.
+- **Try again**: a fresh design from the same prompt.
+- **Save to library**: with the name, category and theme you pick.
+- **Discard**: throw it away.
 
-Bigger models draw noticeably better; small local ones work but keep it simple.
-One GIF is one request of a few thousand tokens and takes 5 to 30 seconds. The
-board makes the request itself, so it needs a network path to that server (if
-the board lives on an isolated IoT network, allow it through to just that host
-and port).
+The last 60 drafts stay on the board under **Recent drafts** (saved ones are
+marked), with their prompts, so you can come back to one later.
+
+Set it up in the **generator** plugin's panel:
+
+| Kind of server | Server URL | Model, for example |
+|----------------|------------|--------------------|
+| OpenAI-compatible: LiteLLM | `http://<litellm-host>:4000/v1` | an alias you defined |
+| OpenAI-compatible: OpenRouter | `https://openrouter.ai/api/v1` | any model on its list |
+| OpenAI-compatible: OpenAI | `https://api.openai.com/v1` | `gpt-4.1` |
+| OpenAI-compatible: Ollama | `http://<ollama-host>:11434/v1` | `qwen3:14b` (no key) |
+| Anthropic | leave empty (`https://api.anthropic.com`) | a Claude model |
+
+Bigger models draw much better than small local ones. One draft is one or two
+requests of a few thousand tokens. The board makes the requests itself, so it
+needs a network path to that server.

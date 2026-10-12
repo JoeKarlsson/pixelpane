@@ -66,13 +66,11 @@ async function init() {
   $('#nicon').replaceChildren(...S.icons.map(i => new Option(i, i)));
   $('#addsel').replaceChildren(...scenes.map(s => new Option(s, s)));
   $('#gtheme').replaceChildren(new Option('all year', 'all'), ...Object.entries(S.theme_names).map(([k, v]) => new Option(v, k)));
-  const keep = $('#ggentheme').value;
-  $('#ggentheme').replaceChildren(new Option('all year', 'all'), ...Object.entries(S.theme_names).map(([k, v]) => new Option(v, k)));
-  if (keep) $('#ggentheme').value = keep;
   const gen = S.plugins.find(p => p.name === 'generator');
   const ready = gen && gen.enabled && gen.settings.base_url && gen.settings.model;
-  ['#gprompt', '#ggentheme', '#ggo', '#gsurprise'].forEach(s => $(s).disabled = !ready || generating);
+  ['#gprompt', '#ggo', '#gsurprise'].forEach(s => $(s).disabled = !ready || generating);
   $('#gsetup').hidden = !!ready;
+  loadDrafts();
   drawRot(); drawDwell(); drawPlugins(); loadGifs(); pollNow();
 }
 
@@ -112,6 +110,15 @@ function fieldInput(f, value) {
   if (f.type === 'secret') {
     const inp = el('input', {type: 'password', id, value: value ?? '', placeholder: f.placeholder || '', autocomplete: 'off'});
     return [inp, () => inp.value];
+  }
+  if (f.type === 'select') {
+    const sel = el('select', {id}, ...f.options.map(o => new Option(o.label, o.value)));
+    sel.value = value ?? f.options[0].value;
+    return [sel, () => sel.value];
+  }
+  if (f.type === 'toggle') {
+    const box = el('input', {type: 'checkbox', id, checked: value !== false});
+    return [el('label', {className: 'toggle'}, box, f.text || 'On'), () => box.checked];
   }
   const inp = el('input', {id, value: value ?? '', placeholder: f.placeholder || ''});
   return [inp, () => inp.value];
@@ -200,11 +207,12 @@ function drawDwell() {
 
 async function loadGifs() {
   const list = gifList = await api('/api/gifs');
-  const match = f => g => f === 'everything' ? true : f === 'all' ? g.theme === 'all'
-    : f.startsWith('cat:') ? g.theme === 'all' && g.category === f.slice(4) : g.theme === f;
+  const match = f => g => f === 'everything' ? true : f === 'all' ? g.theme === 'all' : f === 'mine' ? g.upload
+    : f === 'hidden' ? g.hidden : f.startsWith('cat:') ? g.theme === 'all' && g.category === f.slice(4) : g.theme === f;
   const count = f => list.filter(match(f)).length;
   // Every option shows how many GIFs it holds, so nothing looks missing.
-  const opts = [['everything', 'Everything'], ['all', 'All year (every day)'],
+  const opts = [['everything', 'Everything'], ['mine', 'Mine (uploaded and made here)'], ['hidden', 'Hidden'],
+    ['all', 'All year (every day)'],
     ...S.categories.map(c => ['cat:' + c, `  All year: ${c}`]),
     ...Object.entries(S.theme_names).map(([k, v]) => [k, v])];
   $('#gfilter').replaceChildren(...opts.map(([v, label]) => new Option(`${label} (${count(v)})`, v)));
@@ -213,7 +221,9 @@ async function loadGifs() {
   $('#gcats').replaceChildren(...[...new Set(list.map(g => g.category))].sort().map(c => new Option(c)));
   for (const id of [...picked]) if (!list.some(g => g.id === id)) picked.delete(id);
   drawPicked();
-  const all = list.filter(match(gifFilter));
+  const words = $('#gsearch').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const found = g => words.every(w => (g.name + ' ' + g.category + ' ' + g.theme).toLowerCase().replace(/[-_]/g, ' ').includes(w));
+  const all = sortGifs(list.filter(match(gifFilter)).filter(found), $('#gsort').value);
   const size = +$('#gsize').value, pages = Math.max(1, Math.ceil(all.length / size));
   gifPage = Math.min(gifPage, pages - 1);
   const shown = gifShown = all.slice(gifPage * size, (gifPage + 1) * size);
@@ -237,7 +247,8 @@ async function loadGifs() {
       btn(g.hidden ? 'show' : 'hide', () => api('/api/gifs/hide', 'POST', {id:g.id, hidden:!g.hidden}).then(loadGifs)),
       btn('✎', () => openClassify([g]), '', 'classify'));
     if (g.upload) r.append(btn('🗑', () => confirmDelete(g)));
-    d.append(img, cap, el('span', {className: 'cat' + (g.moved ? ' moved' : ''), textContent: g.category,
+    d.append(img, cap, el('span', {className: 'cat' + (g.moved ? ' moved' : ''),
+      textContent: g.category + (g.plays ? ` · ▶${g.plays}` : ''),
       title: g.moved ? `moved here from ${g.default_category}, ${g.default_theme.replace('_', ' ')}` : 'category'}));
     if (g.theme !== 'all') {
       const tag = document.createElement('span'); tag.className = 'pill theme'; tag.textContent = g.theme.replace('_', ' ');
@@ -245,6 +256,26 @@ async function loadGifs() {
     }
     d.append(r); return d;
   }));
+}
+
+// Library order. Seasons and themes follow the calendar, all-year GIFs first.
+function sortGifs(list, how) {
+  const cal = ['new_year', 'winter', 'valentines', 'st_patricks', 'spring', 'birthday', 'summer', 'july4',
+    'autumn', 'halloween', 'thanksgiving', 'christmas'];
+  const name = g => g.name.toLowerCase();
+  const themeOrder = ['all', ...cal, ...Object.keys(S.theme_names).filter(t => !cal.includes(t))];
+  const by = {
+    newest: (a, b) => b.added - a.added || name(a).localeCompare(name(b)),
+    oldest: (a, b) => a.added - b.added || name(a).localeCompare(name(b)),
+    name: (a, b) => name(a).localeCompare(name(b)),
+    namedesc: (a, b) => name(b).localeCompare(name(a)),
+    category: (a, b) => a.category.localeCompare(b.category) || name(a).localeCompare(name(b)),
+    theme: (a, b) => themeOrder.indexOf(a.theme) - themeOrder.indexOf(b.theme) || name(a).localeCompare(name(b)),
+    most: (a, b) => b.plays - a.plays || name(a).localeCompare(name(b)),
+    least: (a, b) => a.plays - b.plays || name(a).localeCompare(name(b)),
+    recent: (a, b) => b.last_played - a.last_played || name(a).localeCompare(name(b)),
+  }[how] || (() => 0);
+  return [...list].sort(by);
 }
 
 function togglePick(g, range) {
@@ -327,51 +358,118 @@ $('#grename').onclick = () => {
   dlg.showModal();
 };
 
-// Make a GIF from a prompt: the board asks the model, renders the loop and saves it.
-let generating = false, lastPrompt = null, made = null;
-async function generateGif(prompt) {
+// Make a GIF: the board asks the model for a draft; you look at it and then save it,
+// refine it, try again or throw it out. Drafts stay on the board for reference.
+let generating = false, draft = null;
+const genInputs = ['#gprompt', '#ggo', '#gsurprise', '#sdagain', '#sdrefine', '#sdchange'];
+const STEPS = {drafting: 'Designing', reviewing: 'Checking its work', starting: 'Starting'};
+
+async function runJob(body) {
   if (generating) return;
-  generating = true; lastPrompt = prompt;
-  ['#gprompt', '#ggentheme', '#ggo', '#gsurprise'].forEach(s => $(s).disabled = true);
+  generating = true; genInputs.forEach(s => $(s).disabled = true);
   const stat = $('#ggenstat'), began = Date.now();
-  const tick = setInterval(() => { stat.textContent = `${prompt ? 'Drawing' : 'Dreaming one up'}… ${Math.round((Date.now() - began) / 1000)}s`; }, 500);
+  let step = 'starting';
+  const tick = setInterval(() => {
+    stat.textContent = `${STEPS[step] || step}… ${Math.round((Date.now() - began) / 1000)}s`;
+  }, 400);
   try {
-    const {job} = await api('/api/gifs/generate', 'POST', {prompt, theme: $('#ggentheme').value});
+    const {job} = await api('/api/gifs/generate', 'POST', body);
     let j;
-    do { await new Promise(r => setTimeout(r, 1000)); j = await api('/api/gifs/generate/' + job); } while (j.state === 'working');
+    do {
+      await new Promise(r => setTimeout(r, 1000));
+      j = await api('/api/gifs/generate/' + job); step = j.step || step;
+    } while (j.state === 'working');
     if (j.state !== 'done') throw new Error(j.error || 'failed');
-    made = j;
-    $('#gresimg').src = '/gif/' + encodeURI(j.id);
-    $('#grestitle').textContent = j.title;
-    $('#gresmeta').textContent = `${j.category} · ${j.frames} frames · saved as ${j.name}`;
-    $('#gresult').hidden = false;
     stat.textContent = '';
-    loadGifs();
+    showDraft(j.draft);
+    loadDrafts();
   } catch (e) {
     stat.textContent = 'Could not make it: ' + e.message;
   } finally {
     clearInterval(tick); generating = false;
-    ['#gprompt', '#ggentheme', '#ggo', '#gsurprise'].forEach(s => $(s).disabled = false);
+    genInputs.forEach(s => $(s).disabled = false);
   }
 }
+
+function showDraft(d) {
+  draft = d;
+  $('#sdraft').hidden = !d;
+  if (!d) return;
+  $('#sdimg').src = `/draft/${d.id}.gif`;
+  $('#sdtitle').textContent = d.title;
+  const asked = d.prompt ? `"${d.prompt}"` : 'its own idea';
+  $('#sdmeta').textContent = `${asked}${d.change ? `, changed: ${d.change}` : ''} · ${d.frames} frames, ${d.seconds}s loop · `
+    + `${d.model}${d.checked ? ', self-checked' : ''} · ${new Date(d.created * 1000).toLocaleString()}`;
+  $('#sdname').value = d.title.toLowerCase();
+  $('#sdcat').value = d.category;
+  $('#sdtheme').replaceChildren(new Option('all year', 'all'), ...Object.entries(S.theme_names).map(([k, v]) => new Option(v, k)));
+  $('#sdchange').value = '';
+  $('#sdsaved').textContent = d.saved ? `In the library as ${d.saved.split('/').pop()}` : '';
+  $('#sdsave').textContent = d.saved ? 'Save another copy' : 'Save to library';
+  document.querySelectorAll('#sdrafts .draft-thumb').forEach(t => t.classList.toggle('current', t.dataset.id === d.id));
+}
+
+async function loadDrafts() {
+  const list = await api('/api/drafts');
+  $('#srecenthead').hidden = !list.length;
+  $('#sdrafts').replaceChildren(...list.map(d => {
+    const t = el('button', {className: 'draft-thumb' + (d.saved ? ' saved' : '') + (draft && draft.id === d.id ? ' current' : ''),
+      title: `${d.title}${d.prompt ? ` · "${d.prompt}"` : ''}${d.saved ? ' · saved' : ''}`},
+      el('img', {src: `/draft/${d.id}.gif`, alt: d.title, loading: 'lazy'}));
+    t.dataset.id = d.id; t.dataset.testid = 'draft-thumb';
+    t.onclick = () => showDraft(d);
+    return t;
+  }));
+}
+
 $('#ggo').onclick = () => {
   const p = $('#gprompt').value.trim();
   if (!p) return toast('Type an idea, or press Surprise me');
-  generateGif(p);
+  runJob({prompt: p});
 };
 $('#gprompt').onkeydown = e => { if (e.key === 'Enter') $('#ggo').click(); };
-$('#gsurprise').onclick = () => generateGif('');
+$('#gsurprise').onclick = () => runJob({prompt: ''});
 $('#gsetup').onclick = () => openPlugin('generator');
-$('#gresplay').onclick = () => made && api('/api/play', 'POST', {scene: 'gif', params: {id: made.id}}).then(() => toast('Up next'));
-$('#gresagain').onclick = () => generateGif(lastPrompt || '');
-$('#gresdel').onclick = () => made && api('/api/gifs/' + encodeURI(made.id), 'DELETE').then(() => {
-  toast('Deleted ' + made.name); made = null; $('#gresult').hidden = true; loadGifs();
-});
+$('#sdagain').onclick = () => draft && runJob({prompt: draft.prompt || ''});
+$('#sdrefine').onclick = () => {
+  const c = $('#sdchange').value.trim();
+  if (!c) return toast('Say what to change');
+  runJob({from: draft.id, change: c});
+};
+$('#sdchange').onkeydown = e => { if (e.key === 'Enter') $('#sdrefine').click(); };
+$('#sdplay').onclick = () => api('/api/play', 'POST', {scene: 'gif', params: {id: `draft/${draft.id}.gif`}})
+  .then(() => toast('Up next on the panel'));
+$('#sdsave').onclick = async () => {
+  let r;
+  try {
+    r = await api(`/api/drafts/${draft.id}/save`, 'POST',
+      {name: $('#sdname').value, category: $('#sdcat').value, theme: $('#sdtheme').value});
+  } catch (e) { return toast(e.message); }
+  toast('Saved to the library as ' + r.name);
+  draft.saved = r.id; showDraft(draft); loadDrafts(); loadGifs();
+};
+$('#sddiscard').onclick = async () => {
+  await api('/api/drafts/' + draft.id, 'DELETE');
+  toast('Discarded'); showDraft(null); loadDrafts();
+};
 
 function confirmDelete(g) { api('/api/gifs/' + encodeURI(g.id), 'DELETE').then(() => { toast('Deleted ' + g.name); loadGifs(); }); }
 
 $('#gfilter').onchange = e => { gifFilter = e.target.value; gifPage = 0; loadGifs(); };
 $('#gsize').onchange = () => { gifPage = 0; loadGifs(); };
+try {
+  $('#gsort').value = localStorage.getItem('pixelpane-sort') || 'newest';
+  $('#gthumb').value = localStorage.getItem('pixelpane-thumb') || '64';
+} catch (e) { /* private window */ }
+const thumbSize = () => document.documentElement.style.setProperty('--thumb', $('#gthumb').value + 'px');
+thumbSize();
+$('#gthumb').onchange = () => { try { localStorage.setItem('pixelpane-thumb', $('#gthumb').value); } catch (e) { /* private */ } thumbSize(); };
+let searchTimer;
+$('#gsearch').oninput = () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { gifPage = 0; loadGifs(); }, 200); };
+$('#gsort').onchange = () => {
+  try { localStorage.setItem('pixelpane-sort', $('#gsort').value); } catch (e) { /* private window */ }
+  gifPage = 0; loadGifs();
+};
 $('#gprev').onclick = () => { gifPage = Math.max(0, gifPage - 1); loadGifs(); };
 $('#gnext').onclick = () => { gifPage += 1; loadGifs(); };
 $('#gup').onclick = async () => {

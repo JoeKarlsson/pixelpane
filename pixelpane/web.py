@@ -231,40 +231,42 @@ def create_app(state, gifs, health):
         return jsonify(ok=True, changed=n)
 
     jobs = generate.Jobs()
+    drafts = generate.Drafts(VAR / "generated")
 
     @app.post("/api/gifs/generate")
     def api_generate():
-        """Start making a GIF from {"prompt": "...", "theme": "all"}; an empty prompt lets
-        the model pick an idea for the season. Poll GET /api/gifs/generate/<job>."""
+        """Start a draft from {"prompt": "..."} (empty: the model picks an idea), or rework
+        one with {"from": draft_id, "change": "make the cat bigger"}. Nothing goes in the
+        library until it is saved. Poll GET /api/gifs/generate/<job>."""
         b = body()
         prompt = str(b.get("prompt") or "")[:500]
-        try:
-            theme = schema.theme_name(b.get("theme") or "all")
-        except schema.ConfigError as e:
-            abort(400, str(e))
+        change = str(b.get("change") or "")[:500]
+        base = None
+        if b.get("from"):
+            base = drafts.get(str(b["from"]))
+            if not base:
+                abort(404, "no such draft")
+            if not change.strip():
+                abort(400, "say what to change")
+            prompt = base.get("prompt", "")
         settings = plugin.settings(state.config, "generator")
         if not settings.get("enabled", True):
             abort(400, "the generator plugin is off")
 
-        def work():
-            spec = generate.ask(settings, prompt, generate.season_words(local_now().date()))
-            frames = generate.render(spec)
+        def work(say):
+            r = generate.ask(settings, prompt, generate.season_words(local_now().date()), log=say,
+                             base=base["spec"] if base else None, change=change)
+            spec = r["spec"]
             try:
                 category = schema.category_name(spec.get("category") or "generated")
             except schema.ConfigError:
                 category = "generated"
-            name = generate.slug(spec.get("name") or prompt)
-            dest = VAR / "uploads" / theme / f"{category}-{name}.gif"
-            n = 1
-            while dest.exists():
-                dest = dest.with_name(f"{category}-{name}-{n}.gif")
-                n += 1
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            imgs = [f for f, _ in frames]
-            imgs[0].save(dest, save_all=True, append_images=imgs[1:], loop=0,
-                         duration=[int(d * 1000) for _, d in frames], disposal=1)
-            return {"id": gifs.gif_id(dest), "name": dest.name, "category": category,
-                    "title": str(spec.get("name") or name)[:60], "frames": len(imgs)}
+            rec = drafts.add(r["frames"], {
+                "prompt": prompt, "change": change, "parent": base["id"] if base else None,
+                "title": str(spec.get("name") or prompt or "untitled")[:60], "category": category,
+                "model": settings.get("model"), "provider": settings.get("provider") or "openai",
+                "checked": r["checked"], "spec": spec})
+            return {"draft": {k: v for k, v in rec.items() if k != "spec"}}
         return jsonify(job=jobs.start(work))
 
     @app.get("/api/gifs/generate/<job>")
@@ -273,6 +275,55 @@ def create_app(state, gifs, health):
         if not j:
             abort(404)
         return jsonify(j)
+
+    @app.get("/api/drafts")
+    def api_drafts():
+        return jsonify(drafts.list())
+
+    @app.get("/api/drafts/<did>")
+    def api_draft(did):
+        rec = drafts.get(did)
+        if not rec:
+            abort(404)
+        return jsonify(rec)
+
+    @app.get("/draft/<did>.gif")
+    def draft_gif(did):
+        p = drafts.gif(did)
+        if not p:
+            abort(404)
+        return send_file(p, mimetype="image/gif", max_age=3600)
+
+    @app.post("/api/drafts/<did>/save")
+    def api_draft_save(did):
+        """Into the library: {"name": "...", "category": "...", "theme": "all"}."""
+        rec, src = drafts.get(did), drafts.gif(did)
+        if not rec or not src:
+            abort(404)
+        b = body()
+        try:
+            category = schema.category_name(b.get("category") or rec.get("category") or "generated")
+            theme = schema.theme_name(b.get("theme") or "all")
+        except schema.ConfigError as e:
+            abort(400, str(e))
+        name = generate.slug(b.get("name") or rec.get("title") or "generated")
+        dest = VAR / "uploads" / theme / f"{category}-{name}.gif"
+        n = 1
+        while dest.exists():
+            dest = dest.with_name(f"{category}-{name}-{n}.gif")
+            n += 1
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(src.read_bytes())
+        gid = gifs.gif_id(dest)
+        drafts.update(did, saved=gid)
+        return jsonify(ok=True, id=gid, name=dest.name)
+
+    @app.delete("/api/drafts/<did>")
+    def api_draft_delete(did):
+        """Throw a draft away (a copy already saved to the library stays there)."""
+        if not drafts.delete(did):
+            abort(404)
+        return jsonify(ok=True)
 
     @app.post("/api/categories/rename")
     def api_rename_category():

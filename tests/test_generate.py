@@ -38,12 +38,16 @@ class Stub(BaseHTTPRequestHandler):
 
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
-        Stub.seen.append((self.path, self.headers.get("Authorization"), body))
-        out = json.dumps({"choices": [{"message": {"content": "Here you go:\n```json\n" + Stub.reply + "\n```"}}]})
+        Stub.seen.append((self.path, {k.lower(): v for k, v in self.headers.items()}, body))
+        text = "Here you go:\n```json\n" + Stub.reply + "\n```"
+        if self.path.endswith("/messages"):   # Anthropic's API
+            out = {"content": [{"type": "text", "text": text}]}
+        else:
+            out = {"choices": [{"message": {"content": text}}]}
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
-        self.wfile.write(out.encode())
+        self.wfile.write(json.dumps(out).encode())
 
     def log_message(self, *a):
         pass
@@ -64,9 +68,11 @@ class GenerateTest(unittest.TestCase):
         self.assertEqual(generate.parse('<think>{"no": 1}</think> sure: {"a": "x}y", "b": {"c": 1}} bye'),
                          {"a": "x}y", "b": {"c": 1}})
         self.assertEqual(generate.parse('{"q": "say \\"hi\\" }"}'), {"q": 'say "hi" }'})
-        for bad in ("no json here", '{"a": 1', '{"a": }'):
+        for bad in ("no json here", '{"a": }', '["a"]'):
             with self.assertRaises(generate.GenerateError):
                 generate.parse(bad)
+        # a reply that stops a bracket or two short is repaired
+        self.assertEqual(generate.parse('{"a": [1, {"b": "x'), {"a": [1, {"b": "x"}]})
 
     def test_render_every_layer_and_effect(self):
         frames = generate.render(SPEC)
@@ -84,47 +90,92 @@ class GenerateTest(unittest.TestCase):
                                   "layers": [{"type": "circle", "r": 1e9, "x": float("nan"), "color": "#fff"}]})
         self.assertEqual(len(frames), 40)   # 4 s at the default 10 fps
 
-    def test_ask_sends_key_and_model(self):
+    def test_ask_drafts_then_reviews_its_render(self):
         Stub.seen.clear()
-        spec = generate.ask({"base_url": self.base + "/", "api_key": "k-123", "model": "m1"}, "", "October")
-        self.assertEqual(spec["name"], "Test Rocket")
-        path, auth, body = Stub.seen[-1]
-        self.assertEqual((path, auth, body["model"]), ("/v1/chat/completions", "Bearer k-123", "m1"))
+        r = generate.ask({"base_url": self.base + "/", "api_key": "k-123", "model": "m1"}, "", "October")
+        self.assertEqual(r["spec"]["name"], "Test Rocket")
+        self.assertEqual(len(r["frames"]), 20)
+        (path, headers, body), (_, _, review) = Stub.seen[-2:]
+        self.assertEqual((path, headers["authorization"], body["model"]), ("/v1/chat/completions", "Bearer k-123", "m1"))
         self.assertIn("October", body["messages"][1]["content"])   # empty prompt: the model picks an idea
-        generate.ask({"base_url": self.base, "model": "m1"}, "", "October")
+        # the review shows the model a picture of its own render
+        last = review["messages"][-1]["content"]
+        self.assertEqual(last[0]["type"], "image_url")
+        self.assertTrue(last[0]["image_url"]["url"].startswith("data:image/png;base64,"))
+        generate.ask({"base_url": self.base, "model": "m1", "review": False}, "", "October")
         self.assertNotEqual(Stub.seen[-1][2]["messages"], body["messages"])   # never a cache hit
+        self.assertEqual(len(Stub.seen), 3)                                    # review off: one call
         with self.assertRaises(generate.GenerateError):
             generate.ask({"base_url": "", "model": "m"}, "x", "")
         with self.assertRaises(generate.GenerateError) as e:
             generate.ask({"base_url": "http://127.0.0.1:9/v1", "model": "m"}, "x", "", timeout=2)
         self.assertIn("could not reach", str(e.exception))
 
-    def test_api_makes_a_gif_in_the_library(self):
+    def test_anthropic_provider(self):
+        Stub.seen.clear()
+        base = self.base[:-3]   # without /v1: the client adds /v1/messages
+        r = generate.ask({"provider": "anthropic", "base_url": base, "api_key": "sk-ant", "model": "claude-x"},
+                         "a rocket", "", log=None)
+        self.assertEqual(r["spec"]["name"], "Test Rocket")
+        (path, headers, body), (_, _, review) = Stub.seen
+        self.assertEqual((path, headers["x-api-key"], headers["anthropic-version"]), ("/v1/messages", "sk-ant", "2023-06-01"))
+        self.assertIn("32x32", body["system"])
+        self.assertEqual(review["messages"][-1]["content"][0]["type"], "image")
+
+    def test_refine_sends_the_earlier_design(self):
+        Stub.seen.clear()
+        generate.ask({"base_url": self.base, "model": "m", "review": False}, "a rocket", "",
+                     base={"name": "old"}, change="make it red")
+        msgs = Stub.seen[-1][2]["messages"]
+        self.assertEqual(msgs[2], {"role": "assistant", "content": '{"name":"old"}'})
+        self.assertIn("make it red", msgs[3]["content"])
+
+    def test_api_drafts_then_save_or_discard(self):
         support.reset()
         state = State()
         client = create_app(state, GifLibrary(state, random.Random(0)), health).test_client()
 
-        def run(prompt, theme="all"):
-            r = client.post("/api/gifs/generate", json={"prompt": prompt, "theme": theme})
-            self.assertEqual(r.status_code, 200)
-            for _ in range(100):
+        def run(**body):
+            r = client.post("/api/gifs/generate", json=body)
+            self.assertEqual(r.status_code, 200, r.data)
+            for _ in range(200):
                 j = client.get("/api/gifs/generate/" + r.get_json()["job"]).get_json()
                 if j["state"] != "working":
                     return j
                 time.sleep(0.05)
             self.fail("job never finished")
 
-        self.assertIn("server and model", run("a rocket")["error"])     # not set up yet
+        self.assertIn("server and model", run(prompt="a rocket")["error"])     # not set up yet
         state.update_config({"plugins": {"generator": {"base_url": self.base, "model": "m1"}}})
-        j = run("a rocket", "halloween")
-        self.assertEqual((j["state"], j["category"], j["title"]), ("done", "space", "Test Rocket"))
-        self.assertEqual(j["id"], "upload/halloween/space-test-rocket.gif")
+        j = run(prompt="a rocket")
+        d = j["draft"]
+        self.assertEqual((j["state"], d["title"], d["category"], d["prompt"], d["saved"]),
+                         ("done", "Test Rocket", "space", "a rocket", None))
+        self.assertIs(d["checked"], True)               # the review pass ran
+        # a draft is NOT in the library, but it is listed, viewable and playable
+        self.assertFalse(any(g["upload"] for g in client.get("/api/gifs").get_json()))
+        self.assertEqual([x["id"] for x in client.get("/api/drafts").get_json()], [d["id"]])
+        self.assertEqual(client.get(f"/draft/{d['id']}.gif").status_code, 200)
+        self.assertIn("spec", client.get(f"/api/drafts/{d['id']}").get_json())
+        self.assertEqual(client.post("/api/play", json={"scene": "gif", "params": {"id": f"draft/{d['id']}.gif"}}).status_code, 200)
+        # save it, with a name, category and theme of your choosing
+        r = client.post(f"/api/drafts/{d['id']}/save", json={"name": "Blast Off", "category": "rockets", "theme": "july4"})
+        self.assertEqual(r.get_json()["id"], "upload/july4/rockets-blast-off.gif")
         listed = {g["id"]: g for g in client.get("/api/gifs").get_json()}
-        self.assertEqual(listed[j["id"]]["theme"], "halloween")
-        self.assertEqual(run("again", "halloween")["id"], "upload/halloween/space-test-rocket-1.gif")
-        self.assertEqual(client.post("/api/gifs/generate", json={"theme": "easter"}).status_code, 400)
+        self.assertEqual(listed["upload/july4/rockets-blast-off.gif"]["theme"], "july4")
+        self.assertEqual(client.get(f"/api/drafts/{d['id']}").get_json()["saved"], "upload/july4/rockets-blast-off.gif")
+        self.assertEqual(client.post(f"/api/drafts/{d['id']}/save", json={"theme": "nope"}).status_code, 400)
+        # refine makes a new draft from the old one
+        j2 = run(**{"from": d["id"], "change": "make it red"})
+        self.assertEqual((j2["draft"]["parent"], j2["draft"]["change"]), (d["id"], "make it red"))
+        self.assertEqual(client.post("/api/gifs/generate", json={"from": d["id"]}).status_code, 400)
+        self.assertEqual(client.post("/api/gifs/generate", json={"from": "0" * 12, "change": "x"}).status_code, 404)
+        # discard drops the draft but not the saved copy
+        self.assertEqual(client.delete(f"/api/drafts/{d['id']}").status_code, 200)
+        self.assertEqual(client.get(f"/draft/{d['id']}.gif").status_code, 404)
+        self.assertIn("upload/july4/rockets-blast-off.gif", {g["id"] for g in client.get("/api/gifs").get_json()})
+        self.assertEqual(client.delete("/api/drafts/../../x").status_code, 404)
         self.assertEqual(client.get("/api/gifs/generate/nope").status_code, 404)
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -164,12 +164,35 @@ class State:
 class GifLibrary:
     """Repo GIFs (gifs/, gifs/themes/<t>/) plus web uploads (uploads/all|<t>/)."""
 
-    ROOTS = {"repo": HOME / "gifs", "upload": VAR / "uploads"}
+    # drafts (generated, not yet saved) can be played by id but are never in the library
+    ROOTS = {"repo": HOME / "gifs", "upload": VAR / "uploads", "draft": VAR / "generated"}
 
     def __init__(self, state, rng):
         self.state, self.rng = state, rng
         self.bags = {}
         self.cache = OrderedDict()
+        self.plays_path = VAR / "plays.json"
+        self.plays = _read(self.plays_path) if self.plays_path.exists() else {}
+        self.plays_saved = time.monotonic()
+
+    def played(self, path):
+        """Count a play (for the library's most and least played sorts). Saved at most once
+        a minute, so a GIF every few seconds doesn't wear out the SD card."""
+        gid = self.gif_id(path)
+        if gid.startswith("draft/"):
+            return
+        p = self.plays.setdefault(gid, {"n": 0, "last": 0})
+        p["n"] += 1
+        p["last"] = int(time.time())
+        if time.monotonic() - self.plays_saved > 60:
+            self.save_plays()
+
+    def save_plays(self):
+        self.plays_saved = time.monotonic()
+        try:
+            _atomic_write(self.plays_path, self.plays)
+        except OSError:
+            pass
 
     def _files(self, root, sub):
         d = root / sub if sub else root
@@ -223,7 +246,9 @@ class GifLibrary:
             out.append({"id": gid, "name": p.name, "theme": self.theme(p, folder),
                         "category": self.category(p), "default_theme": folder,
                         "default_category": self.file_category(p), "moved": bool(self.meta(p)),
-                        "upload": gid.startswith("upload/"), "hidden": gid in hidden})
+                        "upload": gid.startswith("upload/"), "hidden": gid in hidden,
+                        "added": int(p.stat().st_mtime), "plays": self.plays.get(gid, {}).get("n", 0),
+                        "last_played": self.plays.get(gid, {}).get("last", 0)})
         return out
 
     def classify(self, ids, category=None, theme=None, reset=False):

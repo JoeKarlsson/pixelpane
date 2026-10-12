@@ -72,10 +72,63 @@
     <div id="plugins" class="plugins"></div>
   </section>
 
+  <section class="studio" data-testid="studio">
+    <h2>Make a GIF</h2>
+    <p class="about">Describe an idea and a model designs a looping animation. You see it first;
+      nothing goes in the library until you save it.</p>
+    <div class="row gen">
+      <input id="gprompt" maxlength="500" placeholder="a tuxedo cat chasing a red laser dot" autocomplete="off"
+        aria-label="Your idea" data-testid="generate-prompt">
+      <button id="ggo" class="on" data-testid="generate">Generate</button>
+      <button id="gsurprise" data-testid="surprise">Surprise me</button>
+      <button id="gsetup" hidden data-testid="generate-setup">Set up the generator</button>
+    </div>
+    <div class="stat gen-status" id="ggenstat" role="status" data-testid="generate-status"></div>
+    <div class="draft" id="sdraft" hidden data-testid="draft">
+      <div class="draft-view"><img id="sdimg" alt="the draft, animated"></div>
+      <div class="draft-side">
+        <div class="title" id="sdtitle"></div>
+        <div class="stat" id="sdmeta"></div>
+        <div class="row">
+          <button id="sdplay" data-testid="draft-play">▶ Show on the panel</button>
+          <button id="sdagain" data-testid="draft-again">Try again</button>
+          <button id="sddiscard" data-testid="draft-discard">Discard</button>
+        </div>
+        <div class="row refine">
+          <input id="sdchange" maxlength="500" placeholder="Change something: make the cat bigger" autocomplete="off"
+            aria-label="What to change" data-testid="draft-change">
+          <button id="sdrefine" data-testid="draft-refine">Refine</button>
+        </div>
+        <div class="save-box">
+          <div class="row">
+            <input id="sdname" aria-label="Name" placeholder="name" data-testid="draft-name">
+            <input id="sdcat" list="gcats" aria-label="Category" placeholder="category" data-testid="draft-category">
+            <select id="sdtheme" aria-label="When it plays" data-testid="draft-theme"></select>
+            <button id="sdsave" class="on" data-testid="draft-save">Save to library</button>
+          </div>
+          <div class="stat" id="sdsaved" data-testid="draft-saved"></div>
+        </div>
+      </div>
+    </div>
+    <div class="recent-head" id="srecenthead" hidden><h2>Recent drafts</h2>
+      <span class="stat">kept on the board for reference; saved ones are marked</span></div>
+    <div class="drafts" id="sdrafts" data-testid="drafts"></div>
+  </section>
   <section>
     <h2>GIF library</h2>
     <div class="row" style="margin-bottom:10px">
       <label for="gfilter">Show</label><select id="gfilter" data-testid="gif-filter"></select>
+      <label for="gsort">Sort</label><select id="gsort" data-testid="gif-sort">
+        <option value="newest">Recently added</option><option value="oldest">Oldest first</option>
+        <option value="name">Name, A to Z</option><option value="namedesc">Name, Z to A</option>
+        <option value="category">Category</option><option value="theme">Season and theme</option>
+        <option value="most">Most played</option><option value="least">Least played</option>
+        <option value="recent">Recently played</option>
+      </select>
+      <input id="gsearch" type="search" placeholder="Search names" aria-label="Search GIFs" data-testid="gif-search">
+      <label for="gthumb">Size</label><select id="gthumb" data-testid="gif-thumb">
+        <option value="48">small</option><option value="64" selected>medium</option><option value="112">large</option>
+      </select>
       <button id="grename" hidden data-testid="rename-category">Rename category</button>
       <button id="gselect" data-testid="select-mode" aria-pressed="false">Select</button>
     </div>
@@ -85,27 +138,6 @@
       <button id="gclear" data-testid="select-clear">Clear selection</button>
       <button id="gmove" class="on" data-testid="bulk-move">Move…</button>
       <small class="hint">Shift-click picks a range</small>
-    </div>
-    <div class="row gen" data-testid="generate-row">
-      <label for="gprompt">Make one</label>
-      <input id="gprompt" maxlength="500" placeholder="a cat chasing a laser dot" autocomplete="off" data-testid="generate-prompt">
-      <select id="ggentheme" aria-label="Theme for the new GIF" data-testid="generate-theme"></select>
-      <button id="ggo" class="on" data-testid="generate">Generate</button>
-      <button id="gsurprise" data-testid="surprise">Surprise me</button>
-      <button id="gsetup" hidden data-testid="generate-setup">Set up the generator</button>
-      <span class="stat" id="ggenstat" role="status" data-testid="generate-status"></span>
-    </div>
-    <div class="gen-result" id="gresult" hidden data-testid="generate-result">
-      <img id="gresimg" alt="the new GIF">
-      <div>
-        <div class="title" id="grestitle"></div>
-        <div class="stat" id="gresmeta"></div>
-        <div class="row">
-          <button id="gresplay" class="on">▶ Play now</button>
-          <button id="gresagain">Try again</button>
-          <button id="gresdel">🗑 Delete</button>
-        </div>
-      </div>
     </div>
     <div class="row" style="margin-bottom:10px">
       <label for="gtheme">Upload to</label><select id="gtheme" data-testid="upload-theme"></select>

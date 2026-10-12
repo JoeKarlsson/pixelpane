@@ -416,7 +416,7 @@ test('footer links to the project on GitHub', async ({ page }) => {
   }
 });
 
-test('a GIF made from a prompt lands in the library', async ({ page, request }) => {
+test('Make a GIF: drafts are previewed, refined, saved or discarded', async ({ page, request }) => {
   // a stand-in for the model server: always designs the same little animation
   const spec = { name: 'Bouncy Ball', category: 'toys', seconds: 1, fps: 8, background: '#000000',
     layers: [{ type: 'circle', x: 16, y: 16, r: 5, color: '#ff4060', motion: { bob: 4 } }] };
@@ -428,33 +428,100 @@ test('a GIF made from a prompt lands in the library', async ({ page, request }) 
     });
   });
   await new Promise((r) => stub.listen(0, '127.0.0.1', r));
+  const library = async () => (await (await request.get('/api/gifs')).json()).filter((g) => g.upload);
   try {
     await expect(page.getByTestId('generate-setup')).toBeVisible();          // not set up yet
     await expect(page.getByTestId('generate')).toBeDisabled();
     await request.put('/api/config', { data: { plugins: { generator: {
-      base_url: `http://127.0.0.1:${stub.address().port}/v1`, model: 'stub' } } } });
+      base_url: `http://127.0.0.1:${stub.address().port}/v1`, model: 'stub', review: false } } } });
     await page.reload();
-    await expect(page.getByTestId('generate')).toBeEnabled();
     await page.getByTestId('generate').click();
     await expect(page.locator('#toast')).toContainText('Type an idea');
     await page.getByTestId('generate-prompt').fill('a bouncy ball');
-    await page.getByTestId('generate-theme').selectOption('winter');
     await page.getByTestId('generate').click();
-    const result = page.getByTestId('generate-result');
-    await expect(result).toBeVisible({ timeout: 15_000 });
-    await expect(result).toContainText('Bouncy Ball');
-    await expect(result).toContainText('toys');
-    await expect.poll(() => result.locator('img').evaluate((img) => img.naturalWidth)).toBe(32);
-    const gifs = await (await request.get('/api/gifs')).json();
-    const mine = gifs.find((g) => g.name === 'toys-bouncy-ball.gif');
-    expect(mine).toMatchObject({ theme: 'winter', category: 'toys', upload: true });
-    await result.getByRole('button', { name: '▶ Play now' }).click();
-    await sceneIs(request, /^gif: toys-bouncy-ball\.gif$/);
-    await result.getByRole('button', { name: '🗑 Delete' }).click();
-    await expect(result).toBeHidden();
-    expect((await (await request.get('/api/gifs')).json()).some((g) => g.name === 'toys-bouncy-ball.gif')).toBe(false);
+
+    const draft = page.getByTestId('draft');
+    await expect(draft).toBeVisible({ timeout: 15_000 });
+    await expect(draft).toContainText('Bouncy Ball');
+    await expect(draft).toContainText('"a bouncy ball"');
+    await expect.poll(() => draft.locator('img').evaluate((img) => img.naturalWidth)).toBe(32);
+    expect(await library()).toEqual([]);                                     // nothing saved yet
+    await expect(page.getByTestId('draft-thumb')).toHaveCount(1);
+
+    await page.getByTestId('draft-play').click();                            // see it on the panel first
+    await sceneIs(request, /^gif: [0-9a-f]{12}\.gif$/);
+
+    await page.getByTestId('draft-change').fill('make it blue');
+    await page.getByTestId('draft-refine').click();
+    await expect(page.getByTestId('draft-thumb')).toHaveCount(2, { timeout: 15_000 });
+    await expect(draft).toContainText('changed: make it blue');
+
+    await page.getByTestId('draft-name').fill('Blue Ball');
+    await page.getByTestId('draft-category').fill('toys');
+    await page.getByTestId('draft-theme').selectOption('winter');
+    await page.getByTestId('draft-save').click();
+    await expect(page.locator('#toast')).toContainText('Saved to the library as toys-blue-ball.gif');
+    await expect(page.getByTestId('draft-saved')).toContainText('toys-blue-ball.gif');
+    expect((await library()).map((g) => [g.name, g.theme])).toEqual([['toys-blue-ball.gif', 'winter']]);
+    await expect(page.locator('.draft-thumb.saved')).toHaveCount(1);
+
+    // the older draft: open it from the strip and throw it away
+    await page.getByTestId('draft-thumb').nth(1).click();
+    await expect(draft).not.toContainText('changed:');
+    await page.getByTestId('draft-discard').click();
+    await expect(draft).toBeHidden();
+    await expect(page.getByTestId('draft-thumb')).toHaveCount(1);
+
+    // the saved one shows up first in the library (newest first) and under Mine
+    await page.getByTestId('gif-filter').selectOption('mine');
+    await expect(page.getByTestId('gif-card')).toHaveCount(1);
+    await expect(page.getByTestId('gif-card').first()).toContainText('toys-blue-ball');
+    await request.delete('/api/gifs/upload/winter/toys-blue-ball.gif');
   } finally {
+    for (const d of await (await request.get('/api/drafts')).json()) await request.delete(`/api/drafts/${d.id}`);
     await request.put('/api/config', { data: { plugins: { generator: { base_url: '', model: '' } } } });
     stub.close();
   }
+});
+
+test('library sorts, searches, filters and resizes', async ({ page, request }) => {
+  const cards = page.getByTestId('gif-card');
+  const names = async () => (await cards.locator('.stat').allTextContents());
+  await page.getByTestId('gif-sort').selectOption('name');
+  await expect.poll(async () => (await names())[0]).toBe('abstract-dot-00');
+  await page.getByTestId('gif-sort').selectOption('namedesc');
+  await expect.poll(async () => (await names())[0]).not.toBe('abstract-dot-00');
+  const sorted = await names();
+  expect([...sorted].sort().reverse()).toEqual(sorted);
+  await page.getByTestId('gif-sort').selectOption('theme');
+  await expect.poll(async () => (await cards.last().locator('.theme').textContent())).toBe('halloween');
+  // played GIFs climb the Most played sort
+  await request.post('/api/play', { data: { scene: 'gif', params: { id: 'repo/space-purple-blink.gif' } } });
+  await sceneIs(request, /^gif: space-purple-blink\.gif$/);
+  await page.reload();
+  await page.getByTestId('gif-sort').selectOption('most');
+  const gifs = await (await request.get('/api/gifs')).json();
+  expect(gifs.find((g) => g.name === 'space-purple-blink.gif').plays).toBeGreaterThan(0);
+  const top = Math.max(...gifs.map((g) => g.plays));
+  const firstName = await cards.first().locator('.stat').textContent();
+  expect(gifs.find((g) => g.name === firstName + '.gif').plays).toBe(top);      // most played first
+  await expect(cards.first().locator('.cat')).toContainText(`▶${top}`);
+  // search by words in the name, category or theme
+  await page.getByTestId('gif-search').fill('purple');
+  await expect(cards).toHaveCount(1);
+  await page.getByTestId('gif-search').fill('');
+  // hidden filter
+  await request.post('/api/gifs/hide', { data: { id: 'repo/retro-red-blink.gif', hidden: true } });
+  await page.reload();
+  await page.getByTestId('gif-filter').selectOption('hidden');
+  await expect(cards).toHaveCount(1);
+  await request.post('/api/gifs/hide', { data: { id: 'repo/retro-red-blink.gif', hidden: false } });
+  // thumbnail size, remembered
+  await page.getByTestId('gif-thumb').selectOption('112');
+  await expect.poll(() => cards.first().locator('img').evaluate((i) => i.getBoundingClientRect().width)).toBe(112);
+  await page.reload();
+  await expect(page.getByTestId('gif-thumb')).toHaveValue('112');
+  await expect(page.getByTestId('gif-sort')).toHaveValue('most');
+  await page.getByTestId('gif-thumb').selectOption('64');
+  await page.getByTestId('gif-sort').selectOption('newest');
 });

@@ -25,6 +25,7 @@ def gif(ctx, secs, path=None, category=None):
     if not frames:
         return
     ctx.label = f"gif: {path.name}"
+    ctx.gif_played(path)
     elapsed = 0.0
     while elapsed < secs:
         for img, hold in frames:

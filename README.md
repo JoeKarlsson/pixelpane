@@ -43,8 +43,9 @@ What it shows, panel's-eye view:
   the playlist, a playlist editor, GIF library
   (upload converts anything to 32x32) and plugin switches.
 - **GIFs from a prompt.** Type "a cat chasing a laser dot" (or press Surprise
-  me) and a chat model on any OpenAI-compatible server (LiteLLM, OpenRouter,
-  OpenAI, Ollama) designs a looping animation that joins your library.
+  me) and a chat model (any OpenAI-compatible server such as LiteLLM,
+  OpenRouter or Ollama, or Anthropic's API) designs a looping animation. Preview
+  it, refine it, then save it to your library or throw it out.
 - **An HTTP API** for notifications, modes (ON AIR, messages) and data.
 - **Home Assistant ready**: a light entity, a feed automation and notification
   examples in [docs/HOME_ASSISTANT.md](docs/HOME_ASSISTANT.md).
@@ -158,7 +159,8 @@ LAN only, no authentication: keep the board on your home network.
 | `GET/PUT /api/config` | any config key, merged | playlist, timings, plugin settings |
 | `GET /api/gifs`, `POST /api/gifs`, `DELETE /api/gifs/<id>` | multipart `file`, `theme` | the GIF library |
 | `PATCH /api/gifs/<id>`, `POST /api/gifs/classify` | `{"category": "arcade", "theme": "all"}`, `{"ids": [...], ...}` or `{"reset": true}` | move GIFs between categories and themes ([docs/GIFS.md](docs/GIFS.md)) |
-| `POST /api/gifs/generate`, `GET /api/gifs/generate/<job>` | `{"prompt": "a cat chasing a laser dot", "theme": "all"}` | make a GIF from a prompt; poll the job |
+| `POST /api/gifs/generate`, `GET /api/gifs/generate/<job>` | `{"prompt": "a cat chasing a laser dot"}` or `{"from": "<draft>", "change": "make it bigger"}` | make a draft from a prompt, or rework one; poll the job |
+| `GET /api/drafts`, `GET /draft/<id>.gif`, `POST /api/drafts/<id>/save`, `DELETE /api/drafts/<id>` | `{"name": "...", "category": "...", "theme": "all"}` | list, view, save to the library, or discard drafts |
 | `POST /api/categories/rename` | `{"from": "retro", "to": "arcade"}` | rename or merge a category |
 | `GET /preview.png?scale=10` | | the current frame |
 | `GET /api/frames` | | a stream of every frame as the panel shows it (the page's live preview) |

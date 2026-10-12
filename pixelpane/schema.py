@@ -87,6 +87,15 @@ def _field(f: dict, v: Any, what: str) -> Any:
         return v
     if t == "list":
         return _str_list(v, what)
+    if t == "select":
+        allowed = [o["value"] for o in f.get("options", [])]
+        if v not in allowed:
+            raise ConfigError(f"{what} must be one of {allowed}")
+        return v
+    if t == "toggle":
+        if not isinstance(v, bool):
+            raise ConfigError(f"{what} must be true or false")
+        return v
     if t == "choices":
         v = _str_list(v, what)
         bad = [x for x in v if x not in f.get("options", [])]
