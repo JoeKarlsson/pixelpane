@@ -81,6 +81,34 @@ class GifLibraryTest(unittest.TestCase):
                 self.assertEqual(img.mode, "RGB")
                 self.assertAlmostEqual(hold, 0.08)
 
+    def test_tall_sprites_fit_whole_and_get_trimmed(self):
+        # a 6x14 sprite drawn in a 40x40 empty cell, like a sprite-sheet frame
+        frames = []
+        for shade in (200, 120):
+            img = Image.new("RGB", (40, 40))
+            for y in range(13, 27):
+                for x in range(17, 23):
+                    img.putpixel((x, y), (shade, 50, 50))
+            frames.append(img)
+        src = io.BytesIO()
+        frames[0].save(src, "GIF", save_all=True, append_images=frames[1:], duration=100, loop=0)
+        src.seek(0)
+        out = st.decode_gif(src)
+        self.assertEqual(len(out), 2)
+        img = out[0][0]
+        self.assertEqual(img.size, (32, 32))
+        lit = img.convert("L").point(lambda v: 255 if v > 16 else 0).getbbox()
+        # trimmed to 6x14 then scaled 2x (whole-number) to 12x28, centered, nothing cut off
+        self.assertEqual((lit[2] - lit[0], lit[3] - lit[1]), (12, 28))
+        self.assertEqual((lit[0], lit[1]), (10, 2))
+
+    def test_photos_still_fill_the_panel(self):
+        src = io.BytesIO()
+        Image.new("RGB", (120, 80), (90, 140, 200)).save(src, "PNG")
+        src.seek(0)
+        img = st.decode_gif(src, smooth=True)[0][0]
+        self.assertEqual(img.getpixel((0, 0)), (90, 140, 200))   # no black bars
+
     def test_broken_gif_gives_no_frames(self):
         bad = support.HOME / "gifs" / "retro-broken.gif"
         bad.write_bytes(b"GIF89a garbage")

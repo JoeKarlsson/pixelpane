@@ -266,27 +266,61 @@ class GifLibrary:
 
 
 def fit(img, smooth=False, size=(W, H)):
-    """Center-crop to square and scale to `size` (the 32x32 canvas by default)."""
+    """Fit one frame to `size` (the 32x32 canvas by default).
+
+    Pixel art (the default) is fitted whole: whole-number scaling when it is
+    smaller than the panel so it stays crisp, a box filter when it is bigger, and
+    black around it, never cropped. Photos (smooth=True) fill the panel instead.
+    """
     w, h = img.size
-    if (w, h) == tuple(size):
+    tw, th = size
+    if (w, h) == (tw, th):
         return img
-    s = min(w, h)
-    img = img.crop(((w - s) // 2, (h - s) // 2, (w - s) // 2 + s, (h - s) // 2 + s))
-    return img.resize(tuple(size), Image.LANCZOS if smooth else Image.NEAREST)
+    if smooth:  # photos and smooth art: fill and center-crop
+        s = min(w, h)
+        img = img.crop(((w - s) // 2, (h - s) // 2, (w - s) // 2 + s, (h - s) // 2 + s))
+        return img.resize((tw, th), Image.LANCZOS)
+    scale = min(tw / w, th / h)
+    if scale >= 1:
+        k = int(scale)
+        img = img.resize((w * k, h * k), Image.NEAREST)
+    else:
+        img = img.resize((max(1, round(w * scale)), max(1, round(h * scale))), Image.BOX)
+    canvas = Image.new("RGB", (tw, th))
+    canvas.paste(img, ((tw - img.width) // 2, (th - img.height) // 2))
+    return canvas
+
+
+def content_box(frames, threshold=16):
+    """The smallest box holding everything not black, across all frames."""
+    box = None
+    for f in frames:
+        b = f.convert("L").point(lambda v: 255 if v > threshold else 0).getbbox()
+        if b:
+            box = b if box is None else (min(box[0], b[0]), min(box[1], b[1]), max(box[2], b[2]), max(box[3], b[3]))
+    return box
 
 
 def decode_gif(path, smooth=False, limit=400, size=(W, H)):
-    out = []
+    raw = []
     with Image.open(path) as im:
         for i, frame in enumerate(ImageSequence.Iterator(im)):
             if i >= limit:
                 break
             rgba = frame.convert("RGBA")
             bg = Image.new("RGBA", rgba.size, (0, 0, 0, 255))
-            img = fit(Image.alpha_composite(bg, rgba).convert("RGB"), smooth, size)
-            ms = frame.info.get("duration") or 100
-            out.append((img, max(20, ms) / 1000))
-    return out
+            raw.append((Image.alpha_composite(bg, rgba).convert("RGB"), max(20, frame.info.get("duration") or 100) / 1000))
+    if not raw:
+        return []
+    imgs = [f for f, _ in raw]
+    if not smooth and imgs[0].size != tuple(size):
+        # Sprites often sit in a big empty cell: trim to the art (same box for every
+        # frame, so the animation doesn't jitter) before fitting it.
+        box = content_box(imgs)
+        w, h = imgs[0].size
+        if box and (box[2] - box[0]) * (box[3] - box[1]) < 0.9 * w * h:
+            imgs = [f.crop(box) for f in imgs]
+    return [(fit(f, smooth, size), hold) for f, (_, hold) in zip(imgs, raw)]
 
 
 def convert_upload(src, dest, smooth=False):
