@@ -81,3 +81,28 @@ curl -X POST   http://pixelpane.local/api/categories/rename -H 'Content-Type: ap
 
 Keep your library outside this repo (see "Keeping your own stuff out of the
 repo" in the README); `tools/deploy.sh` copies it to the board.
+
+## Make one from a prompt
+
+The GIF library's **Make one** box asks a chat model to design a GIF: type an
+idea and press Generate, or press **Surprise me** for one that suits the date
+(it knows the season and any holiday). The model doesn't paint pixels; it writes
+a short description (shapes, little pixel sprites, motion, snow, stars, fire)
+and the board renders that into a seamless loop. The result is saved like an
+upload, in the category the model picked, so you can play, move or delete it.
+
+Set it up in the **generator** plugin's panel: the server's OpenAI-compatible
+base URL, an API key, and a model.
+
+| Server | Base URL | Model, for example |
+|--------|----------|--------------------|
+| LiteLLM | `http://<litellm-host>:4000/v1` | an alias you defined, e.g. `claude-sonnet` |
+| OpenRouter | `https://openrouter.ai/api/v1` | any model on its list |
+| OpenAI | `https://api.openai.com/v1` | `gpt-4.1` |
+| Ollama | `http://<ollama-host>:11434/v1` | `qwen3:14b` (no key) |
+
+Bigger models draw noticeably better; small local ones work but keep it simple.
+One GIF is one request of a few thousand tokens and takes 5 to 30 seconds. The
+board makes the request itself, so it needs a network path to that server (if
+the board lives on an isolated IoT network, allow it through to just that host
+and port).

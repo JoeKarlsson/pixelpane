@@ -66,6 +66,13 @@ async function init() {
   $('#nicon').replaceChildren(...S.icons.map(i => new Option(i, i)));
   $('#addsel').replaceChildren(...scenes.map(s => new Option(s, s)));
   $('#gtheme').replaceChildren(new Option('all year', 'all'), ...Object.entries(S.theme_names).map(([k, v]) => new Option(v, k)));
+  const keep = $('#ggentheme').value;
+  $('#ggentheme').replaceChildren(new Option('all year', 'all'), ...Object.entries(S.theme_names).map(([k, v]) => new Option(v, k)));
+  if (keep) $('#ggentheme').value = keep;
+  const gen = S.plugins.find(p => p.name === 'generator');
+  const ready = gen && gen.enabled && gen.settings.base_url && gen.settings.model;
+  ['#gprompt', '#ggentheme', '#ggo', '#gsurprise'].forEach(s => $(s).disabled = !ready || generating);
+  $('#gsetup').hidden = !!ready;
   drawRot(); drawDwell(); drawPlugins(); loadGifs(); pollNow();
 }
 
@@ -319,6 +326,47 @@ $('#grename').onclick = () => {
   };
   dlg.showModal();
 };
+
+// Make a GIF from a prompt: the board asks the model, renders the loop and saves it.
+let generating = false, lastPrompt = null, made = null;
+async function generateGif(prompt) {
+  if (generating) return;
+  generating = true; lastPrompt = prompt;
+  ['#gprompt', '#ggentheme', '#ggo', '#gsurprise'].forEach(s => $(s).disabled = true);
+  const stat = $('#ggenstat'), began = Date.now();
+  const tick = setInterval(() => { stat.textContent = `${prompt ? 'Drawing' : 'Dreaming one up'}… ${Math.round((Date.now() - began) / 1000)}s`; }, 500);
+  try {
+    const {job} = await api('/api/gifs/generate', 'POST', {prompt, theme: $('#ggentheme').value});
+    let j;
+    do { await new Promise(r => setTimeout(r, 1000)); j = await api('/api/gifs/generate/' + job); } while (j.state === 'working');
+    if (j.state !== 'done') throw new Error(j.error || 'failed');
+    made = j;
+    $('#gresimg').src = '/gif/' + encodeURI(j.id);
+    $('#grestitle').textContent = j.title;
+    $('#gresmeta').textContent = `${j.category} · ${j.frames} frames · saved as ${j.name}`;
+    $('#gresult').hidden = false;
+    stat.textContent = '';
+    loadGifs();
+  } catch (e) {
+    stat.textContent = 'Could not make it: ' + e.message;
+  } finally {
+    clearInterval(tick); generating = false;
+    ['#gprompt', '#ggentheme', '#ggo', '#gsurprise'].forEach(s => $(s).disabled = false);
+  }
+}
+$('#ggo').onclick = () => {
+  const p = $('#gprompt').value.trim();
+  if (!p) return toast('Type an idea, or press Surprise me');
+  generateGif(p);
+};
+$('#gprompt').onkeydown = e => { if (e.key === 'Enter') $('#ggo').click(); };
+$('#gsurprise').onclick = () => generateGif('');
+$('#gsetup').onclick = () => openPlugin('generator');
+$('#gresplay').onclick = () => made && api('/api/play', 'POST', {scene: 'gif', params: {id: made.id}}).then(() => toast('Up next'));
+$('#gresagain').onclick = () => generateGif(lastPrompt || '');
+$('#gresdel').onclick = () => made && api('/api/gifs/' + encodeURI(made.id), 'DELETE').then(() => {
+  toast('Deleted ' + made.name); made = null; $('#gresult').hidden = true; loadGifs();
+});
 
 function confirmDelete(g) { api('/api/gifs/' + encodeURI(g.id), 'DELETE').then(() => { toast('Deleted ' + g.name); loadGifs(); }); }
 

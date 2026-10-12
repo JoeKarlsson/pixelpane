@@ -16,8 +16,13 @@ and the project uses [semantic versioning](https://semver.org/).
   move; also through the API. Moves are saved on the board, so deploys keep them.
 - The live preview plays at the panel's real speed: the board streams each frame
   to the page (`/api/frames`) instead of the page fetching a snapshot a second.
+- Make GIFs from a text prompt (or "Surprise me") with any OpenAI-compatible
+  chat model: the model describes an animation and the board renders a seamless
+  loop into the library. Set up in the new generator plugin.
 
 ### Changed
+- In select mode, click GIFs to pick or unpick them, shift-click for a range,
+  and clear the selection; "Select page" becomes "Unselect page".
 - The homelab dashboard skips its Plex page while nobody is streaming.
 
 ### Fixed

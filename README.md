@@ -42,6 +42,9 @@ What it shows, panel's-eye view:
 - **A web control page** with a live preview, a "now playing" view that follows
   the playlist, a playlist editor, GIF library
   (upload converts anything to 32x32) and plugin switches.
+- **GIFs from a prompt.** Type "a cat chasing a laser dot" (or press Surprise
+  me) and a chat model on any OpenAI-compatible server (LiteLLM, OpenRouter,
+  OpenAI, Ollama) designs a looping animation that joins your library.
 - **An HTTP API** for notifications, modes (ON AIR, messages) and data.
 - **Home Assistant ready**: a light entity, a feed automation and notification
   examples in [docs/HOME_ASSISTANT.md](docs/HOME_ASSISTANT.md).
@@ -109,6 +112,7 @@ pixelpane-library/
 | seasonal | a scene per season and holiday, plus your birthday | |
 | generative | fire, plasma, life, matrix_rain, starfield | |
 | sky | moon (phase, named full moons, supermoons, blue moons), zodiac | |
+| generator | no scenes: settings for making GIFs from a prompt ([docs/GIFS.md](docs/GIFS.md#make-one-from-a-prompt)) | |
 
 Switch plugins on or off on the control page, or in the config. Writing your
 own takes one Python file: see **[docs/PLUGINS.md](docs/PLUGINS.md)**.
@@ -154,6 +158,7 @@ LAN only, no authentication: keep the board on your home network.
 | `GET/PUT /api/config` | any config key, merged | playlist, timings, plugin settings |
 | `GET /api/gifs`, `POST /api/gifs`, `DELETE /api/gifs/<id>` | multipart `file`, `theme` | the GIF library |
 | `PATCH /api/gifs/<id>`, `POST /api/gifs/classify` | `{"category": "arcade", "theme": "all"}`, `{"ids": [...], ...}` or `{"reset": true}` | move GIFs between categories and themes ([docs/GIFS.md](docs/GIFS.md)) |
+| `POST /api/gifs/generate`, `GET /api/gifs/generate/<job>` | `{"prompt": "a cat chasing a laser dot", "theme": "all"}` | make a GIF from a prompt; poll the job |
 | `POST /api/categories/rename` | `{"from": "retro", "to": "arcade"}` | rename or merge a category |
 | `GET /preview.png?scale=10` | | the current frame |
 | `GET /api/frames` | | a stream of every frame as the panel shows it (the page's live preview) |

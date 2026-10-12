@@ -86,6 +86,27 @@
       <button id="gmove" class="on" data-testid="bulk-move">Move…</button>
       <small class="hint">Shift-click picks a range</small>
     </div>
+    <div class="row gen" data-testid="generate-row">
+      <label for="gprompt">Make one</label>
+      <input id="gprompt" maxlength="500" placeholder="a cat chasing a laser dot" autocomplete="off" data-testid="generate-prompt">
+      <select id="ggentheme" aria-label="Theme for the new GIF" data-testid="generate-theme"></select>
+      <button id="ggo" class="on" data-testid="generate">Generate</button>
+      <button id="gsurprise" data-testid="surprise">Surprise me</button>
+      <button id="gsetup" hidden data-testid="generate-setup">Set up the generator</button>
+      <span class="stat" id="ggenstat" role="status" data-testid="generate-status"></span>
+    </div>
+    <div class="gen-result" id="gresult" hidden data-testid="generate-result">
+      <img id="gresimg" alt="the new GIF">
+      <div>
+        <div class="title" id="grestitle"></div>
+        <div class="stat" id="gresmeta"></div>
+        <div class="row">
+          <button id="gresplay" class="on">▶ Play now</button>
+          <button id="gresagain">Try again</button>
+          <button id="gresdel">🗑 Delete</button>
+        </div>
+      </div>
+    </div>
     <div class="row" style="margin-bottom:10px">
       <label for="gtheme">Upload to</label><select id="gtheme" data-testid="upload-theme"></select>
       <input type="file" id="gfile" accept="image/*" multiple>

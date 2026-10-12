@@ -120,6 +120,13 @@ code { font-family: var(--mono); color: var(--teal); }
 .gif.picked::before { content: "✓"; border-color: var(--peach); background: var(--peach); color: #0a0a0a;
   font: 700 13px/18px var(--mono); text-align: center; }
 .bulk .hint { color: var(--dim); }
+.gen { margin-bottom: 10px; }
+.gen #gprompt { flex: 1 1 240px; min-width: 0; }
+.gen-result { display: flex; gap: 14px; align-items: center; margin-bottom: 12px; padding: 10px;
+  border: 1px solid var(--peach); border-radius: 8px; background: rgba(253,174,132,.06); }
+.gen-result img { width: 96px; height: 96px; image-rendering: pixelated; background: #000; border-radius: 4px; }
+.gen-result .title { color: var(--bright); font-weight: 600; }
+.gen-result .row { margin-top: 6px; gap: 6px; }
 .gif .cat { display: inline-block; margin-top: 4px; font-size: 10px; color: var(--dim); font-family: var(--mono); }
 .gif .cat.moved { color: var(--peach); }
 .bulk { margin-bottom: 10px; padding: 8px 10px; border: 1px dashed var(--peach); border-radius: 8px; }

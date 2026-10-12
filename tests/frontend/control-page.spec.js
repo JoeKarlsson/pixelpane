@@ -1,4 +1,5 @@
 // End-to-end tests of the control page against the real controller (fake panel).
+const http = require('http');
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 
@@ -412,5 +413,48 @@ test('footer links to the project on GitHub', async ({ page }) => {
     ['Bluesky', 'https://bsky.app/profile/joekarlsson.com'], ['LinkedIn', 'https://www.linkedin.com/in/joekarlsson/'],
     ['YouTube', 'https://www.youtube.com/joekarlsson']]) {
     await expect(maker.getByRole('link', { name })).toHaveAttribute('href', href);
+  }
+});
+
+test('a GIF made from a prompt lands in the library', async ({ page, request }) => {
+  // a stand-in for the model server: always designs the same little animation
+  const spec = { name: 'Bouncy Ball', category: 'toys', seconds: 1, fps: 8, background: '#000000',
+    layers: [{ type: 'circle', x: 16, y: 16, r: 5, color: '#ff4060', motion: { bob: 4 } }] };
+  const stub = http.createServer((req, res) => {
+    req.resume();
+    req.on('end', () => {
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(spec) } }] }));
+    });
+  });
+  await new Promise((r) => stub.listen(0, '127.0.0.1', r));
+  try {
+    await expect(page.getByTestId('generate-setup')).toBeVisible();          // not set up yet
+    await expect(page.getByTestId('generate')).toBeDisabled();
+    await request.put('/api/config', { data: { plugins: { generator: {
+      base_url: `http://127.0.0.1:${stub.address().port}/v1`, model: 'stub' } } } });
+    await page.reload();
+    await expect(page.getByTestId('generate')).toBeEnabled();
+    await page.getByTestId('generate').click();
+    await expect(page.locator('#toast')).toContainText('Type an idea');
+    await page.getByTestId('generate-prompt').fill('a bouncy ball');
+    await page.getByTestId('generate-theme').selectOption('winter');
+    await page.getByTestId('generate').click();
+    const result = page.getByTestId('generate-result');
+    await expect(result).toBeVisible({ timeout: 15_000 });
+    await expect(result).toContainText('Bouncy Ball');
+    await expect(result).toContainText('toys');
+    await expect.poll(() => result.locator('img').evaluate((img) => img.naturalWidth)).toBe(32);
+    const gifs = await (await request.get('/api/gifs')).json();
+    const mine = gifs.find((g) => g.name === 'toys-bouncy-ball.gif');
+    expect(mine).toMatchObject({ theme: 'winter', category: 'toys', upload: true });
+    await result.getByRole('button', { name: '▶ Play now' }).click();
+    await sceneIs(request, /^gif: toys-bouncy-ball\.gif$/);
+    await result.getByRole('button', { name: '🗑 Delete' }).click();
+    await expect(result).toBeHidden();
+    expect((await (await request.get('/api/gifs')).json()).some((g) => g.name === 'toys-bouncy-ball.gif')).toBe(false);
+  } finally {
+    await request.put('/api/config', { data: { plugins: { generator: { base_url: '', model: '' } } } });
+    stub.close();
   }
 });

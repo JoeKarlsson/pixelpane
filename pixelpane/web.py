@@ -11,10 +11,11 @@ from werkzeug.utils import secure_filename
 import hmac
 import os
 
-from . import gfx, plugin, schema, seasons
+from . import generate, gfx, plugin, schema, seasons
 from .display import compose, panel_size
 from .plugin import SCENES
 from .state import VAR, convert_upload
+from .state import now as local_now
 
 INDEX = Path(__file__).with_name("index.html")
 PINNABLE = {"on_air", "message", "clock", "weather", "now_playing", "calendar", "fire", "plasma",
@@ -228,6 +229,50 @@ def create_app(state, gifs, health):
             abort(400, str(e))
         n = gifs.classify(ids, category, theme, reset=bool(b.get("reset")))
         return jsonify(ok=True, changed=n)
+
+    jobs = generate.Jobs()
+
+    @app.post("/api/gifs/generate")
+    def api_generate():
+        """Start making a GIF from {"prompt": "...", "theme": "all"}; an empty prompt lets
+        the model pick an idea for the season. Poll GET /api/gifs/generate/<job>."""
+        b = body()
+        prompt = str(b.get("prompt") or "")[:500]
+        try:
+            theme = schema.theme_name(b.get("theme") or "all")
+        except schema.ConfigError as e:
+            abort(400, str(e))
+        settings = plugin.settings(state.config, "generator")
+        if not settings.get("enabled", True):
+            abort(400, "the generator plugin is off")
+
+        def work():
+            spec = generate.ask(settings, prompt, generate.season_words(local_now().date()))
+            frames = generate.render(spec)
+            try:
+                category = schema.category_name(spec.get("category") or "generated")
+            except schema.ConfigError:
+                category = "generated"
+            name = generate.slug(spec.get("name") or prompt)
+            dest = VAR / "uploads" / theme / f"{category}-{name}.gif"
+            n = 1
+            while dest.exists():
+                dest = dest.with_name(f"{category}-{name}-{n}.gif")
+                n += 1
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            imgs = [f for f, _ in frames]
+            imgs[0].save(dest, save_all=True, append_images=imgs[1:], loop=0,
+                         duration=[int(d * 1000) for _, d in frames], disposal=1)
+            return {"id": gifs.gif_id(dest), "name": dest.name, "category": category,
+                    "title": str(spec.get("name") or name)[:60], "frames": len(imgs)}
+        return jsonify(job=jobs.start(work))
+
+    @app.get("/api/gifs/generate/<job>")
+    def api_generate_job(job):
+        j = jobs.get(job)
+        if not j:
+            abort(404)
+        return jsonify(j)
 
     @app.post("/api/categories/rename")
     def api_rename_category():
