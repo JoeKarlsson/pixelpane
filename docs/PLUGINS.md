@@ -74,7 +74,7 @@ Scenes must not block or sleep; the player does the timing.
 |----------|---------|
 | `data` | `{key: minutes}`: keys accepted at `POST /api/data/<key>`, and how long each stays fresh. Keys of disabled plugins are refused |
 | `defaults` | your settings; users override them under `config["plugins"][name]`. `enabled` is added for you. A setting without a form field must keep its default's type (number, text, list...) |
-| `about`, `fields` | a paragraph and a settings form for the control page; see the built-in plugins |
+| `about`, `fields` | a paragraph and a settings form for the control page (see [Settings forms](#settings-forms)) |
 | `version` | your plugin's own version, shown on the control page |
 | `api` | the plugin API you wrote it for (`pixelpane.plugin.API_VERSION`, now 1). A board with an older API refuses the plugin with a clear message instead of failing later |
 
@@ -110,6 +110,36 @@ not silently swapped in. Load errors show on the control page and in Settings, S
 | `animated_icon(img, name, xy, t, level)` | the animated 8x8 icons (bell rings, washer spins, ...) |
 | `gauge(img, y, level, t, color)` | a bar that fills to `level` (0-1) |
 | `Particles`, `Fireworks`, `palette` | effects used by the seasonal and generative plugins |
+
+## Settings forms
+
+`fields` turns your `defaults` into a form in the plugin's dialog on the control page.
+Each field is a dict with `key` (dotted for nested settings, like `"birthday.month"`),
+`label`, `type` and optional `help`. The board validates every save against the field,
+so a bad value is refused with a message instead of reaching your scene.
+
+| `type` | Shows | Extra keys | Saved as |
+|--------|-------|------------|----------|
+| `text` (the default) | a text box | `placeholder` | a string |
+| `number` | a number box; empty means "use the default" | `min`, `max`, `step` | a number or `null` |
+| `range` | a slider | `min`, `max`, `step` | a number |
+| `toggle` | a checkbox | `text` | `true` or `false` |
+| `select` | a drop-down | `options`: `[{"label": ..., "value": ...}]` | one of the values |
+| `choices` | a checkbox per option | `options`: a list of strings | a list of the ticked ones |
+| `list` | a text area, one item per line | `placeholder` | a list of strings |
+| `color` | a color picker | | `"#rrggbb"` |
+| `monthday` | month, day and name | | `{"month", "day", "name"}` or `null` |
+| `secret` | a password box; the API never sends the value back | `placeholder` | a string |
+
+For the countdown example above:
+
+```python
+fields=[
+    {"key": "label", "label": "Label", "type": "text", "help": "Scrolls under the number"},
+    {"key": "date", "label": "Date", "type": "text", "placeholder": "2027-04-13"},
+    {"key": "color", "label": "Color", "type": "color"},
+]
+```
 
 ## Shipping a plugin as a package
 

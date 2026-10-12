@@ -6,14 +6,14 @@ reports especially) are all welcome.
 ## Setup
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install flask pillow numpy pyflakes
+python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 cd tests/frontend && npm install && cd ../..
 ```
 
 Run the controller without a panel:
 
 ```bash
-PIXELPANE_FAKE=1 PIXELPANE_HOME=. PIXELPANE_STATE=/tmp/gb .venv/bin/python -m pixelpane.app --port 8080
+PIXELPANE_FAKE=1 PIXELPANE_HOME=. PIXELPANE_STATE=/tmp/pixelpane .venv/bin/python -m pixelpane.app --port 8080
 ```
 
 ## Before a pull request

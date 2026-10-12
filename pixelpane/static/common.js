@@ -36,10 +36,16 @@ const toast = t => {
 function el(tag, props = {}, ...kids) {
   const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e;
 }
-function btn(label, fn, cls, testid) {
+// label: what the button shows; name: what it's called for screen readers and on
+// hover, for buttons that show only a symbol (↑, ✕, 🗑).
+function btn(label, fn, cls, testid, name) {
   const b = document.createElement('button'); b.textContent = label; b.onclick = fn;
-  if (cls) b.className = cls; if (testid) b.dataset.testid = testid; return b;
+  if (cls) b.className = cls; if (testid) b.dataset.testid = testid;
+  if (name) { b.setAttribute('aria-label', name); b.title = name; }
+  return b;
 }
+// A click whose API call fails says why instead of failing silently.
+window.addEventListener('unhandledrejection', e => toast(e.reason?.message || 'Something went wrong'));
 const ago = s => s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)}m ago` : `${Math.round(s / 3600)}h ago`;
 // "until" from the API is local wall time, "2026-10-16T07:00": show it as 7:00 AM
 const clockTime = iso => iso ? new Date(iso).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}) : '';

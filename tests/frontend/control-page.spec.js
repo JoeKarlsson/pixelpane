@@ -86,7 +86,7 @@ test('GIFs can be moved to another category or theme, one at a time or in bulk',
   await page.getByTestId('select-mode').click();
   await expect(page.getByTestId('bulk-bar')).toBeVisible();
   await expect(page.getByTestId('bulk-move')).toBeDisabled();
-  await expect(cards.first().getByRole('button', { name: '▶' })).toBeHidden();   // no stray plays
+  await expect(cards.first().getByRole('button', { name: 'Play next' })).toBeHidden();   // no stray plays
   const count = page.getByTestId('selected-count');
   // click picks a card, a second click unpicks it
   await cards.nth(0).click();
@@ -127,7 +127,7 @@ test('GIFs can be moved to another category or theme, one at a time or in bulk',
   await expect(cards).toHaveCount(n);
   await page.getByTestId('select-mode').click();   // now reads Done
   await expect(page.getByTestId('bulk-bar')).toBeHidden();
-  await expect(cards.first().getByRole('button', { name: '▶' })).toBeVisible();
+  await expect(cards.first().getByRole('button', { name: 'Play next' })).toBeVisible();
 });
 
 test('every Play now button plays its scene', async ({ page, request }) => {
@@ -211,11 +211,13 @@ test('playlist editor adds, reorders, removes and saves', async ({ page, request
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(rows).toHaveCount(original.length + 1);
   await expect(rows.last()).toContainText('gif:space');
-  await rows.last().getByRole('button', { name: '↑' }).click();
+  await expect(page.getByTestId('playlist-unsaved')).toBeVisible();
+  await rows.last().getByRole('button', { name: 'Move up' }).click();
   await expect(rows.nth(original.length - 1)).toContainText('gif:space');
-  await rows.first().getByRole('button', { name: '✕' }).click();
+  await rows.first().getByRole('button', { name: 'Remove' }).click();
   await page.getByRole('button', { name: 'Save playlist' }).click();
   await expect(page.locator('#toast')).toContainText('Playlist saved');
+  await expect(page.getByTestId('playlist-unsaved')).toBeHidden();
   const want = [...original.slice(1, -1), 'gif:space', original[original.length - 1]];
   await expect.poll(async () => (await config(request)).rotation).toEqual(want);
   await request.put('/api/config', { data: { rotation: original } });
@@ -256,7 +258,7 @@ test('GIF library filters by category and theme, hides and plays', async ({ page
   await cards.first().getByRole('button', { name: 'show' }).click();
   await expect.poll(async () => (await config(request)).hidden_gifs).not.toContain(`repo/${name}.gif`);
 
-  await cards.first().getByRole('button', { name: '▶' }).click();
+  await cards.first().getByRole('button', { name: 'Play next' }).click();
   await sceneIs(request, new RegExp(`^gif: ${name}\\.gif$`));
 });
 
@@ -273,7 +275,9 @@ test('upload to a theme, then delete it', async ({ page, request }) => {
   const mine = page.getByTestId('gif-card').filter({ hasText: 'test-sprite' });
   await expect(mine).toHaveCount(1);
   await expect.poll(() => mine.locator('img').evaluate((img) => img.naturalWidth)).toBe(32); // converted
-  await mine.getByRole('button', { name: '🗑' }).click();
+  await mine.getByRole('button', { name: 'Delete' }).click();   // the first click only arms it
+  await expect(mine.getByRole('button', { name: 'Confirm delete' })).toBeVisible();
+  await mine.getByRole('button', { name: 'Confirm delete' }).click();
   await expect(page.locator('#toast')).toContainText('Deleted');
   await expect(mine).toHaveCount(0);
 });

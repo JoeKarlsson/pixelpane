@@ -56,7 +56,7 @@ What it shows, panel's-eye view:
 ## Build one
 
 You need a Raspberry Pi, an Adafruit RGB Matrix HAT (or Bonnet), a 32x32 HUB75
-panel, a 5 V 4 A power supply and, for the finished look, a shadow box with a
+panel, a 5 V 4 A supply for the panel plus the Pi's own supply and, for the finished look, a shadow box with a
 3D-printed light grid behind a two-way mirror. The full parts list, diagrams and
 assembly steps are in **[docs/HARDWARE.md](docs/HARDWARE.md)**.
 
@@ -193,7 +193,7 @@ cat, air.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install flask pillow numpy
-PIXELPANE_FAKE=1 PIXELPANE_HOME=. PIXELPANE_STATE=/tmp/gb .venv/bin/python -m pixelpane.app --port 8080
+PIXELPANE_FAKE=1 PIXELPANE_HOME=. PIXELPANE_STATE=/tmp/pixelpane .venv/bin/python -m pixelpane.app --port 8080
 .venv/bin/python -m pixelpane.preview sheet /tmp/scenes.png halloween clock homelab   # look at scenes
 PYTHON=.venv/bin/python tools/test.sh   # backend unittest + Playwright tests of the page
 ```

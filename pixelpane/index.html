@@ -44,7 +44,7 @@
     <h2>Modes (stay on until cleared)</h2>
     <div class="row">
       <button data-pin="on_air">On Air</button>
-      <input id="msg" placeholder="Message to show" style="flex:1;min-width:160px">
+      <input id="msg" placeholder="Message to show" aria-label="Message to show" style="flex:1;min-width:160px">
       <button id="pinmsg">Show message</button>
       <label>for <input id="mins" type="number" min="0" placeholder="∞" style="width:64px"> min</label>
       <button id="unpin">Clear</button>
@@ -54,9 +54,9 @@
   <section>
     <h2>Send a notification</h2>
     <div class="row">
-      <input id="ntext" placeholder="Laundry is done" style="flex:1;min-width:160px">
-      <select id="nicon"></select>
-      <input id="ncolor" type="color" value="#ffffff">
+      <input id="ntext" placeholder="Laundry is done" aria-label="Notification text" style="flex:1;min-width:160px">
+      <select id="nicon" aria-label="Icon"></select>
+      <input id="ncolor" type="color" value="#ffffff" aria-label="Color">
       <label><input id="nflash" type="checkbox"> flash</label>
       <button id="nsend">Send</button>
     </div>
@@ -65,8 +65,9 @@
   <section>
     <h2>Playlist</h2>
     <ul class="rot" id="rot"></ul>
-    <div class="row" style="margin-top:8px"><select id="addsel"></select><button id="add">Add</button>
-      <button id="saverot" class="on">Save playlist</button></div>
+    <div class="row" style="margin-top:8px"><select id="addsel" aria-label="Scene to add"></select><button id="add">Add</button>
+      <button id="saverot" class="on">Save playlist</button>
+      <span class="stat warn" id="rotdirty" hidden data-testid="playlist-unsaved">unsaved changes</span></div>
     <p class="stat">Seconds per scene, quiet hours and time-of-day playlists are in <a href="/settings">Settings</a>.</p>
   </section>
 
@@ -202,7 +203,7 @@
     <a href="https://www.youtube.com/joekarlsson" target="_blank" rel="noopener">YouTube</a>
   </footer>
 </main>
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 <script src="/static/common.js"></script>
 <script src="/static/app.js"></script>
 </body>

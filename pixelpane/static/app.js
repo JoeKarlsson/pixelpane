@@ -86,6 +86,10 @@ function fieldInput(f, value) {
     sel.value = value ?? f.options[0].value;
     return [sel, () => sel.value];
   }
+  if (f.type === 'color') {
+    const inp = el('input', {type: 'color', id, value: value || '#ffffff'});
+    return [inp, () => inp.value];
+  }
   if (f.type === 'toggle') {
     const box = el('input', {type: 'checkbox', id, checked: value !== false});
     return [el('label', {className: 'toggle'}, box, f.text || 'On'), () => box.checked];
@@ -147,6 +151,8 @@ function drawPlugins() {
   $('#plugins').replaceChildren(...S.plugins.map(p => {
     const row = document.createElement('div'); row.className = 'plugin'; row.dataset.testid = 'plugin-' + p.name;
     row.title = 'Details and settings'; row.onclick = e => { if (!e.target.closest('button')) openPlugin(p.name); };
+    row.tabIndex = 0; row.setAttribute('role', 'button'); row.setAttribute('aria-label', `${p.name} details and settings`);
+    row.onkeydown = e => { if (e.target === row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openPlugin(p.name); } };
     const info = document.createElement('div');
     const name = document.createElement('strong'); name.textContent = p.name;
     const desc = document.createElement('small'); desc.textContent = p.description;
@@ -165,11 +171,15 @@ function drawRot() {
   $('#rot').replaceChildren(...rotation.map((s, i) => {
     const li = document.createElement('li'); li.dataset.index = i;
     const span = document.createElement('span'); span.textContent = `${i+1}. ${s}`; span.style.flex = 1;
-    li.append(span, btn('↑', () => { if (i) { [rotation[i-1], rotation[i]] = [rotation[i], rotation[i-1]]; drawRot(); } }),
-      btn('↓', () => { if (i < rotation.length-1) { [rotation[i+1], rotation[i]] = [rotation[i], rotation[i+1]]; drawRot(); } }),
-      btn('✕', () => { rotation.splice(i, 1); drawRot(); }));
+    li.append(span, btn('↑', () => { if (i) { [rotation[i-1], rotation[i]] = [rotation[i], rotation[i-1]]; drawRot(); } }, '', '', 'Move up'),
+      btn('↓', () => { if (i < rotation.length-1) { [rotation[i+1], rotation[i]] = [rotation[i], rotation[i+1]]; drawRot(); } }, '', '', 'Move down'),
+      btn('✕', () => { rotation.splice(i, 1); drawRot(); }, '', '', 'Remove'));
     return li;
   }));
+  // Edits stay in the page until Save playlist, so say when there are some.
+  const dirty = JSON.stringify(rotation) !== JSON.stringify(C.rotation);
+  $('#saverot').textContent = dirty ? 'Save playlist •' : 'Save playlist';
+  $('#rotdirty').hidden = !dirty;
 }
 
 async function loadGifs() {
@@ -210,10 +220,10 @@ async function loadGifs() {
     cap.style.overflowWrap = 'anywhere'; cap.textContent = g.name.replace(/\.gif$/i, '');
     const img = document.createElement('img'); img.loading = 'lazy'; img.src = '/gif/' + encodeURI(g.id); img.title = g.name;
     const r = document.createElement('div'); r.className = 'row';
-    r.append(btn('▶', () => api('/api/play', 'POST', {scene:'gif', params:{id:g.id}}).then(() => toast('Up next'))),
+    r.append(btn('▶', () => api('/api/play', 'POST', {scene:'gif', params:{id:g.id}}).then(() => toast('Up next')), '', '', 'Play next'),
       btn(g.hidden ? 'show' : 'hide', () => api('/api/gifs/hide', 'POST', {id:g.id, hidden:!g.hidden}).then(loadGifs)),
-      btn('✎', () => openClassify([g]), '', 'classify'));
-    if (g.upload) r.append(btn('🗑', () => confirmDelete(g)));
+      btn('✎', () => openClassify([g]), '', 'classify', 'Move to a category or theme'));
+    if (g.upload) r.append(btn('🗑', e => confirmDelete(g, e.currentTarget), '', 'delete', 'Delete'));
     d.append(img, cap, el('span', {className: 'cat' + (g.moved ? ' moved' : ''),
       textContent: g.category + (g.plays ? ` · ▶${g.plays}` : ''),
       title: g.moved ? `moved here from ${g.default_category}, ${g.default_theme.replace('_', ' ')}` : 'category'}));
@@ -420,7 +430,15 @@ $('#sddiscard').onclick = async () => {
   toast('Discarded'); showDraft(null); loadDrafts();
 };
 
-function confirmDelete(g) { api('/api/gifs/' + encodeURI(g.id), 'DELETE').then(() => { toast('Deleted ' + g.name); loadGifs(); }); }
+// Deleting can't be undone, so the first click arms the button and a second one deletes.
+function confirmDelete(g, b) {
+  if (!b.classList.contains('armed')) {
+    b.classList.add('armed'); b.textContent = 'Delete?'; b.setAttribute('aria-label', 'Confirm delete');
+    setTimeout(() => { b.classList.remove('armed'); b.textContent = '🗑'; b.setAttribute('aria-label', 'Delete'); }, 3000);
+    return;
+  }
+  api('/api/gifs/' + encodeURI(g.id), 'DELETE').then(() => { toast('Deleted ' + g.name); loadGifs(); });
+}
 
 $('#gfilter').onchange = e => { gifFilter = e.target.value; gifPage = 0; loadGifs(); };
 $('#gsize').onchange = () => { gifPage = 0; loadGifs(); };
@@ -458,7 +476,10 @@ $('#nsend').onclick = () => api('/api/notify', 'POST', {text: $('#ntext').value,
   color: $('#ncolor').value, flash: $('#nflash').checked}).then(() => toast('Sent'));
 $('#skip').onclick = () => api('/api/skip', 'POST').then(() => toast('Skipped'));
 $('#add').onclick = () => { rotation.push($('#addsel').value); drawRot(); };
-$('#saverot').onclick = () => api('/api/config', 'PUT', {rotation}).then(c => { C = c; toast('Playlist saved'); });
+$('#saverot').onclick = () => api('/api/config', 'PUT', {rotation}).then(c => { C = c; drawRot(); toast('Playlist saved'); });
+window.addEventListener('beforeunload', e => {
+  if (C.rotation && JSON.stringify(rotation) !== JSON.stringify(C.rotation)) e.preventDefault();
+});
 
 const SOURCE = {playlist: n => `Playlist ${n.index + 1}/${n.length}`, requested: () => 'Requested',
   notification: () => 'Notification', pinned: () => 'Pinned', birthday: () => 'Birthday bonus',

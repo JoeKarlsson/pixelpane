@@ -3,7 +3,7 @@
 The finished board is a shadow box on the wall. From the front you see a dark
 mirror; when it lights up, each LED shows through as a crisp square pixel. Inside
 is a 32x32 LED panel, a 3D-printed light grid, a Raspberry Pi with an LED driver
-HAT, and one power supply.
+HAT, and two power supplies: one for the panel and one for the Pi.
 
 ![Inside the shadow box, from the mirror at the front to the power supply at the back](images/build-layers.svg)
 
@@ -12,9 +12,10 @@ HAT, and one power supply.
 | Part | What to get | Notes |
 |------|-------------|-------|
 | Raspberry Pi | Pi 3 B/B+, Pi 4, Zero 2 W or Pi 5 | Pi 3 is the reference build. 1 GB of RAM is plenty |
-| LED driver | Adafruit RGB Matrix **HAT** (or the smaller **Bonnet**) | Sits on the Pi's 40-pin header and powers the Pi too |
+| LED driver | Adafruit RGB Matrix **HAT** (or the smaller **Bonnet**) | Sits on the Pi's 40-pin header |
 | LED panel | 32x32 RGB **HUB75** panel | Comes in pitches: P4 (128 mm square), P5 (160 mm), P6 (192 mm). Usually ships with a ribbon and a power cable |
-| Power | 5 V, **4 A or more**, barrel plug for the HAT | A 32x32 panel can draw up to about 4 A at full white |
+| Panel power | 5 V, **4 A or more**, barrel plug for the HAT | A 32x32 panel can draw up to about 4 A at full white |
+| Pi power | The Pi's own supply (5.1 V 2.5 A micro-USB for a Pi 3, USB-C for a Pi 4 or 5) | The HAT can feed the Pi, but only through a diode that drops the voltage, so under load the Pi reports under-voltage |
 | SD card | 16 GB or more, A1 class | |
 | Heatsink | Any stick-on Pi heatsink | The LED driver keeps one CPU core busy; a bare Pi 3 runs at 70-75 C |
 | Shadow box | Picture-frame style, at least 50 mm deep inside, sized to the panel | Deep frames from craft stores work |
@@ -32,8 +33,11 @@ HAT, and one power supply.
 2. Connect the 16-pin ribbon from the HAT's output to the panel's **IN**
    connector. The small arrows printed on the panel's back point away from IN.
 3. Screw the panel's power cable (red +5 V, black GND) into the HAT's terminal.
-4. Plug the 5 V supply into the HAT's DC jack. The HAT powers the Pi through the
-   header, so do **not** also power the Pi over USB.
+4. Plug the 5 V panel supply into the HAT's DC jack, and power the Pi from its own
+   supply as usual. The HAT *can* run the Pi from the panel supply, but Adafruit
+   recommends powering it separately: the HAT feeds the Pi through a diode, and on
+   one supply the Pi sees under-voltage whenever the panel draws hard. The diode
+   also stops the two supplies from fighting, so using both is safe.
 
 **Optional flicker fix (Pi 2-4):** solder a short wire between GPIO4 and GPIO18
 on the HAT (Adafruit's "PWM mod"), then set `"hardware_mapping": "adafruit-hat-pwm"`

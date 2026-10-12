@@ -66,7 +66,8 @@ class Plugin:
         about: a paragraph for the control page. fields: how to edit the settings
         there, a list of {key, label, type, help, ...} where type is number, range,
         text, list (one item per line), choices (checkboxes from options),
-        monthday, select, toggle or secret; key may be dotted ("birthday.month").
+        monthday, select, toggle, color (#rrggbb) or secret; key may be dotted
+        ("birthday.month").
         version: your plugin's own version, shown on the page. api: the plugin API
         version it was written for (pixelpane.plugin.API_VERSION)."""
         if api > API_VERSION:

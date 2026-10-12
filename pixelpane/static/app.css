@@ -66,6 +66,11 @@ button:hover { background: #2a2d34; color: var(--peach); }
 button:active { transform: translateY(1px); }
 button.on { background: var(--peach); color: #0a0a0a; font-weight: 600; }
 button.on:hover { background: #fec3a3; color: #0a0a0a; }
+/* clip-path cuts off outlines, so keyboard focus shows as an inset ring instead */
+button:focus-visible, select:focus-visible, input:focus-visible, .navlink:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--teal); }
+.plugin:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+button.armed { background: var(--red); color: #0a0a0a; }
+.stat.warn { color: var(--amber); }
 input[type=checkbox] { clip-path: none; accent-color: var(--peach); }
 input[type=color] { padding: 2px; width: 44px; height: 34px; }
 input[type=range] { width: 100%; padding: 0; background: none; clip-path: none; accent-color: var(--peach); }
@@ -122,12 +127,6 @@ code { font-family: var(--mono); color: var(--teal); }
   font: 700 13px/18px var(--mono); text-align: center; }
 .bulk .hint { color: var(--dim); }
 .gen { margin-bottom: 10px; }
-.gen #gprompt { flex: 1 1 240px; min-width: 0; }
-.gen-result { display: flex; gap: 14px; align-items: center; margin-bottom: 12px; padding: 10px;
-  border: 1px solid var(--peach); border-radius: 8px; background: rgba(253,174,132,.06); }
-.gen-result img { width: 96px; height: 96px; image-rendering: pixelated; background: #000; border-radius: 4px; }
-.gen-result .title { color: var(--bright); font-weight: 600; }
-.gen-result .row { margin-top: 6px; gap: 6px; }
 .gif .cat { display: inline-block; margin-top: 4px; font-size: 10px; color: var(--dim); font-family: var(--mono); }
 .gif .cat.moved { color: var(--peach); }
 .bulk { margin-bottom: 10px; padding: 8px 10px; border: 1px dashed var(--peach); border-radius: 8px; }

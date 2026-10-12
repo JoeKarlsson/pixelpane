@@ -5,6 +5,7 @@ so a typo becomes a clear 400 instead of a scene that breaks later.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from . import plugin, schedule, seasons
@@ -87,6 +88,10 @@ def _field(f: dict, v: Any, what: str) -> Any:
         return v
     if t == "list":
         return _str_list(v, what)
+    if t == "color":
+        if not isinstance(v, str) or not re.fullmatch(r"#[0-9a-fA-F]{6}", v):
+            raise ConfigError(f"{what} must be a color like #ff5fa2")
+        return v.lower()
     if t == "select":
         allowed = [o["value"] for o in f.get("options", [])]
         if v not in allowed:

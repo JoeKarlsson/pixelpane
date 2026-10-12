@@ -39,6 +39,13 @@ class SchemaTest(unittest.TestCase):
         self.bad({"plugins": {"gifs": {"color": "red"}}}, "not a setting")
         self.bad({"plugins": {"nope": {}}}, "unknown plugin")
 
+    def test_color_field(self):
+        f = {"key": "color", "type": "color"}
+        self.assertEqual(schema._field(f, "#FF5FA2", "color"), "#ff5fa2")
+        for v in ("red", "#fff", "ff5fa2", None):
+            with self.assertRaises(schema.ConfigError):
+                schema._field(f, v, "color")
+
     def test_token_and_masking(self):
         self.bad({"api_token": "short"}, "8 characters")
         self.assertEqual(self.ok({"api_token": schema.MASK}), {})          # unchanged on the way back

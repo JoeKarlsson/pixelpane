@@ -24,6 +24,8 @@ and the project uses [semantic versioning](https://semver.org/).
 - With a token set, logs and backups need it too.
 
 ### Added
+- A `color` field type for plugin settings forms, and a table of every field type
+  in docs/PLUGINS.md.
 - A Settings page: a schedule (quiet hours, dimming and time-of-day playlists, by
   day of the week), seconds per scene and data freshness, display hardware, access
   (token and allowed host names), backup and restore, and system status with
@@ -64,6 +66,15 @@ and the project uses [semantic versioning](https://semver.org/).
   your uploads and saved GIFs, a Hidden filter, and three thumbnail sizes.
 
 ### Changed
+- Deleting a GIF takes a second click to confirm.
+- The playlist editor marks unsaved changes, and the browser warns before you
+  leave the page with some.
+- A failed action on the control page shows the board's error in a toast instead
+  of doing nothing.
+- Symbol-only buttons (↑, ↓, ✕, ▶, ✎, 🗑) have names for screen readers, plugin
+  cards open with the keyboard, and keyboard focus is visible on every control.
+- The hardware guide recommends a separate supply for the Pi, as Adafruit does: on
+  the HAT's supply alone the Pi sees under-voltage when the panel draws hard.
 - Seconds per scene moved from the control page to Settings.
 - Settings without a form field must keep their default's type.
 - In select mode, click GIFs to pick or unpick them, shift-click for a range,
