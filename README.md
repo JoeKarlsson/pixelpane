@@ -26,9 +26,9 @@ What it shows, panel's-eye view:
 
 ![Nine of the built-in scenes, animated](docs/images/scenes.gif)
 
-| Control page (dark) | Light | On a phone |
-|---|---|---|
-| ![The control page: live preview, now playing, Play now buttons](docs/images/control-page.png) | ![The control page in light mode](docs/images/control-page-light.png) | ![The control page on a phone](docs/images/control-page-phone.png) |
+| Control page | On a phone |
+|---|---|
+| ![The control page: live preview, now playing, Play now buttons](docs/images/control-page.png) | ![The control page on a phone](docs/images/control-page-phone.png) |
 
 ## What it does
 
@@ -189,6 +189,7 @@ tests/               backend tests and tests/frontend (Playwright)
 - [hzeller/rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix) (GPL-2.0), the LED driver for Pi 2-4, built by the installer.
 - [Adafruit PioMatter](https://github.com/adafruit/Adafruit_Blinka_Raspberry_Pi5_Piomatter), the Pi 5 driver.
 - [Silkscreen](https://github.com/googlefonts/silkscreen) by Jason Kottke for the web page (SIL OFL 1.1).
+- [Inter](https://github.com/rsms/inter) and [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) for the web page (SIL OFL 1.1). The page's look follows [joekarlsson.com](https://www.joekarlsson.com).
 - Fonts from the X11 misc-fixed set (public domain) and [tom-thumb](https://robey.lag.net/2010/01/23/tiny-monospace-font.html) by Robey Pointer (MIT).
 
 ## Name

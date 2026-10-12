@@ -2,16 +2,16 @@
 
     python tools/make-brand.py
 
-The mark is a 15x15 pixel window: a soft frame, four panes in a misty gradient
-(lavender, periwinkle, mint, rose), a glass reflection band and a sparkle.
+The mark is a 15x15 pixel window: a soft frame, four panes in a gradient of
+joekarlsson.com's colors (peach, pink, lavender, teal), a glass reflection band and a sparkle.
 """
 from pathlib import Path
 
 from PIL import Image, ImageDraw
 
 N = 15
-STOPS = [(169, 139, 255), (111, 156, 255), (88, 224, 200), (255, 122, 192)]
-FRAME = (223, 227, 255)
+STOPS = [(253, 174, 132), (249, 168, 212), (196, 181, 253), (139, 203, 200)]  # joekarlsson.com: peach, pink, lavender, teal
+FRAME = (226, 232, 240)
 SPARK = (255, 255, 255)
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -56,7 +56,7 @@ def svg(c, bg=None):
     return "".join(parts) + "</svg>"
 
 
-def raster(c, px, bg=(15, 18, 32, 255), pad=1):
+def raster(c, px, bg=(17, 19, 24, 255), pad=1):
     s = px / (N + 2 * pad)
     img = Image.new("RGBA", (px, px), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     c = cells()
     st = ROOT / "pixelpane" / "static"
     (st / "logo-mark.svg").write_text(svg(c))
-    (st / "favicon.svg").write_text(svg(c, bg="#0f1220"))
+    (st / "favicon.svg").write_text(svg(c, bg="#111318"))
     raster(c, 32).save(st / "favicon-32.png")
     raster(c, 512).resize((180, 180), Image.LANCZOS).convert("RGB").save(st / "apple-touch-icon.png")
     raster(c, 256).save(st / "favicon.ico", sizes=[(16, 16), (32, 32), (48, 48), (64, 64)])
