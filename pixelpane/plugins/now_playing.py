@@ -4,6 +4,7 @@ import logging
 import threading
 import urllib.request
 from collections import OrderedDict
+from urllib.parse import urlsplit
 
 from PIL import Image, ImageDraw
 
@@ -40,11 +41,18 @@ class ArtCache:
 
     @staticmethod
     def _download(url):
-        with urllib.request.urlopen(url, timeout=6) as r:
+        # No redirects: an allowed host must not be able to bounce the board elsewhere.
+        with _NO_REDIRECTS.open(url, timeout=6) as r:
             return r.read(5_000_001)
 
     def allowed(self, url):
-        return isinstance(url, str) and any(url.startswith(h) for h in self.hosts() or [])
+        """Same scheme, host and port as one of the allowed prefixes, and under its path.
+        (A plain startswith would let "http://ha.local:8123" match "http://ha.local:8123.evil.com".)"""
+        if not isinstance(url, str):
+            return False
+        u = _origin(url)
+        return bool(u) and any((a := _origin(h)) and u[:3] == a[:3] and u[3].startswith(a[3])
+                               for h in self.hosts() or [])
 
     def get(self, url):
         """The 32x32 image if ready; otherwise start fetching it and return None."""
@@ -75,6 +83,26 @@ class ArtCache:
             self.images[url] = img
             while len(self.images) > 20:
                 self.images.popitem(last=False)
+
+
+class _Refuse(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None   # urllib then raises HTTPError for the 3xx
+
+
+_NO_REDIRECTS = urllib.request.build_opener(_Refuse)
+_PORTS = {"http": 80, "https": 443}
+
+
+def _origin(url):
+    """(scheme, host, port, path) of an http(s) URL, or None."""
+    try:
+        u = urlsplit(url.strip() if "://" in url else "http://" + url.strip())
+        if u.scheme not in _PORTS or not u.hostname:
+            return None
+        return u.scheme, u.hostname, u.port or _PORTS[u.scheme], u.path or "/"
+    except ValueError:
+        return None
 
 
 @plugin.scene("now_playing")

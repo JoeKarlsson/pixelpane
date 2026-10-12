@@ -221,11 +221,10 @@ test('playlist editor adds, reorders, removes and saves', async ({ page, request
   await request.put('/api/config', { data: { rotation: original } });
 });
 
-test('seconds per scene saves on change', async ({ page, request }) => {
-  const clock = page.locator('#dwell label', { hasText: 'clock' }).locator('input');
-  await clock.fill('7');
-  await clock.dispatchEvent('change');
-  await expect.poll(async () => (await config(request)).dwell.clock).toBe(7);
+test('the header links to settings', async ({ page }) => {
+  await page.getByTestId('settings-link').click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.getByTestId('schedule')).toBeVisible();
 });
 
 test('GIF library filters by category and theme, hides and plays', async ({ page, request }) => {

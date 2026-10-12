@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PixelPane Settings</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1 class="brand"><img src="/static/favicon.svg" alt=""><span class="px">PIXEL</span><span class="pn">settings</span></h1>
+    <div class="row">
+      <span class="pill" id="stat">connecting…</span>
+      <a class="navlink" href="/" data-testid="home-link">← Control page</a>
+    </div>
+  </header>
+  <nav class="toc" aria-label="Sections">
+    <a href="#schedule">Schedule</a><a href="#playback">Playback</a><a href="#display">Display</a>
+    <a href="#access">Access</a><a href="#backup">Backup</a><a href="#system">System</a>
+  </nav>
+
+  <section id="schedule" data-testid="schedule">
+    <h2>Schedule</h2>
+    <p class="stat">Turn the board off at night, dim it in the evening or play a different playlist at certain
+      times. A rule that runs past midnight belongs to the day it starts. Pressing Power on the control page during
+      quiet hours turns the board on until they end.</p>
+    <div class="stat" id="schednow" data-testid="schedule-now" style="margin-bottom:10px"></div>
+    <div class="rules" id="rules"></div>
+    <div class="row" style="margin-top:12px">
+      <select id="preset" aria-label="Rule to add" data-testid="rule-preset">
+        <option value="quiet">Quiet hours (off 23:00 to 07:00)</option>
+        <option value="dim">Dim in the evening (20:00 to 23:00)</option>
+        <option value="weekend">Weekend lie-in (off until 09:00)</option>
+        <option value="playlist">A playlist for certain hours</option>
+        <option value="blank">Empty rule</option>
+      </select>
+      <button id="addrule" data-testid="add-rule">Add rule</button>
+      <button id="saverules" class="on" data-testid="save-schedule">Save schedule</button>
+    </div>
+  </section>
+
+  <section id="playback" data-testid="playback">
+    <h2>Playback</h2>
+    <h2>Seconds per scene</h2>
+    <div class="dwell" id="dwell"></div>
+    <h2 style="margin-top:16px">Data stays fresh for (minutes)</h2>
+    <p class="stat">How long pushed data (POST /api/data/&lt;key&gt;) is shown before a scene treats it as stale. Empty uses the plugin's default.</p>
+    <div class="dwell" id="ttl"></div>
+  </section>
+
+  <section id="display" data-testid="display">
+    <h2>Display hardware</h2>
+    <p class="stat">These take effect after a restart.</p>
+    <div class="form" id="hw"></div>
+    <div class="row" style="margin-top:12px">
+      <button id="savehw" class="on" data-testid="save-display">Save</button>
+      <button id="restart2" data-testid="restart-display">Save and restart</button>
+    </div>
+  </section>
+
+  <section id="access" data-testid="access">
+    <h2>Access</h2>
+    <div class="form">
+      <div class="field">
+        <label for="token">Token for changes</label>
+        <input id="token" type="password" autocomplete="new-password" placeholder="at least 8 characters" data-testid="token-input">
+        <small id="tokstate"></small>
+        <div class="row"><button id="settoken" data-testid="set-token">Set token</button>
+          <button id="cleartoken" data-testid="clear-token">Turn off</button></div>
+      </div>
+      <div class="field">
+        <label for="hosts">Allowed host names</label>
+        <textarea id="hosts" rows="4" placeholder="pixelpane.example.com" data-testid="allowed-hosts"></textarea>
+        <small>The board only answers to its IP addresses and its own names (<span id="ownnames"></span>).
+          Add any other name you open it by, like a reverse proxy's. This blocks DNS rebinding attacks.</small>
+        <div class="row"><button id="savehosts" data-testid="save-hosts">Save names</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="backup" data-testid="backup">
+    <h2>Backup and restore</h2>
+    <p class="stat">Download your settings (playlist, schedule, timings, plugin settings, GIF categories) as a file.
+      Secrets like API keys and the token stay on the board and are kept when you restore.</p>
+    <div class="row">
+      <button id="download" class="on" data-testid="download-backup">Download settings</button>
+      <label for="restorefile">Restore from</label><input type="file" id="restorefile" accept="application/json,.json" data-testid="restore-file">
+      <button id="restore" data-testid="restore">Restore</button>
+    </div>
+  </section>
+
+  <section id="system" data-testid="system">
+    <h2>System</h2>
+    <dl class="facts" id="facts"></dl>
+    <div id="problems" class="errors" hidden data-testid="problems"></div>
+    <div class="row">
+      <button id="restart" data-testid="restart">Restart PixelPane</button>
+      <button id="loadlogs" data-testid="load-logs">Show recent log</button>
+      <label><input type="checkbox" id="onlyproblems"> warnings and errors only</label>
+    </div>
+    <pre class="logs" id="logs" hidden data-testid="logs"></pre>
+  </section>
+
+  <dialog id="tokdlg" data-testid="token-dialog">
+    <h3>Token needed</h3>
+    <p class="about">This board asks for a token before it accepts changes. It's the <code>api_token</code> in its config.</p>
+    <input id="tokinput" type="password" autocomplete="off" placeholder="Token" style="width:100%">
+    <div class="foot"><button id="tokcancel">Cancel</button><button id="toksave" class="on">Use token</button></div>
+  </dialog>
+</main>
+<div id="toast"></div>
+<script src="/static/common.js"></script>
+<script src="/static/settings.js"></script>
+</body>
+</html>

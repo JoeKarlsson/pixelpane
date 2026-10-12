@@ -33,7 +33,7 @@ def notify(ctx, secs, text="", icon="bell", color="#ffffff", flash=False, sub=""
         yield img, 0.1
 
 
-@plugin.scene("on_air", "mode")
+@plugin.scene("on_air", "mode", params={"text": "text"})
 def on_air(ctx, secs, text="ON AIR"):
     words = str(text).upper().split(maxsplit=1) + [""]
     for i, t in ticks(secs, 10):
@@ -46,7 +46,7 @@ def on_air(ctx, secs, text="ON AIR"):
         yield img, 0.1
 
 
-@plugin.scene("message", "mode")
+@plugin.scene("message", "mode", params={"text": "text", "color": "color"})
 def message(ctx, secs, text="HELLO", color="#ffcc00"):
     msg = str(text).upper()
     col = gfx.hex_color(color)

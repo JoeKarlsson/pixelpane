@@ -10,8 +10,9 @@
 #   PIXELPANE_TZ=America/Chicago                (optional, passed to install.sh)
 #   PIXELPANE_WIFI_COUNTRY=US                   (optional, passed to install.sh)
 #   PIXELPANE_HOSTNAME=pixelpane                (optional, passed to install.sh)
-# PIXELPANE_LIBRARY (default ../pixelpane-library) may hold gifs/ and
-# deploy.env; its gifs/ replaces this repo's (empty) gifs/ folder on the Pi.
+# PIXELPANE_LIBRARY (default ../pixelpane-library) may hold gifs/, plugins/ and
+# deploy.env; its gifs/ replaces this repo's (empty) gifs/ folder on the Pi and its
+# plugins/*.py become the board's plugins (in /etc/pixelpane/plugins).
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -29,6 +30,10 @@ COPYFILE_DISABLE=1 tar --no-xattrs -C "$REPO" --exclude .git --exclude '*.nmconn
 if [ -d "$LIBRARY/gifs" ]; then
   echo "GIF library: $LIBRARY/gifs"
   COPYFILE_DISABLE=1 tar --no-xattrs -C "$LIBRARY" -czf - gifs | "${SSH[@]}" "$HOST" "tar -xzf - -C $STAGE"
+fi
+if [ -d "$LIBRARY/plugins" ]; then
+  echo "plugins: $LIBRARY/plugins"
+  COPYFILE_DISABLE=1 tar --no-xattrs -C "$LIBRARY" --exclude __pycache__ -czf - plugins | "${SSH[@]}" "$HOST" "tar -xzf - -C $STAGE"
 fi
 printf 'PIXELPANE_TZ=%q\nPIXELPANE_WIFI_COUNTRY=%q\nPIXELPANE_HOSTNAME=%q\n' \
     "${PIXELPANE_TZ:-}" "${PIXELPANE_WIFI_COUNTRY:-}" "${PIXELPANE_HOSTNAME:-}" \

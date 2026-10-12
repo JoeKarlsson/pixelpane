@@ -124,6 +124,107 @@ class UserPluginTest(unittest.TestCase):
         self.assertEqual((name, len(frames)), ("hello", 10))
 
 
+class PluginSystemTest(unittest.TestCase):
+    def setUp(self):
+        support.reset()
+        self.dir = support.ROOT / "system-plugins"
+        self.dir.mkdir(exist_ok=True)
+        plugin.ERRORS.clear()
+
+    def tearDown(self):
+        for f in self.dir.glob("*.py"):
+            f.unlink()
+        for name in ("fancy", "flaky"):
+            PLUGINS.pop(name, None)
+        for name in ("fancy", "sparkle"):
+            SCENES.pop(name, None)
+            plugin.PICKERS.pop(name, None)
+
+    def test_collisions_and_newer_api_are_refused_cleanly(self):
+        (self.dir / "a_clock.py").write_text("from pixelpane.plugin import Plugin\nPlugin('clock')\n")
+        (self.dir / "b_steal.py").write_text(textwrap.dedent('''
+            from pixelpane.plugin import Plugin
+            p = Plugin("fancy")
+            @p.scene("sparkle")
+            def sparkle(ctx, secs):
+                yield from ()
+            @p.scene("weather")   # taken by the weather plugin
+            def mine(ctx, secs):
+                yield from ()
+        '''))
+        (self.dir / "c_future.py").write_text("from pixelpane.plugin import Plugin\nPlugin('flaky', api=99)\n")
+        with self.assertLogs("pixelpane.plugin", level="ERROR"):
+            plugin.load(user_dir=self.dir, entry_points=False)
+        self.assertEqual(PLUGINS["clock"].source, "built-in")
+        self.assertEqual(SCENES["weather"].plugin, "weather")
+        self.assertNotIn("fancy", PLUGINS)        # half-registered plugin is rolled back
+        self.assertNotIn("sparkle", SCENES)
+        self.assertNotIn("flaky", PLUGINS)
+        self.assertEqual([e["source"] for e in plugin.ERRORS], ["file a_clock.py", "file b_steal.py", "file c_future.py"])
+        self.assertIn("plugin API 99", plugin.ERRORS[2]["error"])
+
+    def test_declared_pinning_params_and_pickers(self):
+        self.assertTrue(plugin.pinnable("clock"))
+        self.assertTrue(plugin.pinnable("seasonal"))
+        self.assertTrue(plugin.pinnable("moon"))
+        self.assertFalse(plugin.pinnable("gif"))
+        self.assertFalse(plugin.pinnable("notify"))
+        self.assertEqual(plugin.check_params("message", {"text": "HI"}), {"text": "HI"})
+        with self.assertRaises(ValueError):
+            plugin.check_params("gif", {"path": "/etc/passwd"})
+        state = State()
+        player = Player(state, FakeDisplay(), GifLibrary(state, random.Random(1)), random.Random(1))
+        name, _, _ = player.resolve("generative")
+        self.assertIn(name, PLUGINS["generative"].defaults["scenes"])
+        self.assertIn(player.resolve("seasonal")[0], PLUGINS["seasonal"].scenes)
+
+    def test_testing_helper_renders_a_scene(self):
+        from pixelpane.testing import render
+        frames = render("tiles", 1, data={"tiles": {"items": [{"icon": "bell", "text": "HI", "level": 0.5}]}})
+        self.assertGreaterEqual(len(frames), 10)
+        self.assertEqual(frames[0][0].size, (32, 32))
+        self.assertEqual(render("tiles", 1), [])                 # no data: skips
+        self.assertTrue(render("message", 1, params={"text": "YO"}))
+
+    def test_fieldless_settings_keep_their_type(self):
+        from pixelpane import schema
+        with self.assertRaises(schema.ConfigError):
+            schema.validate({"plugins": {"seasonal": {"holiday_share": "lots"}}})
+        self.assertEqual(schema.validate({"plugins": {"gifs": {"theme_share": 0.5}}})["plugins"]["gifs"],
+                         {"theme_share": 0.5})
+
+    def test_tasks_restart_after_a_crash_and_stop_when_turned_off(self):
+        import threading
+        import time
+        p = plugin.Plugin("flaky", "Crashes once")
+        runs = []
+
+        def poll(ctx, stop):
+            runs.append(1)
+            if len(runs) == 1:
+                raise RuntimeError("first run fails")
+            stop.wait()
+
+        p.task(poll)
+        state = State()
+        ctx = Player(state, FakeDisplay(), GifLibrary(state, random.Random(1)), random.Random(1)).ctx
+        stop = threading.Event()
+        sup = plugin.Supervisor(p, poll, ctx, stop)
+        with self.assertLogs("pixelpane.plugin", level="ERROR"):
+            sup.check()
+            sup.thread.join(2)
+        self.assertEqual(sup.status()["crashes"], 1)
+        sup.restart_at = 0            # skip the back-off pause
+        sup.check()
+        time.sleep(0.1)
+        self.assertTrue(sup.status()["running"])
+        state.update_config({"plugins": {"flaky": {"enabled": False}}})
+        sup.check()
+        sup.thread.join(2)
+        self.assertFalse(sup.status()["running"])
+        self.assertEqual(len(runs), 2)
+
+
 class DocsExampleTest(unittest.TestCase):
     """The example in docs/PLUGINS.md must keep working as written."""
 

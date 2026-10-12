@@ -9,7 +9,7 @@ from pathlib import Path
 
 from PIL import Image, ImageSequence
 
-from . import plugin, seasons
+from . import plugin, schedule, seasons
 from .gfx import H, W
 
 HOME = Path(os.environ.get("PIXELPANE_HOME", "/opt/pixelpane"))
@@ -85,6 +85,7 @@ class State:
         self.now = {"source": "starting"}  # what the player is on and why (see Player.mark)
         self.last_frame = Image.new("RGB", (W, H))
         self.started = time.time()
+        self.override_until = 0.0   # "turn on anyway" during scheduled off time, until then
 
     # -- persistence --
     def save_state(self):
@@ -106,6 +107,9 @@ class State:
         with self.lock:
             if power is not None:
                 self.power = bool(power)
+                sched = self.scheduled()
+                # Turning on during quiet hours overrides them until they end.
+                self.override_until = sched["until"].timestamp() if self.power and sched["off"] else 0.0
             if brightness is not None:
                 self.brightness = max(1, min(100, int(brightness)))
         self.save_state()
@@ -118,6 +122,33 @@ class State:
                 "until": time.time() + minutes * 60 if minutes else None}
         self.save_state()
         self.wake.set()
+
+    # -- schedule --
+    def scheduled(self, at=None):
+        """What config["schedule"] says for now (see pixelpane.schedule)."""
+        return schedule.active(self.config.get("schedule") or [], at or now())
+
+    def schedule_status(self):
+        sched = self.scheduled()
+        overridden = sched["off"] and time.time() < self.override_until
+        return {"off": sched["off"] and not overridden, "overridden": overridden,
+                "until": sched["until"].isoformat(timespec="minutes") if sched["until"] else None,
+                "brightness": sched["brightness"], "playlist": sched["rotation"] is not None,
+                "rules": sched["rules"]}
+
+    def effective_power(self):
+        """On, unless switched off or in scheduled off time (not overridden)."""
+        if not self.power:
+            return False
+        return not (self.scheduled()["off"] and time.time() >= self.override_until)
+
+    def effective_brightness(self):
+        dim = self.scheduled()["brightness"]
+        return self.brightness if dim is None else min(self.brightness, dim)
+
+    def rotation(self):
+        """The playlist for now: a scheduled one if a rule says so, else the config's."""
+        return self.scheduled()["rotation"] or self.config["rotation"] or ["gif"]
 
     def notify(self, item):
         self.notifications.append(item)
@@ -209,12 +240,18 @@ class GifLibrary:
         return str(path)
 
     def resolve(self, gif_id):
-        name, _, rel = gif_id.partition("/")
+        name, _, rel = str(gif_id).partition("/")
         root = self.ROOTS.get(name)
-        if not root or ".." in Path(rel).parts:
+        if not root or not rel:
             return None
+        # resolve() and compare: an absolute rel ("upload//etc/passwd") or a symlink
+        # must never reach a file outside the library folder
         p = root / rel
-        return p if p.is_file() else None
+        try:
+            inside = p.resolve().is_relative_to(root.resolve())
+        except (OSError, ValueError):
+            return None
+        return p if inside and p.is_file() and p.suffix.lower() == ".gif" else None
 
     def everything(self):
         """(path, folder theme or "all") for every GIF, wherever it lives."""

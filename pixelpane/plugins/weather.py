@@ -39,7 +39,7 @@ WEATHER_WORDS = {
 }
 
 
-@plugin.scene("weather")
+@plugin.scene("weather", empty_text="NO WEATHER YET")
 def weather(ctx, secs):
     wx = ctx.data("weather")
     if not wx or wx.get("temp") is None:

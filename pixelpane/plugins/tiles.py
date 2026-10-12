@@ -12,7 +12,7 @@ plugin = Plugin(
           "warnings. POST /api/data/tiles with {items: [{icon, text, color, level}]}.")
 
 
-@plugin.scene("tiles")
+@plugin.scene("tiles", empty_text="NO TILES YET")
 def tiles(ctx, secs):
     """Generic info cards pushed from Home Assistant: [{icon, text, color}]."""
     data = ctx.data("tiles")

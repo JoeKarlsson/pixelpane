@@ -16,7 +16,7 @@ plugin = Plugin(
 
 # --- GIFs --------------------------------------------------------------------
 
-@plugin.scene("gif", "gif")
+@plugin.scene("gif", "gif", params={"id": "text"}, empty_text="NO GIFS")
 def gif(ctx, secs, path=None, category=None):
     path = path or ctx.next_gif(category)
     if not path:

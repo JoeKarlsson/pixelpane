@@ -17,8 +17,9 @@ plugin = Plugin(
              "help": "OpenAI-compatible: the API base, e.g. http://litellm:4000/v1, "
                      "https://openrouter.ai/api/v1 or https://api.openai.com/v1. "
                      "Anthropic: leave empty for https://api.anthropic.com."},
-            {"key": "api_key", "label": "API key", "type": "secret",
-             "help": "Leave empty for servers without one (a local Ollama)."},
+            {"key": "api_key", "label": "API key", "type": "secret", "reset_on": ["base_url", "provider"],
+             "help": "Leave empty for servers without one (a local Ollama). Changing the server "
+                     "clears it, so enter it again."},
             {"key": "model", "label": "Model", "type": "text", "placeholder": "cloud-smart",
              "help": "The model name the server knows, e.g. a LiteLLM alias, openai/gpt-4.1 or "
                      "claude-sonnet-4-5."},

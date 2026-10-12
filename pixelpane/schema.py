@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import plugin, seasons
+from . import plugin, schedule, seasons
 from .plugin import SCENES
 
 DISPLAYS = {"auto", "hzeller", "piomatter", "fake"}
@@ -42,7 +42,7 @@ def valid_scene(name: Any) -> bool:
     base, _, arg = str(name).partition(":")
     if base == "gif" and arg:
         return arg.replace("_", "").isalnum()
-    return base in SCENES or base in ("seasonal", "generative")
+    return not arg and (base in SCENES or base in plugin.PICKERS)
 
 
 def category_name(v: Any, what: str = "category") -> str:
@@ -117,6 +117,90 @@ def _field(f: dict, v: Any, what: str) -> Any:
     return v
 
 
+def _like_default(default: Any, v: Any, what: str) -> Any:
+    """A setting without a form field: it must at least be the same kind of value as
+    its default (a default of None accepts anything JSON)."""
+    if default is None or v is None:
+        return v
+    kinds = [(bool, "true or false"), ((int, float), "a number"), (str, "text"), (list, "a list"),
+             (dict, "an object")]
+    for kind, word in kinds:
+        if isinstance(default, kind) and not (kind != bool and isinstance(default, bool)):
+            if not isinstance(v, kind) or (kind != bool and isinstance(v, bool)):
+                raise ConfigError(f"{what} must be {word}")
+            return v
+    return v
+
+
+def reset_secrets(changes: dict, config: dict) -> dict:
+    """A secret field with "reset_on": [keys] is cleared when one of those keys changes
+    and no new secret comes with it. Otherwise anyone who can change the generator's
+    server URL could have the board send its saved API key to a server of theirs."""
+    for name, clean in (changes.get("plugins") or {}).items():
+        p = plugin.PLUGINS.get(name)
+        current = plugin.settings(config, name)
+        for f in p.fields if p else []:
+            if f.get("type") != "secret" or f["key"] in clean:
+                continue
+            if any(k in clean and clean[k] != current.get(k) for k in f.get("reset_on", ())):
+                clean[f["key"]] = None
+    return changes
+
+
+def _hosts(v: Any) -> list[str]:
+    v = _str_list(v, "allowed_hosts")
+    out = []
+    for h in v:
+        h = h.strip().lower().rstrip(".")
+        if not h or len(h) > 253 or not all(c.isalnum() or c in "-." for c in h):
+            raise ConfigError(f"allowed_hosts: {h!r} is not a host name")
+        out.append(h)
+    return out
+
+
+def _schedule(v: Any) -> list[dict]:
+    if not isinstance(v, list) or len(v) > 30:
+        raise ConfigError("schedule must be a list of up to 30 rules")
+    out = []
+    for i, r in enumerate(v):
+        what = f"schedule[{i}]"
+        if not isinstance(r, dict):
+            raise ConfigError(f"{what} must be an object")
+        extra = set(r) - {"label", "days", "from", "to", "action", "brightness", "rotation", "enabled"}
+        if extra:
+            raise ConfigError(f"{what}: unknown keys {sorted(extra)}")
+        rule = {"label": r.get("label") or "", "enabled": r.get("enabled", True)}
+        if not isinstance(rule["label"], str) or len(rule["label"]) > 40:
+            raise ConfigError(f"{what}.label must be text up to 40 characters")
+        if not isinstance(rule["enabled"], bool):
+            raise ConfigError(f"{what}.enabled must be true or false")
+        days = r.get("days", list(range(7)))
+        if (not isinstance(days, list) or not days
+                or not all(isinstance(d, int) and not isinstance(d, bool) and 0 <= d <= 6 for d in days)):
+            raise ConfigError(f"{what}.days must be a list of 0 (Monday) to 6 (Sunday)")
+        rule["days"] = sorted(set(days))
+        for k in ("from", "to"):
+            try:
+                schedule.parse_hhmm(r.get(k))
+            except ValueError:
+                raise ConfigError(f"{what}.{k} must be a time like 07:30") from None
+            rule[k] = r[k]
+        rule["action"] = r.get("action")
+        if rule["action"] not in schedule.ACTIONS:
+            raise ConfigError(f"{what}.action must be one of {list(schedule.ACTIONS)}")
+        if rule["action"] == "dim":
+            rule["brightness"] = _num(r.get("brightness"), f"{what}.brightness", 1, 100, integer=True)
+        if rule["action"] == "playlist":
+            rot = _str_list(r.get("rotation"), f"{what}.rotation")
+            bad = [x for x in rot if not valid_scene(x)]
+            if not rot or bad:
+                raise ConfigError(f"{what}.rotation: needs scenes; unknown {bad}" if bad else
+                                  f"{what}.rotation needs at least one scene")
+            rule["rotation"] = rot
+        out.append(rule)
+    return out
+
+
 def _plugins(v: Any) -> dict:
     if not isinstance(v, dict):
         raise ConfigError("plugins must be an object")
@@ -140,7 +224,7 @@ def _plugins(v: Any) -> dict:
                     continue  # unchanged secret coming back from the page
                 clean[key] = _field(fields[key], value, what)
             elif key in p.defaults:
-                clean[key] = value  # a setting without a form field: stored as given
+                clean[key] = _like_default(p.defaults[key], value, what)  # no form field
             else:
                 raise ConfigError(f"{what} is not a setting of {name}")
         out[name] = clean
@@ -212,6 +296,10 @@ def validate(changes: Any) -> dict:
                 if k in v and v[k] not in PANEL_SIZES:
                     raise ConfigError(f"panel.{k} must be one of {sorted(PANEL_SIZES)}")
             out[key] = v
+        elif key == "schedule":
+            out[key] = _schedule(v)
+        elif key == "allowed_hosts":
+            out[key] = _hosts(v)
         elif key == "api_token":
             if v == MASK:
                 continue

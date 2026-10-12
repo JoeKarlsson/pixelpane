@@ -9,6 +9,8 @@ PREFIX=/opt/pixelpane
 VAR=/var/lib/pixelpane
 LIB_URL=https://github.com/hzeller/rpi-rgb-led-matrix.git
 LIB_COMMIT=14464b3ad8974665f75a3c82355cf872311fec21   # 2026-10-10, known good
+PIOMATTER_VERSION=1.0.0                                 # Pi 5 driver, pinned like the one above
+ETC=/etc/pixelpane
 BOOT=/boot/firmware
 
 [ "$(id -u)" -eq 0 ] || { echo "run as root (sudo)"; exit 1; }
@@ -67,8 +69,11 @@ VENV="$PREFIX/venv"
 [ -x "$VENV/bin/python" ] || python3 -m venv --system-site-packages "$VENV"
 if [ "$PI5" -eq 1 ]; then
   echo "== Pi 5: Adafruit PioMatter driver"
-  "$VENV/bin/python" -c "import adafruit_blinka_raspberry_pi5_piomatter" 2>/dev/null \
-    || { "$VENV/bin/pip" install -q Adafruit-Blinka-Raspberry-Pi5-Piomatter; changed=1; }
+  if [ "$(cat "$VENV/.piomatter-version" 2>/dev/null)" != "$PIOMATTER_VERSION" ]; then
+    "$VENV/bin/pip" install -q "Adafruit-Blinka-Raspberry-Pi5-Piomatter==$PIOMATTER_VERSION"
+    echo "$PIOMATTER_VERSION" > "$VENV/.piomatter-version"
+    changed=1
+  fi
   write_file /etc/udev/rules.d/99-pixelpane-pio.rules 644 <<'EOF'
 SUBSYSTEM=="*-pio", GROUP="gpio", MODE="0660"
 EOF
@@ -123,6 +128,24 @@ sync_dir() {
 }
 sync_dir "$REPO/pixelpane/" "$PREFIX/pixelpane/"
 [ "${SKIP_GIFS:-0}" = 1 ] || sync_dir "$REPO/gifs/" "$PREFIX/gifs/"
+
+echo "== your plugins"
+# Root-owned and read-only to the service: it can write /var/lib/pixelpane, so plugins
+# (which it runs as code) must not live there. Plugins from an older install move here.
+install -d -o root -g root -m 755 "$ETC" "$ETC/plugins"
+if [ -d "$VAR/plugins" ]; then
+  for f in "$VAR"/plugins/*.py; do
+    [ -e "$f" ] || continue
+    [ -e "$ETC/plugins/$(basename "$f")" ] || { install -o root -g root -m 644 "$f" "$ETC/plugins/"; echo "moved plugin $(basename "$f") to $ETC/plugins"; }
+  done
+  rm -rf "$VAR/plugins"; changed=1
+fi
+# The deploy's plugins/ folder (from your library) is the source of truth when it has any.
+if find "$REPO/plugins" -name '*.py' -print -quit 2>/dev/null | grep -q .; then
+  if [ -n "$(rsync -a --delete --chown=root:root --chmod=D755,F644 --include '*.py' --exclude '*' --itemize-changes "$REPO/plugins/" "$ETC/plugins/")" ]; then
+    echo "synced $ETC/plugins"; changed=1
+  fi
+fi
 [ -f "$REPO/VERSION" ] && install_file "$REPO/VERSION" "$PREFIX/VERSION" 644
 rm -f "$PREFIX/start-pixelpane.sh"   # the old led-image-viewer launcher
 

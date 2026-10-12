@@ -14,14 +14,18 @@
 <main>
   <header>
     <h1 class="brand"><img src="/static/favicon.svg" alt=""><span class="px">PIXEL</span><span class="pn">pane</span></h1>
-    <span class="pill" id="stat">connecting…</span>
+    <div class="row">
+      <span class="pill" id="stat">connecting…</span>
+      <a class="navlink" href="/settings" data-testid="settings-link">⚙ Settings</a>
+    </div>
   </header>
 
   <section class="grid2">
     <div class="titlebar">pixelpane@board: live</div>
     <div class="panel"><canvas id="preview" width="32" height="32" role="img" aria-label="live panel preview" data-testid="preview"></canvas></div>
     <div style="display:grid;gap:12px">
-      <div class="row"><button id="power">Power</button><span class="pill" id="scene">…</span></div>
+      <div class="row"><button id="power">Power</button><span class="pill" id="scene">…</span>
+        <a class="pill sched" id="sched" href="/settings#schedule" hidden data-testid="schedule-status"></a></div>
       <div><label for="bright">Brightness <span id="bv"></span></label>
         <input type="range" id="bright" min="1" max="100"></div>
       <div class="now" data-testid="now">
@@ -63,12 +67,12 @@
     <ul class="rot" id="rot"></ul>
     <div class="row" style="margin-top:8px"><select id="addsel"></select><button id="add">Add</button>
       <button id="saverot" class="on">Save playlist</button></div>
-    <h2 style="margin-top:16px">Seconds per scene</h2>
-    <div class="dwell" id="dwell"></div>
+    <p class="stat">Seconds per scene, quiet hours and time-of-day playlists are in <a href="/settings">Settings</a>.</p>
   </section>
 
   <section>
     <h2>Plugins</h2>
+    <div id="pluginerrs" class="errors" hidden data-testid="plugin-errors"></div>
     <div id="plugins" class="plugins"></div>
   </section>
 
@@ -199,6 +203,7 @@
   </footer>
 </main>
 <div id="toast"></div>
+<script src="/static/common.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>

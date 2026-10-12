@@ -22,6 +22,19 @@ plugin = Plugin(
              "help": "Leave empty for no birthday scene."}])
 
 
+@plugin.picker("seasonal")
+def pick(ctx):
+    """The playlist's "seasonal" slot: your birthday, else a holiday (holiday_share of
+    the time) or the season."""
+    themes = ctx.state.themes()
+    holidays = themes[1:]
+    if "birthday" in holidays:
+        return "birthday"
+    if holidays and ctx.rng.random() < ctx.settings("seasonal")["holiday_share"]:
+        return ctx.rng.choice(holidays)
+    return themes[0]
+
+
 LEAVES = [(230, 90, 10), (200, 40, 10), (240, 170, 20), (150, 70, 20)]
 
 

@@ -93,6 +93,7 @@ Put your GIFs and settings in a sibling folder, by default
 pixelpane-library/
   gifs/                 all-year GIFs, named <category>-<what-it-shows>.gif
   gifs/themes/<theme>/  seasonal GIFs (halloween, winter, birthday, ...)
+  plugins/              your own plugins, one .py file each (docs/PLUGINS.md)
   deploy.env            PIXELPANE_HOST=..., PIXELPANE_KEY=..., PIXELPANE_TZ=..., PIXELPANE_WIFI_COUNTRY=...
 ```
 
@@ -123,7 +124,8 @@ own takes one Python file: see **[docs/PLUGINS.md](docs/PLUGINS.md)**.
 ## Configuration
 
 Settings live on the Pi in `/var/lib/pixelpane/config.json` and are edited from
-the page or `PUT /api/config`. Defaults are in
+the page (the **Settings** page has the schedule, timings, display hardware,
+access, backup and system status) or `PUT /api/config`. Defaults are in
 [`pixelpane/default_config.json`](pixelpane/default_config.json). An example:
 
 ```json
@@ -138,13 +140,27 @@ the page or `PUT /api/config`. Defaults are in
     "generative": {"enabled": false}
   },
   "display": "auto",
-  "adafruit_board": "hat"
+  "adafruit_board": "hat",
+  "schedule": [
+    {"label": "Quiet hours", "from": "23:00", "to": "07:00", "action": "off"},
+    {"label": "Evening", "from": "20:00", "to": "23:00", "action": "dim", "brightness": 20},
+    {"label": "Mornings", "days": [0, 1, 2, 3, 4], "from": "06:30", "to": "09:00",
+     "action": "playlist", "rotation": ["clock", "weather", "calendar"]}
+  ]
 }
 ```
 
+Schedule rules turn the board off, cap its brightness or swap in a playlist at set
+times. `days` are 0 (Monday) to 6 (Sunday), counted on the day a window starts, so
+23:00-07:00 on Friday runs into Saturday morning. Pressing Power during quiet hours
+turns the board on until they end.
+
 ## API
 
-LAN only, no authentication: keep the board on your home network.
+LAN only. No authentication unless you set a token (Settings, Access); then every
+change needs `X-PixelPane-Token: <token>` or `Authorization: Bearer <token>`. The
+board only answers to its IPs and its own host names; add others under Settings,
+Allowed host names. See [SECURITY.md](SECURITY.md).
 
 | Call | Body | Does |
 |------|------|------|
@@ -162,6 +178,9 @@ LAN only, no authentication: keep the board on your home network.
 | `POST /api/gifs/generate`, `GET /api/gifs/generate/<job>` | `{"prompt": "a cat chasing a laser dot"}` or `{"from": "<draft>", "change": "make it bigger"}` | make a draft from a prompt, or rework one; poll the job |
 | `GET /api/drafts`, `GET /draft/<id>.gif`, `POST /api/drafts/<id>/save`, `DELETE /api/drafts/<id>` | `{"name": "...", "category": "...", "theme": "all"}` | list, view, save to the library, or discard drafts |
 | `POST /api/categories/rename` | `{"from": "retro", "to": "arcade"}` | rename or merge a category |
+| `GET /api/backup`, `POST /api/restore` | a backup file | your settings as a file (secrets stay on the board), and back |
+| `GET /api/logs?since=<unix time>` | | recent log lines |
+| `POST /api/system/restart` | | restart the service |
 | `GET /preview.png?scale=10` | | the current frame |
 | `GET /api/frames` | | a stream of every frame as the panel shows it (the page's live preview) |
 

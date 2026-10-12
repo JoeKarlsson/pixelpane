@@ -19,6 +19,12 @@ plugin = Plugin(
              "options": ["fire", "plasma", "life", "matrix_rain", "starfield"]}])
 
 
+@plugin.picker("generative")
+def pick(ctx):
+    """The playlist's "generative" slot: one of the ticked scenes."""
+    return ctx.rng.choice(ctx.settings("generative").get("scenes") or ["fire"])
+
+
 FIRE = palette([(0, 0, 0), (90, 0, 0), (220, 40, 0), (255, 140, 0), (255, 230, 80), (255, 255, 220)])
 
 

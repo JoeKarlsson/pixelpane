@@ -15,7 +15,7 @@ plugin = Plugin(
           "is pushed to POST /api/data/homelab (Plex only while someone is streaming); see docs/HOME_ASSISTANT.md for the fields.")
 
 
-@plugin.scene("homelab")
+@plugin.scene("homelab", empty_text="NO LAB DATA YET")
 def homelab(ctx, secs):
     """A short animated dashboard: status, hosts, NAS, network, UPS, Plex.
 

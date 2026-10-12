@@ -636,6 +636,11 @@ class Jobs:
         self.lock = threading.Lock()
         self.jobs: dict[str, dict] = {}
 
+    def busy(self) -> bool:
+        """One at a time: each job holds a thread and spends the model's tokens."""
+        with self.lock:
+            return any(j["state"] == "working" for j in self.jobs.values())
+
     def start(self, work) -> str:
         """Run work(say) in the background; say(text) reports progress to whoever polls."""
         jid = uuid.uuid4().hex[:12]

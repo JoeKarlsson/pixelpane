@@ -8,8 +8,12 @@ default settings and background tasks. The built-in plugins in
 
 ## A complete example
 
-Save this as `/var/lib/pixelpane/plugins/countdown.py` on the Pi (or any folder
-set in `PIXELPANE_PLUGINS`), then `sudo systemctl restart pixelpane`:
+Save this as `plugins/countdown.py` in your library folder
+(`../pixelpane-library`, next to `gifs/`) and run `tools/deploy.sh`. The deploy puts
+it in `/etc/pixelpane/plugins/` on the Pi and restarts the service. That folder
+belongs to root and is read-only to the service, so the board can't be tricked into
+writing code that it would then run. Keeping your plugins in the library folder also
+keeps them in version control.
 
 ```python
 """Countdown: days until a date, with a little rocket that climbs as it gets closer."""
@@ -64,17 +68,24 @@ it. Yield until `secs` is used up (`ticks(secs, fps)` does the bookkeeping). If
 there is nothing to show, return without yielding and the player moves on.
 Scenes must not block or sleep; the player does the timing.
 
-**`Plugin(name, description, data=None, defaults=None)`**
+**`Plugin(name, description, data=None, defaults=None, about="", fields=None, version="", api=1)`**
 
 | Argument | Meaning |
 |----------|---------|
 | `data` | `{key: minutes}`: keys accepted at `POST /api/data/<key>`, and how long each stays fresh. Keys of disabled plugins are refused |
-| `defaults` | your settings; users override them under `config["plugins"][name]`. `enabled` is added for you |
+| `defaults` | your settings; users override them under `config["plugins"][name]`. `enabled` is added for you. A setting without a form field must keep its default's type (number, text, list...) |
+| `about`, `fields` | a paragraph and a settings form for the control page; see the built-in plugins |
+| `version` | your plugin's own version, shown on the control page |
+| `api` | the plugin API you wrote it for (`pixelpane.plugin.API_VERSION`, now 1). A board with an older API refuses the plugin with a clear message instead of failing later |
+
+Names are unique: a plugin or scene whose name is taken (`clock`, say) is refused,
+not silently swapped in. Load errors show on the control page and in Settings, System.
 
 | Method | Use |
 |--------|-----|
-| `@plugin.scene(name, kind="widget")` | register a scene. Kinds: `widget`, `gif`, `generative`, `seasonal`, `interrupt`, `mode` |
-| `@plugin.task` | a background function `fn(ctx, stop)` run in its own thread (fetch an API, poll a sensor). Loop with `while not stop.wait(seconds):` and catch your own errors |
+| `@plugin.scene(name, kind="widget", pinnable=None, params=None, empty_text=None)` | register a scene. Kinds: `widget`, `gif`, `generative`, `seasonal`, `interrupt`, `mode`. `pinnable`: may `POST /api/pin` hold it (default yes for widget, generative, seasonal and mode). `params`: what `/api/play` and `/api/pin` may pass it, e.g. `{"text": "text", "color": "color"}` (types `text`, `color`, `number`, `bool`); anything else is refused. `empty_text`: shown when someone asks for the scene and it has nothing to show |
+| `@plugin.picker(name)` | a playlist entry that picks one of your scenes each time it comes up: `fn(ctx)` returns a scene name (or `None` to skip). `seasonal` and `generative` work this way |
+| `@plugin.task` | a background function `fn(ctx, stop)` (fetch an API, poll a sensor). Loop with `while not stop.wait(seconds):`. It runs while the plugin is on: `stop` is set when it's turned off, and it starts again when it's turned back on. If it raises, the error is logged and shown on the page, and it is restarted after a growing pause |
 
 **`ctx`**, what a scene or task can use:
 
@@ -100,6 +111,20 @@ Scenes must not block or sleep; the player does the timing.
 | `gauge(img, y, level, t, color)` | a bar that fills to `level` (0-1) |
 | `Particles`, `Fireworks`, `palette` | effects used by the seasonal and generative plugins |
 
+## Shipping a plugin as a package
+
+A plugin can also be a normal Python package with its own version and dependencies.
+Declare an entry point and PixelPane loads it after the built-ins:
+
+```toml
+# pyproject.toml of your package
+[project.entry-points."pixelpane.plugins"]
+countdown = "pixelpane_countdown"     # the module that creates the Plugin
+```
+
+Install it into the board's venv (`sudo /opt/pixelpane/venv/bin/pip install pixelpane-countdown==1.2.0`)
+and restart. The control page shows which package and version each plugin came from.
+
 ## Good plugin manners
 
 - **Animate.** Every status scene on this board moves; even a static number
@@ -109,7 +134,9 @@ Scenes must not block or sleep; the player does the timing.
   anything longer.
 - **Push, don't poll, when you can.** Let Home Assistant (or a cron job) POST to
   `/api/data/<key>`; use a task only for data the board must fetch itself.
-- **Test it** without a panel: `python -m pixelpane.preview gif /tmp/out.gif countdown 6`
-  renders your scene to an animated GIF (put your plugin in `PIXELPANE_PLUGINS`).
+- **Look at it** without a panel: `python -m pixelpane.preview gif /tmp/out.gif countdown 6`
+  renders your scene to an animated GIF (point `PIXELPANE_PLUGINS` at your plugins folder).
+- **Test it**: `pixelpane.testing.render("countdown", 2, settings={...}, data={...})`
+  runs a scene against made-up data and settings and returns its frames, no board needed.
 - A plugin that fails to import is logged and skipped; a scene that raises is
   logged and the playlist moves on. Neither takes the board down.

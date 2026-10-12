@@ -5,7 +5,37 @@ and the project uses [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+- GIF ids could name any file on the Pi (`upload//etc/passwd`): the GIF file route
+  served it and DELETE removed it. Ids are now resolved and must stay inside the
+  library.
+- Changing the generator's server URL clears its saved API key, so the key can't be
+  sent to a server someone else picked.
+- The board only answers to its IPs, its own host names and names you allow
+  (`allowed_hosts`), which blocks DNS rebinding.
+- Scenes accept only the params they declare (`/api/play` could pass a file path to
+  the GIF scene).
+- Album art hosts must match by scheme, host and port, and redirects aren't followed.
+- A Content Security Policy, no framing and no MIME sniffing on every page.
+- Only one GIF is generated at a time, and at most six live previews stream at once.
+- Your plugins now live in root-owned `/etc/pixelpane/plugins` (moved there from
+  `/var/lib/pixelpane/plugins` by the installer), so the service can't write code
+  it would run. The systemd unit is sandboxed further, and the Pi 5 driver is pinned.
+- With a token set, logs and backups need it too.
+
 ### Added
+- A Settings page: a schedule (quiet hours, dimming and time-of-day playlists, by
+  day of the week), seconds per scene and data freshness, display hardware, access
+  (token and allowed host names), backup and restore, and system status with
+  power and heat warnings, plugin problems, a restart button and recent logs.
+- Plugins declare what they need instead of the core knowing them: whether a scene
+  can be pinned, its params and its "nothing to show" text, and pickers for slots
+  like seasonal and generative. Plugins have a version and an API version, can ship
+  as pip packages (a `pixelpane.plugins` entry point), are refused if their name is
+  taken, and show load errors on the page. Background tasks stop when their plugin
+  is off and restart after a crash.
+- `pixelpane.testing.render()` to test a plugin's scene without a board.
+- `tools/deploy.sh` deploys `plugins/` from your library folder.
 - The clock has animated faces, picked at random from the ones you tick:
   classic, frame (a rainbow border with a comet that laps it once a minute),
   arcade (a little hero runs under the time, hopping slimes and grabbing coins)
@@ -34,6 +64,8 @@ and the project uses [semantic versioning](https://semver.org/).
   your uploads and saved GIFs, a Hidden filter, and three thumbnail sizes.
 
 ### Changed
+- Seconds per scene moved from the control page to Settings.
+- Settings without a form field must keep their default's type.
 - In select mode, click GIFs to pick or unpick them, shift-click for a range,
   and clear the selection; "Select page" becomes "Unselect page".
 - The homelab dashboard skips its Plex page while nobody is streaming.

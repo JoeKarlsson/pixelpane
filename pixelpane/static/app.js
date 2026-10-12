@@ -1,45 +1,20 @@
 // PixelPane control page. Talks to the board's HTTP API (see README).
-const $ = s => document.querySelector(s);
-// The board may require a token for writes (config "api_token"). We remember it in
-// this browser and ask for it the first time the board says 401.
-const tokenKey = 'pixelpane-token';
-function authHeaders() {
-  let t = null; try { t = localStorage.getItem(tokenKey); } catch (e) {}
-  return t ? {'X-PixelPane-Token': t} : {};
-}
-function askToken() {
-  return new Promise(resolve => {
-    const dlg = document.getElementById('tokdlg'), inp = document.getElementById('tokinput');
-    inp.value = ''; dlg.showModal();
-    document.getElementById('toksave').onclick = () => {
-      try { localStorage.setItem(tokenKey, inp.value.trim()); } catch (e) {}
-      dlg.close(); resolve(true);
-    };
-    document.getElementById('tokcancel').onclick = () => { dlg.close(); resolve(false); };
-  });
-}
-async function send(path, opts, retry = true) {
-  const r = await fetch(path, {...opts, headers: {...(opts.headers || {}), ...authHeaders()}});
-  if (r.status === 401 && retry && await askToken()) return send(path, opts, false);
-  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || await r.text());
-  return r;
-}
-const api = (path, method = 'GET', body) => send(path, {method, headers: body ? {'Content-Type': 'application/json'} : {},
-  body: body ? JSON.stringify(body) : undefined}).then(r => r.json());
-const toast = t => { const el = $('#toast'); el.textContent = t; el.style.opacity = 1; setTimeout(() => el.style.opacity = 0, 1800); };
+// $, api, send, toast, el, btn and ago come from common.js.
 let S = {}, C = {}, rotation = [], gifFilter = 'everything', gifPage = 0;
 let gifList = [], gifShown = [], selecting = false, lastPick = null;
 const picked = new Set();
 
-function btn(label, fn, cls, testid) {
-  const b = document.createElement('button'); b.textContent = label; b.onclick = fn;
-  if (cls) b.className = cls; if (testid) b.dataset.testid = testid; return b;
-}
-
 async function refresh() {
   S = await api('/api/state');
-  $('#power').textContent = S.power ? 'Power: ON' : 'Power: OFF';
-  $('#power').className = S.power ? 'on' : '';
+  const sch = S.schedule || {};
+  $('#power').textContent = !S.power ? 'Power: OFF' : sch.off ? 'Power: OFF (schedule)' : 'Power: ON';
+  $('#power').className = S.on ? 'on' : '';
+  $('#power').title = sch.off ? 'Quiet hours: press to turn on anyway until they end' : '';
+  $('#sched').hidden = !(sch.rules || []).length;
+  $('#sched').textContent = sch.off ? `Scheduled off until ${clockTime(sch.until)}`
+    : sch.overridden ? `On anyway, quiet hours end ${clockTime(sch.until)}`
+    : [sch.brightness != null ? `Dimmed to ${sch.brightness}` : null, sch.playlist ? 'Scheduled playlist' : null]
+        .filter(Boolean).join(' · ') || `Schedule: ${sch.rules?.join(', ')}`;
   if (document.activeElement !== $('#bright')) $('#bright').value = S.brightness;
   $('#bv').textContent = S.brightness;
   $('#scene').textContent = S.pinned ? `pinned: ${S.pinned.scene}` : S.scene;
@@ -71,13 +46,8 @@ async function init() {
   ['#gprompt', '#ggo', '#gsurprise'].forEach(s => $(s).disabled = !ready || generating);
   $('#gsetup').hidden = !!ready;
   loadDrafts();
-  drawRot(); drawDwell(); drawPlugins(); loadGifs(); pollNow();
+  drawRot(); drawPlugins(); loadGifs(); pollNow();
 }
-
-function el(tag, props = {}, ...kids) {
-  const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e;
-}
-const ago = s => s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)}m ago` : `${Math.round(s / 3600)}h ago`;
 
 function fieldInput(f, value) {
   const id = 'pf-' + f.key;
@@ -171,6 +141,9 @@ function openPlugin(name) {
 }
 
 function drawPlugins() {
+  const errs = S.plugin_errors || [];
+  $('#pluginerrs').hidden = !errs.length;
+  $('#pluginerrs').replaceChildren(...errs.map(e => el('div', {textContent: `⚠ ${e.source} didn't load: ${e.error}`})));
   $('#plugins').replaceChildren(...S.plugins.map(p => {
     const row = document.createElement('div'); row.className = 'plugin'; row.dataset.testid = 'plugin-' + p.name;
     row.title = 'Details and settings'; row.onclick = e => { if (!e.target.closest('button')) openPlugin(p.name); };
@@ -178,6 +151,9 @@ function drawPlugins() {
     const name = document.createElement('strong'); name.textContent = p.name;
     const desc = document.createElement('small'); desc.textContent = p.description;
     info.append(name, desc);
+    const crashed = (p.tasks || []).filter(t => t.crashes);
+    if (p.source !== 'built-in' || p.version) info.append(el('small', {textContent: [p.source, p.version && 'v' + p.version].filter(Boolean).join(' · ')}));
+    if (crashed.length) info.append(el('small', {className: 'warn', textContent: `⚠ task crashed: ${crashed[0].last_error}`}));
     row.append(info, btn(p.enabled ? 'On' : 'Off', () =>
       api('/api/config', 'PUT', {plugins: {[p.name]: {enabled: !p.enabled}}})
         .then(() => init()).then(() => toast(`${p.name} ${p.enabled ? 'off' : 'on'}`)), p.enabled ? 'on' : ''));
@@ -193,15 +169,6 @@ function drawRot() {
       btn('↓', () => { if (i < rotation.length-1) { [rotation[i+1], rotation[i]] = [rotation[i], rotation[i+1]]; drawRot(); } }),
       btn('✕', () => { rotation.splice(i, 1); drawRot(); }));
     return li;
-  }));
-}
-
-function drawDwell() {
-  $('#dwell').replaceChildren(...Object.entries(C.dwell).map(([k, v]) => {
-    const l = document.createElement('label'); l.textContent = k + ' ';
-    const inp = document.createElement('input'); inp.type = 'number'; inp.min = 3; inp.value = v;
-    inp.onchange = () => api('/api/config', 'PUT', {dwell: {[k]: +inp.value}}).then(c => { C = c; toast('Saved'); });
-    l.append(inp); return l;
   }));
 }
 
@@ -479,7 +446,8 @@ $('#gup').onclick = async () => {
   try { await send('/api/gifs', {method: 'POST', body: fd}); } catch (e) { return toast(e.message); }
   toast('Uploaded'); $('#gfile').value = ''; loadGifs();
 };
-$('#power').onclick = () => api('/api/state', 'POST', {power: !S.power}).then(refresh);
+// Toggles what the panel actually shows: during quiet hours this turns it on anyway.
+$('#power').onclick = () => api('/api/state', 'POST', {power: !S.on}).then(refresh);
 $('#bright').oninput = e => $('#bv').textContent = e.target.value;
 $('#bright').onchange = e => api('/api/state', 'POST', {brightness: +e.target.value}).then(refresh);
 document.querySelectorAll('[data-pin]').forEach(b => b.onclick = () =>
@@ -494,7 +462,7 @@ $('#saverot').onclick = () => api('/api/config', 'PUT', {rotation}).then(c => { 
 
 const SOURCE = {playlist: n => `Playlist ${n.index + 1}/${n.length}`, requested: () => 'Requested',
   notification: () => 'Notification', pinned: () => 'Pinned', birthday: () => 'Birthday bonus',
-  off: () => 'Off', starting: () => 'Starting'};
+  off: () => 'Off', schedule: () => 'Quiet hours', starting: () => 'Starting'};
 
 function prettyScene(label, entry) {
   if (!label) return '…';

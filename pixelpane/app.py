@@ -14,9 +14,9 @@ import threading
 import time
 from datetime import date
 
-from . import plugin
+from . import logbuf, plugin
 from .display import FakeDisplay
-from .plugin import SCENES
+from .plugin import PICKERS, SCENES
 from .state import HOME, GifLibrary, State, now
 
 log = logging.getLogger("pixelpane")
@@ -58,14 +58,6 @@ class Ctx:
         self.gifs.played(path)
 
 
-# Shown when one of these is asked for but has no data yet (a setup problem worth
-# seeing). Now playing and calendar are left out on purpose: nothing playing and no
-# event soon are normal, so those just skip.
-EMPTY_TEXT = {
-    "homelab": "NO LAB DATA YET", "tiles": "NO TILES YET", "weather": "NO WEATHER YET", "gif": "NO GIFS",
-}
-
-
 class Player:
     def __init__(self, state, display, gifs, rng=None):
         self.state, self.display, self.gifs = state, display, gifs
@@ -83,35 +75,27 @@ class Player:
         params = dict(params or {})
         name, _, category = name.partition(":")  # "gif:retro" = a GIF from one category
         secs = float(params.pop("seconds", 0)) or dwell.get(name, 15)
-        if name in ("seasonal", "generative") and not plugin.enabled(cfg, name):
-            return None
-        if name == "seasonal":
-            themes = self.state.themes()
-            holidays = [t for t in themes[1:]]
-            if "birthday" in holidays:
-                name = "birthday"
-            elif holidays and self.rng.random() < self.ctx.settings("seasonal")["holiday_share"]:
-                name = self.rng.choice(holidays)
-            else:
-                name = themes[0]
-        elif name == "generative":
-            name = self.rng.choice(self.ctx.settings("generative").get("scenes") or ["fire"])
-            secs = float(dwell.get("generative", secs))
+        pick = PICKERS.get(name)   # "seasonal", "generative": the plugin picks a scene
+        if pick:
+            if not plugin.enabled(cfg, pick.plugin):
+                return None
+            name = pick(self.ctx)
+            if not name:
+                return None
         fn = SCENES.get(name)
         if not fn:
             log.warning("unknown scene %s", name)
             return None
         if not plugin.enabled(cfg, fn.plugin):
             return None
-        if name == "gif" and "id" in params:
-            params = {"path": self.gifs.resolve(params["id"])}
-        elif name == "gif" and category:
-            params = {"category": category}
+        if name == "gif":   # only ever a library id or a category, never a raw path
+            gid = params.pop("id", None)
+            params = {"path": self.gifs.resolve(gid)} if gid else {"category": category} if category else {}
         return name, fn(self.ctx, secs, **params), secs
 
     def next_item(self):
         """The next playlist entry; sets self.slot to its index (None for a birthday extra)."""
-        rot = self.state.config["rotation"] or ["gif"]
+        rot = self.state.rotation()
         self.played += 1
         if "birthday" in self.state.themes() and self.played % 4 == 0:
             self.slot = None
@@ -122,7 +106,7 @@ class Player:
 
     def mark(self, source, entry, secs=None, index=None, **extra):
         """Record what is on now and why, for the page's live view (state.now)."""
-        rot = self.state.config["rotation"] or ["gif"]
+        rot = self.state.rotation()
         self.state.now = dict(extra, source=source, entry=entry, index=index, started=time.time(),
                               seconds=secs, next=rot[self.position % len(rot)], length=len(rot))
 
@@ -137,14 +121,16 @@ class Player:
                 if not shown:
                     st.label = self.ctx.label or label
                     shown = True
-                self.display.brightness = st.brightness
+                if not st.effective_power():   # scheduled off time began
+                    return shown
+                self.display.brightness = st.effective_brightness()
                 self.display.show(img)
                 st.last_frame = img
                 deadline = time.monotonic() + hold
                 while (left := deadline - time.monotonic()) > 0:
                     if st.wake.wait(left):
                         st.wake.clear()
-                        if not st.power or (interruptible and (
+                        if not st.effective_power() or (interruptible and (
                                 st.skip or st.notifications or st.play_next or st.active_pin() != self.pin_seen)):
                             return shown
         except Exception:  # a broken scene must never take the board down
@@ -156,7 +142,8 @@ class Player:
 
     def placeholder(self, name, secs=4):
         """A requested scene had nothing to show: say so if that is unusual, else skip."""
-        text = EMPTY_TEXT.get(name.partition(":")[0])
+        fn = SCENES.get(name.partition(":")[0])
+        text = getattr(fn, "empty_text", None)
         if not text:
             return False
         return self.play(f"empty: {name}", SCENES["message"](self.ctx, secs, text=text, color="#8b8fa3"))
@@ -167,9 +154,9 @@ class Player:
         empty = 0
         while not stop.is_set():
             st.skip = False
-            if not st.power:
-                st.label = "off"
-                st.now = {"source": "off"}
+            if not st.effective_power():
+                st.label = "off" if not st.power else "scheduled off"
+                st.now = {"source": "off" if not st.power else "schedule"}
                 self.display.clear()
                 st.wake.wait(5)
                 st.wake.clear()
@@ -203,7 +190,7 @@ class Player:
                 self.mark("playlist" if self.slot is not None else "birthday", entry, item[2], self.slot)
             shown = bool(item) and self.play(item[0], item[1])
             empty = 0 if shown else empty + 1
-            if empty > 2 * len(st.config["rotation"] or [1]):
+            if empty > 2 * len(st.rotation()):
                 st.request("clock")  # nothing in the rotation has anything to show
                 empty = 0
 
@@ -238,6 +225,7 @@ def health(state):
         version = "dev"
     return {"ok": True, "power": state.power, "brightness": state.brightness,
             "scene": state.label, "now": _now(state), "pinned": state.active_pin(), "themes": state.themes(),
+            "on": state.effective_power(), "schedule": state.schedule_status(),
             "temp_c": temp, "throttled": _throttled["v"], "uptime_s": int(time.time() - state.started),
             "version": version, "date": date.today().isoformat()}
 
@@ -263,6 +251,7 @@ def main():
     ap.add_argument("--port", type=int, default=int(os.environ.get("PIXELPANE_PORT", 80)))
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    logbuf.install()   # the last few hundred lines, for the Settings page
 
     from werkzeug.serving import make_server
     from .web import create_app
@@ -283,9 +272,7 @@ def main():
     stop = threading.Event()
     threading.Thread(target=server.serve_forever, daemon=True).start()
     player = Player(state, display, gifs, rng)
-    for p in plugin.PLUGINS.values():
-        for task in p.tasks:
-            threading.Thread(target=task, args=(player.ctx, stop), daemon=True, name=f"{p.name}-task").start()
+    plugin.run_tasks(player.ctx, stop)
     log.info("serving on :%d with plugins %s", args.port,
              ", ".join(n for n in plugin.PLUGINS if plugin.enabled(state.config, n)))
     try:

@@ -9,6 +9,8 @@
   "plugins": {},
   "panel": {"cols": 32, "rows": 32},
   "api_token": null,
+  "allowed_hosts": [],
+  "schedule": [],
   "data_ttl_minutes": {},
   "hidden_gifs": [],
   "gif_meta": {},

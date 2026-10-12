@@ -1,26 +1,33 @@
 """HTTP API + control page. LAN only (the board lives on the IoT VLAN)."""
+import hmac
 import io
+import ipaddress
+import json
+import os
+import socket
+import threading
 import time
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlsplit
 
 from flask import Flask, Response, abort, jsonify, request, send_file
 from PIL import Image
 from werkzeug.utils import secure_filename
 
-import hmac
-import os
-
-from . import generate, gfx, plugin, schema, seasons
+from . import generate, gfx, logbuf, plugin, schema, seasons
 from .display import compose, panel_size
-from .plugin import SCENES
-from .state import VAR, convert_upload
+from .plugin import PICKERS, SCENES
+from .state import VAR, _read, convert_upload
 from .state import now as local_now
 
 INDEX = Path(__file__).with_name("index.html")
-PINNABLE = {"on_air", "message", "clock", "weather", "now_playing", "calendar", "fire", "plasma",
-            "life", "matrix_rain", "starfield", "homelab", "tiles", "seasonal",
-            "generative"} | set(seasons.THEMES)
+SETTINGS = Path(__file__).with_name("settings.html")
+MAX_STREAMS = 6   # live previews at once; each one costs the Pi a little CPU
+# Reads that give away more than the board's status: when a token is set they need it too.
+PRIVATE_READS = {"/api/logs", "/api/backup"}
+CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+       "connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; "
+       "frame-ancestors 'none'")
 
 
 def valid_scene(name, config=None):
@@ -30,40 +37,87 @@ def valid_scene(name, config=None):
     base = str(name).partition(":")[0]
     if config is None:
         return True
-    if base in ("seasonal", "generative"):
-        return plugin.enabled(config, base)
     return plugin.scene_enabled(config, base)
 
 
-def create_app(state, gifs, health):
+def local_names():
+    """Host names the board answers to without being told: its own name, and that name
+    under the usual home-network suffixes."""
+    me = socket.gethostname().split(".")[0].lower()
+    return {"localhost", me} | {f"{me}.{tld}" for tld in ("local", "lan", "home", "home.arpa", "internal")}
+
+
+def host_allowed(host, extra=()):
+    """Is the Host header one of ours? Any IP address is (DNS rebinding needs a name);
+    names must be the board's own or listed in allowed_hosts / PIXELPANE_ALLOWED_HOSTS."""
+    try:
+        name = urlsplit("//" + (host or "")).hostname
+    except ValueError:
+        return False
+    if not name:
+        return False
+    try:
+        ipaddress.ip_address(name)
+        return True
+    except ValueError:
+        pass
+    env = {h.strip().lower() for h in os.environ.get("PIXELPANE_ALLOWED_HOSTS", "").split(",") if h.strip()}
+    return name.rstrip(".") in local_names() | env | {h.lower() for h in extra}
+
+
+def _exit_soon():
+    """Restart: exit and let systemd (Restart=always) start the service again."""
+    threading.Timer(0.5, os._exit, args=(0,)).start()
+
+
+def create_app(state, gifs, health, restart=_exit_soon):
     app = Flask(__name__)
     app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
+    streams = {}   # stream -> when it last ran; the dev server never closes a dropped
+    streams_lock = threading.Lock()   # stream, so a stream that stops running is gone
+
+    def token():
+        return state.config.get("api_token") or os.environ.get("PIXELPANE_TOKEN")
+
+    def token_ok():
+        given = request.headers.get("X-PixelPane-Token") or ""
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            given = auth[7:]
+        return hmac.compare_digest(given.encode(), token().encode())
 
     @app.before_request
-    def same_origin_writes():
-        """Refuse cross-site writes: a web page open in someone's browser on the LAN must
+    def guard():
+        """1. Only answer to our own host names: a web page on some other name that it
+        re-points at the board's IP (DNS rebinding) is turned away, reads included.
+        2. Refuse cross-site writes: a web page open in someone's browser on the LAN must
         not be able to drive the board. Browsers send Origin on cross-site requests;
-        Home Assistant, curl and scripts send none and are allowed."""
-        if request.method in ("GET", "HEAD", "OPTIONS"):
-            return None
-        origin = request.headers.get("Origin")
-        if origin and urlparse(origin).netloc != request.host:
-            abort(403, "cross-site request refused")
-        token = state.config.get("api_token") or os.environ.get("PIXELPANE_TOKEN")
-        if token:  # optional: when set, every write needs it
-            given = request.headers.get("X-PixelPane-Token") or ""
-            auth = request.headers.get("Authorization", "")
-            if auth.startswith("Bearer "):
-                given = auth[7:]
-            if not hmac.compare_digest(given.encode(), token.encode()):
-                return jsonify(error="token required"), 401
+        Home Assistant, curl and scripts send none and are allowed.
+        3. When an api_token is set, every write (and the private reads) needs it."""
+        if not host_allowed(request.host, state.config.get("allowed_hosts") or ()):
+            return jsonify(error=f"this board doesn't answer to the name {request.host!r}. Open it by "
+                                 "its IP address and add the name under Settings, Allowed host names "
+                                 "(or set PIXELPANE_ALLOWED_HOSTS)."), 403
+        write = request.method not in ("GET", "HEAD", "OPTIONS")
+        if write:
+            origin = request.headers.get("Origin")
+            if origin and urlparse(origin).netloc != request.host:
+                abort(403, "cross-site request refused")
+        if token() and (write or request.path in PRIVATE_READS) and not token_ok():
+            return jsonify(error="token required"), 401
         return None
 
     @app.after_request
-    def one_date_header(response):
+    def headers(response):
         """The HTTP server adds Date itself; file responses would carry a second one,
-        which reverse proxies (nginx) log as a warning on every request."""
+        which reverse proxies (nginx) log as a warning on every request. Also: no
+        framing (clickjacking), no MIME sniffing, and a strict content policy."""
         response.headers.pop("Date", None)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "same-origin")
+        if response.mimetype == "text/html":
+            response.headers.setdefault("Content-Security-Policy", CSP)
         return response
 
     def body():
@@ -72,6 +126,10 @@ def create_app(state, gifs, health):
     @app.get("/")
     def index():
         return INDEX.read_text(), 200, {"Content-Type": "text/html; charset=utf-8"}
+
+    @app.get("/settings")
+    def settings_page():
+        return SETTINGS.read_text(), 200, {"Content-Type": "text/html; charset=utf-8"}
 
     @app.get("/favicon.ico")
     def favicon():
@@ -89,9 +147,10 @@ def create_app(state, gifs, health):
                 kinds.setdefault(fn.kind, []).append(name)
         return jsonify(health(state) | {
             "scenes": kinds, "theme_names": seasons.THEMES, "icons": gfx.ICONS,
-            "pinnable": sorted(PINNABLE), "categories": gifs.categories(),
-            "plugins": plugin.describe(state.config), "panel": panel_size(state.config),
-            "auth": bool(state.config.get("api_token") or os.environ.get("PIXELPANE_TOKEN")),
+            "pinnable": sorted(s for s in [*SCENES, *PICKERS] if plugin.pinnable(s)),
+            "categories": gifs.categories(),
+            "plugins": plugin.describe(state.config), "plugin_errors": plugin.ERRORS,
+            "panel": panel_size(state.config), "auth": bool(token()), "host_names": sorted(local_names()),
             "data": {k: int(time.time() - v[0]) for k, v in state.data.items()}})
 
     @app.post("/api/state")
@@ -100,12 +159,22 @@ def create_app(state, gifs, health):
         state.set(power=b.get("power"), brightness=b.get("brightness"))
         return jsonify(ok=True, power=state.power, brightness=state.brightness)
 
+    def params_of(b):
+        try:
+            return plugin.check_params(b.get("scene"), b.get("params"))
+        except ValueError as e:
+            abort(400, str(e))
+
     @app.post("/api/pin")
     def api_pin():
         b = body()
-        if b.get("scene") not in PINNABLE or not valid_scene(b.get("scene"), state.config):
+        if not valid_scene(b.get("scene"), state.config) or not plugin.pinnable(b["scene"]):
             abort(400, "scene cannot be pinned")
-        state.pin(b["scene"], b.get("params"), b.get("minutes"))
+        minutes = b.get("minutes")
+        if minutes is not None and (isinstance(minutes, bool) or not isinstance(minutes, (int, float))
+                                    or not 0 <= minutes <= 7 * 24 * 60):
+            abort(400, "minutes must be a number up to a week, or null")
+        state.pin(b["scene"], params_of(b), minutes)
         return jsonify(ok=True)
 
     @app.delete("/api/pin")
@@ -123,7 +192,7 @@ def create_app(state, gifs, health):
         b = body()
         if not valid_scene(b.get("scene"), state.config):
             abort(400, "unknown or disabled scene")
-        state.request(b["scene"], b.get("params"))
+        state.request(b["scene"], params_of(b))
         return jsonify(ok=True)
 
     @app.post("/api/notify")
@@ -131,10 +200,13 @@ def create_app(state, gifs, health):
         b = body()
         if not str(b.get("text", "")).strip():
             abort(400, "text required")
-        state.notify({"text": str(b["text"])[:200], "icon": b.get("icon", "bell"),
-                      "color": b.get("color", "#ffffff"), "flash": bool(b.get("flash")),
-                      "sub": str(b.get("sub", ""))[:80],
-                      "seconds": min(120, max(3, float(b.get("seconds", 10))))})
+        try:
+            seconds = min(120, max(3, float(b.get("seconds", 10))))
+        except (TypeError, ValueError):
+            abort(400, "seconds must be a number")
+        state.notify({"text": str(b["text"])[:200], "icon": str(b.get("icon", "bell"))[:20],
+                      "color": str(b.get("color", "#ffffff"))[:20], "flash": bool(b.get("flash")),
+                      "sub": str(b.get("sub", ""))[:80], "seconds": seconds})
         return jsonify(ok=True, queued=len(state.notifications))
 
     @app.post("/api/data/<key>")
@@ -154,9 +226,50 @@ def create_app(state, gifs, health):
             changes = schema.validate(body())
         except schema.ConfigError as e:
             return jsonify(error=str(e)), 400
-        state.update_config(changes)
+        state.update_config(schema.reset_secrets(changes, state.config))
         state.wake.set()
         return jsonify(schema.masked(state.config))
+
+    @app.get("/api/backup")
+    def api_backup():
+        """Your settings as a file (secrets left out: they stay on the board)."""
+        saved = schema.masked(_read(state.config_path))
+        for name, s in list(saved.get("plugins", {}).items()):
+            saved["plugins"][name] = {k: v for k, v in s.items() if v != schema.MASK}
+        saved.pop("api_token", None)
+        doc = {"pixelpane_backup": 1, "created": local_now().isoformat(timespec="seconds"),
+               "version": health(state).get("version"), "config": saved}
+        stamp = local_now().strftime("%Y%m%d-%H%M")
+        return Response(json.dumps(doc, indent=2), mimetype="application/json", headers={
+            "Content-Disposition": f'attachment; filename="pixelpane-settings-{stamp}.json"'})
+
+    @app.post("/api/restore")
+    def api_restore():
+        """Put a backup's settings back (merged over what's there; secrets are kept)."""
+        b = body()
+        cfg = b.get("config") if isinstance(b, dict) and b.get("pixelpane_backup") else None
+        if not isinstance(cfg, dict):
+            return jsonify(error="not a PixelPane settings backup"), 400
+        try:
+            changes = schema.validate(cfg)
+        except schema.ConfigError as e:
+            return jsonify(error=str(e)), 400
+        state.update_config(changes, replace=[k for k in changes if k not in ("plugins",)])
+        state.wake.set()
+        return jsonify(schema.masked(state.config))
+
+    @app.get("/api/logs")
+    def api_logs():
+        try:
+            since = float(request.args.get("since", 0))
+        except ValueError:
+            since = 0.0
+        return jsonify(logbuf.lines(since))
+
+    @app.post("/api/system/restart")
+    def api_restart():
+        restart()
+        return jsonify(ok=True)
 
     @app.get("/api/gifs")
     def api_gifs():
@@ -201,6 +314,8 @@ def create_app(state, gifs, health):
     @app.post("/api/gifs/hide")
     def api_hide():
         b = body()
+        if not isinstance(b.get("id"), str) or not gifs.resolve(b["id"]):
+            abort(400, "no such GIF")
         hidden = set(state.config.get("hidden_gifs", []))
         (hidden.add if b.get("hidden", True) else hidden.discard)(b.get("id"))
         state.update_config({"hidden_gifs": sorted(h for h in hidden if h)})
@@ -252,6 +367,8 @@ def create_app(state, gifs, health):
         settings = plugin.settings(state.config, "generator")
         if not settings.get("enabled", True):
             abort(400, "the generator plugin is off")
+        if jobs.busy():
+            return jsonify(error="already making one; wait for it to finish"), 429
 
         def work(say):
             r = generate.ask(settings, prompt, generate.season_words(local_now().date()), log=say,
@@ -343,24 +460,36 @@ def create_app(state, gifs, health):
         (cols, rows) then cols*rows RGB bytes. The control page draws these on a canvas,
         so the preview plays at the board's real speed. Ends after 30 minutes (clients
         reconnect) and sends the frame again every few seconds so a dead client is noticed."""
+        me = object()
+        with streams_lock:
+            for s, seen in list(streams.items()):
+                if time.monotonic() - seen > 10:   # its client went away
+                    del streams[s]
+            if len(streams) >= MAX_STREAMS:
+                return jsonify(error="too many live previews open"), 503
+            streams[me] = time.monotonic()
+
         def gen():
             last, sent_at, until = None, 0.0, time.monotonic() + 30 * 60
-            while time.monotonic() < until:
-                frame = state.last_frame if state.power else None
-                now = time.monotonic()
-                if frame is not last or now - sent_at > 5:
-                    cols, rows = panel_size(state.config)
-                    img = compose(frame if frame is not None else Image.new("RGB", (32, 32)), cols, rows)
-                    yield cols.to_bytes(2, "big") + rows.to_bytes(2, "big") + img.convert("RGB").tobytes()
-                    last, sent_at = frame, now
-                time.sleep(1 / 40)
+            try:
+                while time.monotonic() < until:
+                    now = streams[me] = time.monotonic()
+                    frame = state.last_frame if state.effective_power() else None
+                    if frame is not last or now - sent_at > 5:
+                        cols, rows = panel_size(state.config)
+                        img = compose(frame if frame is not None else Image.new("RGB", (32, 32)), cols, rows)
+                        yield cols.to_bytes(2, "big") + rows.to_bytes(2, "big") + img.convert("RGB").tobytes()
+                        last, sent_at = frame, now
+                    time.sleep(1 / 40)
+            finally:
+                streams.pop(me, None)
         return Response(gen(), mimetype="application/octet-stream",
                         headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
 
     @app.get("/preview.png")
     def preview():
         cols, rows = panel_size(state.config)
-        img = compose(state.last_frame if state.power else Image.new("RGB", (32, 32)), cols, rows)
+        img = compose(state.last_frame if state.effective_power() else Image.new("RGB", (32, 32)), cols, rows)
         scale = max(1, min(16, int(request.args.get("scale", max(1, 320 // cols)))))
         buf = io.BytesIO()
         img.resize((cols * scale, rows * scale), Image.NEAREST).save(buf, "PNG")
