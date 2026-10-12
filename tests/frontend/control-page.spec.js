@@ -300,3 +300,28 @@ test('GIF library pages through big libraries', async ({ page, request }) => {
   await page.getByTestId('page-size').selectOption('300');
   await expect(cards).toHaveCount(total);
 });
+
+test('with a token set, the page asks for it once and then works', async ({ page, request }) => {
+  await request.put('/api/config', { data: { api_token: 'correct-horse' } });
+  await page.reload();
+  await page.evaluate(() => localStorage.removeItem('pixelpane-token'));
+  await page.locator('#power').click();
+  const dlg = page.getByTestId('token-dialog');
+  await expect(dlg).toBeVisible();
+  await page.locator('#tokinput').fill('correct-horse');
+  await page.locator('#toksave').click();
+  await expect(page.locator('#power')).toHaveText('Power: OFF');
+  await page.locator('#power').click();                 // remembered: no second prompt
+  await expect(page.locator('#power')).toHaveText('Power: ON');
+  await expect(dlg).toBeHidden();
+  await request.put('/api/config', { data: { api_token: null }, headers: { 'X-PixelPane-Token': 'correct-horse' } });
+  await page.evaluate(() => localStorage.removeItem('pixelpane-token'));
+  page.errors = page.errors.filter((e) => !e.includes('401'));   // the expected first refusal
+});
+
+test('footer links to the project on GitHub', async ({ page }) => {
+  const link = page.getByTestId('github-link');
+  await expect(link).toHaveAttribute('href', 'https://github.com/JoeKarlsson/pixelpane');
+  await expect(link).toHaveAttribute('rel', /noopener/);
+  await expect(page.locator('#footver')).toHaveText('version dev');
+});

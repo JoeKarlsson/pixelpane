@@ -8,9 +8,12 @@ from flask import Flask, abort, jsonify, request, send_file
 from PIL import Image
 from werkzeug.utils import secure_filename
 
-from . import gfx, plugin, seasons
+import hmac
+import os
+
+from . import gfx, plugin, schema, seasons
 from .plugin import SCENES
-from .state import DEFAULTS, VAR, convert_upload
+from .state import VAR, convert_upload
 
 INDEX = Path(__file__).with_name("index.html")
 PINNABLE = {"on_air", "message", "clock", "weather", "now_playing", "calendar", "fire", "plasma",
@@ -19,15 +22,15 @@ PINNABLE = {"on_air", "message", "clock", "weather", "now_playing", "calendar", 
 
 
 def valid_scene(name, config=None):
-    """A scene name, "seasonal"/"generative", or "gif:<category>" (from an enabled plugin, if config given)."""
-    base, _, arg = str(name).partition(":")
-    if base == "gif" and arg and not arg.isalnum():
+    """A known scene (or seasonal/generative/gif:<category>), from an enabled plugin if config is given."""
+    if not schema.valid_scene(name):
         return False
+    base = str(name).partition(":")[0]
+    if config is None:
+        return True
     if base in ("seasonal", "generative"):
-        return config is None or plugin.enabled(config, base)
-    if base not in SCENES:
-        return False
-    return config is None or plugin.scene_enabled(config, base)
+        return plugin.enabled(config, base)
+    return plugin.scene_enabled(config, base)
 
 
 def create_app(state, gifs, health):
@@ -44,6 +47,14 @@ def create_app(state, gifs, health):
         origin = request.headers.get("Origin")
         if origin and urlparse(origin).netloc != request.host:
             abort(403, "cross-site request refused")
+        token = state.config.get("api_token") or os.environ.get("PIXELPANE_TOKEN")
+        if token:  # optional: when set, every write needs it
+            given = request.headers.get("X-PixelPane-Token") or ""
+            auth = request.headers.get("Authorization", "")
+            if auth.startswith("Bearer "):
+                given = auth[7:]
+            if not hmac.compare_digest(given.encode(), token.encode()):
+                return jsonify(error="token required"), 401
         return None
 
     def body():
@@ -71,6 +82,7 @@ def create_app(state, gifs, health):
             "scenes": kinds, "theme_names": seasons.THEMES, "icons": gfx.ICONS,
             "pinnable": sorted(PINNABLE), "categories": gifs.categories(),
             "plugins": plugin.describe(state.config),
+            "auth": bool(state.config.get("api_token") or os.environ.get("PIXELPANE_TOKEN")),
             "data": {k: int(time.time() - v[0]) for k, v in state.data.items()}})
 
     @app.post("/api/state")
@@ -125,17 +137,17 @@ def create_app(state, gifs, health):
 
     @app.get("/api/config")
     def api_config():
-        return jsonify(state.config)
+        return jsonify(schema.masked(state.config))
 
     @app.put("/api/config")
     def api_put_config():
-        b = {k: v for k, v in body().items() if k in DEFAULTS}
-        bad = [s for s in b.get("rotation", []) if not valid_scene(s)]
-        if bad:
-            abort(400, f"unknown scenes: {bad}")
-        state.update_config(b)
+        try:
+            changes = schema.validate(body())
+        except schema.ConfigError as e:
+            return jsonify(error=str(e)), 400
+        state.update_config(changes)
         state.wake.set()
-        return jsonify(state.config)
+        return jsonify(schema.masked(state.config))
 
     @app.get("/api/gifs")
     def api_gifs():

@@ -86,12 +86,15 @@ class WebTest(unittest.TestCase):
 
     def test_config(self):
         self.assertEqual(self.client.get("/api/config").get_json()["rotation"], self.state.config["rotation"])
-        r = self.client.put("/api/config", json={"rotation": ["clock", "gif:space"], "dwell": {"gif": 7}, "junk": 1})
+        self.assertEqual(self.client.put("/api/config", json={"junk": 1}).status_code, 400)
+        r = self.client.put("/api/config", json={"rotation": ["clock", "gif:space"], "dwell": {"gif": 7}})
         self.assertEqual(r.status_code, 200)
         cfg = r.get_json()
         self.assertEqual((cfg["rotation"], cfg["dwell"]["gif"]), (["clock", "gif:space"], 7))
-        self.assertNotIn("junk", cfg)
-        self.assertEqual(self.client.put("/api/config", json={"rotation": ["clock", "nope"]}).status_code, 400)
+        r = self.client.put("/api/config", json={"rotation": ["clock", "nope"]})
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("unknown scenes", r.get_json()["error"])
+        self.assertEqual(self.client.put("/api/config", json={"brightness": "lots"}).status_code, 400)
 
     def test_gif_listing_and_file(self):
         rows = self.client.get("/api/gifs").get_json()
@@ -138,6 +141,21 @@ class WebTest(unittest.TestCase):
         same = {"Origin": "http://localhost"}  # the test client's host
         self.assertEqual(self.client.post("/api/state", json={"brightness": 30}, headers=same).status_code, 200)
         self.assertEqual(self.client.post("/api/state", json={"brightness": 31}).status_code, 200)  # no Origin (HA, curl)
+
+    def test_optional_token(self):
+        self.client.put("/api/config", json={"api_token": "correct-horse"})
+        self.assertEqual(self.client.get("/api/config").get_json()["api_token"], "••••••••")   # never shown
+        self.assertTrue(self.client.get("/api/state").get_json()["auth"])
+        self.assertEqual(self.post("/api/state", {"power": False}).status_code, 401)
+        self.assertEqual(self.client.post("/api/state", json={"power": False},
+                                          headers={"X-PixelPane-Token": "wrong-horse"}).status_code, 401)
+        self.assertEqual(self.client.post("/api/state", json={"power": False},
+                                          headers={"Authorization": "Bearer correct-horse"}).status_code, 200)
+        self.assertFalse(self.state.power)
+        self.assertEqual(self.client.get("/api/health").status_code, 200)   # reads stay open
+        r = self.client.put("/api/config", json={"api_token": None}, headers={"X-PixelPane-Token": "correct-horse"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(self.post("/api/state", {"power": True}).status_code, 200)
 
     def test_preview_png(self):
         r = self.client.get("/preview.png?scale=4")

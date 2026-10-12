@@ -110,7 +110,10 @@ def data_ttl(config, key):
 
 
 def describe(config):
-    return [{"name": p.name, "description": p.description, "about": p.about, "fields": p.fields,
-             "enabled": enabled(config, p.name), "scenes": p.scenes, "data": p.data,
-             "settings": settings(config, p.name)}
-            for p in PLUGINS.values()]
+    out = []
+    for p in PLUGINS.values():
+        secrets = {f["key"] for f in p.fields if f.get("type") == "secret"}
+        s = {k: ("••••••••" if k in secrets and v else v) for k, v in settings(config, p.name).items()}
+        out.append({"name": p.name, "description": p.description, "about": p.about, "fields": p.fields,
+                    "enabled": enabled(config, p.name), "scenes": p.scenes, "data": p.data, "settings": s})
+    return out

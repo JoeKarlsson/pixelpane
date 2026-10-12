@@ -7,6 +7,8 @@
     "now_playing": 15, "calendar": 10, "homelab": 24, "tiles": 12
   },
   "plugins": {},
+  "panel": {"cols": 32, "rows": 32},
+  "api_token": null,
   "data_ttl_minutes": {},
   "hidden_gifs": [],
   "display": "auto",
