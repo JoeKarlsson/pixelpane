@@ -14,9 +14,11 @@ First public release.
   generative ones.
 - Plugin system: every scene comes from a plugin; plugins can be switched off,
   configured, and added as single Python files.
-- Control page: live preview, now-playing view with playlist position, Play
-  now, modes (ON AIR, messages), notifications, playlist editor, plugin
-  switches and a GIF library with upload, categories and themes.
+- Control page: live preview, now-playing view with playlist position and
+  Skip, Play now, modes (ON AIR, messages), notifications, playlist editor,
+  plugin panels (what each plugin does, its scenes, data and editable
+  settings) and a paged GIF library with upload, categories and themes.
+- Cross-site writes to the API are refused (same-origin check).
 - HTTP API for notifications, modes, data and configuration; Home Assistant
   examples (light, feed automation, notification steps).
 - Raspberry Pi 2-4 support through hzeller/rpi-rgb-led-matrix and Pi 5 support
