@@ -67,6 +67,9 @@ def ask(settings: dict, prompt: str, when: str, timeout: float = 120) -> dict:
     if not base or not settings.get("model"):
         raise GenerateError("set the generator's server and model first (Plugins, generator)")
     user = prompt.strip() or IDEA.format(when=when)
+    # A fresh tag each time: gateways like LiteLLM cache identical requests, which
+    # would make Try again and Surprise me repeat themselves.
+    user += f"\n\n(variation {uuid.uuid4().hex[:8]})"
     body = {"model": settings["model"], "temperature": 0.8, "max_tokens": 4000,
             "messages": [{"role": "system", "content": SPEC}, {"role": "user", "content": user}]}
     req = urllib.request.Request(base + "/chat/completions", json.dumps(body).encode(),

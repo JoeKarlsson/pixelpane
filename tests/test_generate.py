@@ -91,6 +91,8 @@ class GenerateTest(unittest.TestCase):
         path, auth, body = Stub.seen[-1]
         self.assertEqual((path, auth, body["model"]), ("/v1/chat/completions", "Bearer k-123", "m1"))
         self.assertIn("October", body["messages"][1]["content"])   # empty prompt: the model picks an idea
+        generate.ask({"base_url": self.base, "model": "m1"}, "", "October")
+        self.assertNotEqual(Stub.seen[-1][2]["messages"], body["messages"])   # never a cache hit
         with self.assertRaises(generate.GenerateError):
             generate.ask({"base_url": "", "model": "m"}, "x", "")
         with self.assertRaises(generate.GenerateError) as e:
