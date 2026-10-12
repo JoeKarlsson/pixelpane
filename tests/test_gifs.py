@@ -36,6 +36,37 @@ class GifLibraryTest(unittest.TestCase):
         self.state.update_config({"hidden_gifs": ["repo/retro-mario-run.gif"]})
         self.assertNotIn("retro-mario-run.gif", self.names(self.lib.pool()))
 
+    def test_reclassify_moves_gifs_between_categories_and_themes(self):
+        n = self.lib.classify(["repo/retro-mario-run.gif"], category="games", theme="halloween")
+        self.assertEqual(n, 1)
+        self.assertEqual(self.names(self.lib.pool("halloween")), ["pumpkin-glow.gif", "retro-mario-run.gif"])
+        self.assertNotIn("retro-mario-run.gif", self.names(self.lib.pool()))
+        # a themed GIF can become an every-day one
+        self.lib.classify(["repo/themes/winter/snowman-wave.gif"], theme="all")
+        self.assertIn("snowman-wave.gif", self.names(self.lib.pool()))
+        self.assertIn("snowman", self.lib.categories())
+        entry = {g["id"]: g for g in self.lib.listing()}["repo/retro-mario-run.gif"]
+        self.assertEqual((entry["category"], entry["theme"], entry["moved"]), ("games", "halloween", True))
+        self.assertEqual((entry["default_category"], entry["default_theme"]), ("retro", "all"))
+        # survives a restart: it is in the saved config
+        again = st.GifLibrary(st.State(), random.Random(1))
+        self.assertIn("retro-mario-run.gif", self.names(again.pool("halloween")))
+
+    def test_moving_back_or_resetting_drops_the_override(self):
+        self.lib.classify(["repo/retro-mario-run.gif"], category="games")
+        self.lib.classify(["repo/retro-mario-run.gif"], category="retro")
+        self.assertEqual(self.state.config["gif_meta"], {})
+        self.lib.classify(["repo/retro-mario-run.gif"], category="games", theme="christmas")
+        self.lib.classify(["repo/retro-mario-run.gif"], reset=True)
+        self.assertEqual(st.State().config["gif_meta"], {})
+        self.assertEqual(self.lib.classify(["repo/nope.gif"], category="x"), 0)
+
+    def test_rename_category(self):
+        self.assertEqual(self.lib.rename_category("retro", "games"), 2)
+        self.assertEqual(self.lib.categories(), ["abstract", "games", "space"])
+        self.assertEqual(len(self.names(p for p in self.lib.pool() if self.lib.category(p) == "games")), 2)
+        self.assertIsNotNone(self.lib.next("games"))
+
     def test_categories_and_category_picks(self):
         self.assertEqual(self.lib.categories(), ["abstract", "retro", "space"])
         picks = {self.lib.next("retro").name for _ in range(10)}

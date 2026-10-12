@@ -11,6 +11,7 @@
   "api_token": null,
   "data_ttl_minutes": {},
   "hidden_gifs": [],
+  "gif_meta": {},
   "display": "auto",
   "adafruit_board": "hat",
   "hardware_mapping": "adafruit-hat",

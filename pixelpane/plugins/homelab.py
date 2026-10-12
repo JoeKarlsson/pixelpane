@@ -12,7 +12,7 @@ plugin = Plugin(
     about="Up to six animated pages: alerts (always first), health checks with a "
           "blinking server rack, Proxmox host CPU, NAS space and transfer, network "
           "latency and DNS, UPS batteries and Plex. Each page appears only when its data "
-          "is pushed to POST /api/data/homelab; see docs/HOME_ASSISTANT.md for the fields.")
+          "is pushed to POST /api/data/homelab (Plex only while someone is streaming); see docs/HOME_ASSISTANT.md for the fields.")
 
 
 @plugin.scene("homelab")
@@ -42,6 +42,8 @@ def lab_pages(lab):
                       ("ups", _lab_ups), ("plex", _lab_plex)):
         if lab.get(key):
             pages.append(page)
+    if _lab_plex in pages and not int(lab["plex"].get("watching") or 0):
+        pages.remove(_lab_plex)   # only worth a page while someone is streaming
     return pages
 
 

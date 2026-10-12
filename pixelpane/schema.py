@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import plugin
+from . import plugin, seasons
 from .plugin import SCENES
 
 DISPLAYS = {"auto", "hzeller", "piomatter", "fake"}
@@ -43,6 +43,34 @@ def valid_scene(name: Any) -> bool:
     if base == "gif" and arg:
         return arg.replace("_", "").isalnum()
     return base in SCENES or base in ("seasonal", "generative")
+
+
+def category_name(v: Any, what: str = "category") -> str:
+    """A GIF category: what follows "gif:" in the playlist, so letters, digits and _ only."""
+    if not isinstance(v, str):
+        raise ConfigError(f"{what} must be text")
+    name = "_".join(v.strip().lower().replace("-", " ").split())
+    if not name or len(name) > 24 or not name.replace("_", "").isalnum() or not name.isascii():
+        raise ConfigError(f"{what} must be 1 to 24 letters, digits or _")
+    return name
+
+
+def theme_name(v: Any, what: str = "theme") -> str:
+    if v != "all" and v not in seasons.THEMES:
+        raise ConfigError(f"{what} must be all or one of {sorted(seasons.THEMES)}")
+    return v
+
+
+def _gif_meta(v: Any) -> dict:
+    if not isinstance(v, dict):
+        raise ConfigError("gif_meta must be an object")
+    out = {}
+    for gid, m in v.items():
+        if not isinstance(m, dict) or set(m) - {"category", "theme"}:
+            raise ConfigError(f"gif_meta[{gid!r}] must be {{category, theme}}")
+        out[gid] = {**({"category": category_name(m["category"])} if "category" in m else {}),
+                    **({"theme": theme_name(m["theme"])} if "theme" in m else {})}
+    return out
 
 
 def _field(f: dict, v: Any, what: str) -> Any:
@@ -146,6 +174,8 @@ def validate(changes: Any) -> dict:
             out[key] = _plugins(v)
         elif key == "hidden_gifs":
             out[key] = _str_list(v, key)
+        elif key == "gif_meta":
+            out[key] = _gif_meta(v)
         elif key == "gpio_slowdown":
             out[key] = _num(v, key, 0, 5, integer=True, nullable=True)
         elif key == "refresh_hz":

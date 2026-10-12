@@ -92,9 +92,12 @@ class State:
             _atomic_write(self.state_path, {"power": self.power, "brightness": self.brightness,
                                             "pinned": self.pinned})
 
-    def update_config(self, changes):
+    def update_config(self, changes, replace=()):
+        """Merge changes into the saved config; keys in `replace` are swapped whole instead."""
         with self.lock:
             saved = merge(_read(self.config_path), changes)
+            for k in replace:
+                saved[k] = changes[k]
             _atomic_write(self.config_path, saved)
             self.config = merge(DEFAULTS, saved)
 
@@ -190,25 +193,71 @@ class GifLibrary:
         p = root / rel
         return p if p.is_file() else None
 
+    def everything(self):
+        """(path, folder theme or "all") for every GIF, wherever it lives."""
+        out = []
+        for theme in ["all"] + list(seasons.THEMES):
+            for p in (self._files(self.ROOTS["repo"], f"themes/{theme}" if theme != "all" else None)
+                      + self._files(self.ROOTS["upload"], theme)):
+                out.append((p, theme))
+        return out
+
+    def meta(self, path):
+        return (self.state.config.get("gif_meta") or {}).get(self.gif_id(path)) or {}
+
+    def theme(self, path, folder_theme):
+        """The theme a GIF plays under: its folder's, unless it was moved in the page or API."""
+        return self.meta(path).get("theme") or folder_theme
+
     def pool(self, theme=None):
-        if theme:
-            files = self._files(self.ROOTS["repo"], f"themes/{theme}") + self._files(self.ROOTS["upload"], theme)
-        else:
-            files = self._files(self.ROOTS["repo"], None) + self._files(self.ROOTS["upload"], "all")
+        want = theme or "all"
         hidden = set(self.state.config.get("hidden_gifs", []))
-        return [p for p in files if self.gif_id(p) not in hidden]
+        return [p for p, t in self.everything()
+                if self.theme(p, t) == want and self.gif_id(p) not in hidden]
 
     def listing(self):
         out = []
-        for theme in [None] + list(seasons.THEMES):
-            for p in (self._files(self.ROOTS["repo"], f"themes/{theme}" if theme else None)
-                      + self._files(self.ROOTS["upload"], theme or "all")):
-                gid = self.gif_id(p)
-                out.append({"id": gid, "name": p.name, "theme": theme or "all",
-                            "category": self.category(p) if not theme else theme,
-                            "upload": gid.startswith("upload/"),
-                            "hidden": gid in self.state.config.get("hidden_gifs", [])})
+        hidden = set(self.state.config.get("hidden_gifs", []))
+        for p, folder in self.everything():
+            gid = self.gif_id(p)
+            out.append({"id": gid, "name": p.name, "theme": self.theme(p, folder),
+                        "category": self.category(p), "default_theme": folder,
+                        "default_category": self.file_category(p), "moved": bool(self.meta(p)),
+                        "upload": gid.startswith("upload/"), "hidden": gid in hidden})
         return out
+
+    def classify(self, ids, category=None, theme=None, reset=False):
+        """Move GIFs to another category and/or theme ("all" = every day). Returns how many.
+        Overrides live in config["gif_meta"], so they survive deploys that rewrite gifs/."""
+        homes = {self.gif_id(p): (p, t) for p, t in self.everything()}
+        meta = {k: dict(v) for k, v in (self.state.config.get("gif_meta") or {}).items() if k in homes}
+        n = 0
+        for gid in ids:
+            if gid not in homes:
+                continue
+            p, folder = homes[gid]
+            m = {} if reset else meta.get(gid, {})
+            if category is not None:
+                m["category"] = category
+            if theme is not None:
+                m["theme"] = theme
+            # an override that matches where the file already is, is no override
+            if m.get("category") == self.file_category(p):
+                m.pop("category")
+            if m.get("theme") == folder:
+                m.pop("theme")
+            if m:
+                meta[gid] = m
+            else:
+                meta.pop(gid, None)
+            n += 1
+        self.state.update_config({"gif_meta": meta}, replace=("gif_meta",))
+        self.bags.clear()
+        return n
+
+    def rename_category(self, old, new):
+        ids = [self.gif_id(p) for p, _ in self.everything() if self.category(p) == old]
+        return self.classify(ids, category=new) if ids else 0
 
     def _draw(self, key, files):
         bag = self.bags.get(key)
@@ -223,9 +272,12 @@ class GifLibrary:
         return None
 
     @staticmethod
-    def category(path):
-        """All-year GIFs are named <category>-<what-it-shows>.gif."""
+    def file_category(path):
+        """GIFs are named <category>-<what-it-shows>.gif."""
         return path.stem.split("-", 1)[0].lower() if "-" in path.stem else "other"
+
+    def category(self, path):
+        return self.meta(path).get("category") or self.file_category(path)
 
     def categories(self):
         return sorted({self.category(p) for p in self.pool()})

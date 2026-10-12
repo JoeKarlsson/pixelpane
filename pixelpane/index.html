@@ -19,7 +19,7 @@
 
   <section class="grid2">
     <div class="titlebar">pixelpane@board: live</div>
-    <div class="panel"><img id="preview" alt="live panel preview" src="/preview.png"></div>
+    <div class="panel"><canvas id="preview" width="32" height="32" role="img" aria-label="live panel preview" data-testid="preview"></canvas></div>
     <div style="display:grid;gap:12px">
       <div class="row"><button id="power">Power</button><span class="pill" id="scene">…</span></div>
       <div><label for="bright">Brightness <span id="bv"></span></label>
@@ -76,6 +76,13 @@
     <h2>GIF library</h2>
     <div class="row" style="margin-bottom:10px">
       <label for="gfilter">Show</label><select id="gfilter" data-testid="gif-filter"></select>
+      <button id="grename" hidden data-testid="rename-category">Rename category</button>
+      <button id="gselect" data-testid="select-mode" aria-pressed="false">Select</button>
+    </div>
+    <div class="row bulk" id="gbulk" hidden data-testid="bulk-bar">
+      <span class="stat" id="gselcount">0 selected</span>
+      <button id="gselall">Select page</button>
+      <button id="gmove" class="on" data-testid="bulk-move">Move…</button>
     </div>
     <div class="row" style="margin-bottom:10px">
       <label for="gtheme">Upload to</label><select id="gtheme" data-testid="upload-theme"></select>
@@ -95,6 +102,27 @@
     </div>
   </section>
   <dialog id="pdlg" data-testid="plugin-dialog"></dialog>
+  <dialog id="gdlg" data-testid="classify-dialog">
+    <h3 id="gdlgtitle">Move GIF</h3>
+    <p class="about" id="gdlgabout"></p>
+    <div class="field"><label for="gdlgcat">Category</label>
+      <input id="gdlgcat" list="gcats" autocomplete="off" data-testid="classify-category">
+      <small>Pick one or type a new name. Leave it empty to keep each GIF's category.</small></div>
+    <div class="field"><label for="gdlgtheme">Plays</label>
+      <select id="gdlgtheme" data-testid="classify-theme"></select>
+      <small>All year plays any day; a theme plays only on its dates.</small></div>
+    <div class="foot"><button id="gdlgreset" data-testid="classify-reset">Back to where the file is</button>
+      <button id="gdlgcancel">Cancel</button><button id="gdlgsave" class="on" data-testid="classify-save">Save</button></div>
+  </dialog>
+  <dialog id="rdlg" data-testid="rename-dialog">
+    <h3>Rename category</h3>
+    <p class="about" id="rdlgabout"></p>
+    <div class="field"><label for="rdlgname">New name</label>
+      <input id="rdlgname" list="gcats" autocomplete="off" data-testid="rename-input">
+      <small>Use an existing name to merge the two categories.</small></div>
+    <div class="foot"><button id="rdlgcancel">Cancel</button><button id="rdlgsave" class="on" data-testid="rename-save">Rename</button></div>
+  </dialog>
+  <datalist id="gcats"></datalist>
   <dialog id="tokdlg" data-testid="token-dialog">
     <h3>Token needed</h3>
     <p class="about">This board asks for a token before it accepts changes. It's the <code>api_token</code> in its config.</p>

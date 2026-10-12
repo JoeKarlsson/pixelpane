@@ -59,5 +59,25 @@ playlist entries like `gif:retro`. Themes: autumn, winter, spring, summer,
 halloween, thanksgiving, christmas, new_year, valentines, st_patricks, july4,
 birthday.
 
+### Moving GIFs without renaming files
+
+On the control page, ✎ on a GIF moves it to another category (pick one or type a
+new name) or theme (or to "All year"). **Select** picks several GIFs, or a whole
+page, and moves them together; with a category showing, **Rename category**
+renames it on every GIF in it (an existing name merges the two). The files stay
+where they are: the moves are saved on the board (`gif_meta` in its config), so
+the next deploy doesn't undo them. "Back to where the file is" undoes a move.
+
+The same from scripts:
+
+```bash
+curl -X PATCH  http://pixelpane.local/api/gifs/repo/retro-coin-spin.gif -H 'Content-Type: application/json' \
+     -d '{"category": "arcade", "theme": "christmas"}'
+curl -X POST   http://pixelpane.local/api/gifs/classify -H 'Content-Type: application/json' \
+     -d '{"ids": ["repo/a.gif", "repo/b.gif"], "theme": "all"}'        # or {"ids": [...], "reset": true}
+curl -X POST   http://pixelpane.local/api/categories/rename -H 'Content-Type: application/json' \
+     -d '{"from": "retro", "to": "arcade"}'
+```
+
 Keep your library outside this repo (see "Keeping your own stuff out of the
 repo" in the README); `tools/deploy.sh` copies it to the board.

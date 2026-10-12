@@ -19,7 +19,8 @@ class HeaderTest(unittest.TestCase):
         support.reset()
         state = State()
         app = create_app(state, GifLibrary(state, random.Random(1)), health)
-        self.server = make_server("127.0.0.1", 0, app)
+        self.state = state
+        self.server = make_server("127.0.0.1", 0, app, threaded=True)
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
 
     def tearDown(self):
@@ -35,6 +36,23 @@ class HeaderTest(unittest.TestCase):
             dates = [v for k, v in r.getheaders() if k.lower() == "date"]
             self.assertEqual((r.status, len(dates)), (200, 1), path)
             conn.close()
+
+    def test_frame_stream_pushes_new_frames(self):
+        from PIL import Image
+        conn = http.client.HTTPConnection("127.0.0.1", self.server.server_port, timeout=5)
+        conn.request("GET", "/api/frames")
+        r = conn.getresponse()
+        self.assertEqual((r.status, r.getheader("X-Accel-Buffering")), (200, "no"))
+
+        def frame():
+            head = r.read(4)
+            cols, rows = int.from_bytes(head[:2], "big"), int.from_bytes(head[2:], "big")
+            return cols, rows, r.read(cols * rows * 3)
+        cols, rows, px = frame()
+        self.assertEqual((cols, rows, px[:3]), (32, 32, b"\0\0\0"))
+        self.state.last_frame = Image.new("RGB", (32, 32), (255, 0, 0))   # what the player does
+        self.assertEqual(frame()[2][:3], b"\xff\0\0")
+        conn.close()
 
 
 if __name__ == "__main__":

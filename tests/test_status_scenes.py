@@ -69,6 +69,8 @@ class HomelabTest(unittest.TestCase):
         self.assertEqual([p.__name__ for p in lab_pages(LAB)],
                          ["_lab_status", "_lab_hosts", "_lab_nas", "_lab_net", "_lab_ups", "_lab_plex"])
         self.assertEqual([p.__name__ for p in lab_pages({"alerts": 0})], ["_lab_status"])
+        idle = dict(LAB, plex={"watching": 0})
+        self.assertNotIn("_lab_plex", [p.__name__ for p in lab_pages(idle)])
         bare = list(SCENES["homelab"](support.ctx_with({"homelab": {"alerts": 0}}), 24))
         self.assertAlmostEqual(sum(h for _, h in bare), 24, delta=0.2)
 

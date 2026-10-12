@@ -108,6 +108,13 @@ code { font-family: var(--mono); color: var(--teal); }
 .gif .theme { display: inline-block; margin-top: 4px; font-size: 10px; padding: 1px 7px; color: var(--teal); border-color: rgba(139,203,200,.35); background: transparent; }
 .gif .row { justify-content: center; gap: 4px; margin-top: 4px; }
 .gif button { padding: 2px 8px; font-size: 12px; }
+.gif { position: relative; }
+.gif .pick { position: absolute; top: 6px; left: 6px; width: 16px; height: 16px; accent-color: var(--peach); }
+.gif.picked { border-color: var(--peach); box-shadow: 0 0 0 1px var(--peach) inset; }
+.gif .cat { display: inline-block; margin-top: 4px; font-size: 10px; color: var(--dim); font-family: var(--mono); }
+.gif .cat.moved { color: var(--peach); }
+.bulk { margin-bottom: 10px; padding: 8px 10px; border: 1px dashed var(--peach); border-radius: 8px; }
+#gselect[aria-pressed="true"] { color: var(--peach); border-color: var(--peach); }
 .pager { justify-content: center; margin-top: 14px; }
 .pager button:disabled { opacity: .35; cursor: default; }
 

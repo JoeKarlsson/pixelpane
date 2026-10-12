@@ -28,6 +28,8 @@ const api = (path, method = 'GET', body) => send(path, {method, headers: body ? 
   body: body ? JSON.stringify(body) : undefined}).then(r => r.json());
 const toast = t => { const el = $('#toast'); el.textContent = t; el.style.opacity = 1; setTimeout(() => el.style.opacity = 0, 1800); };
 let S = {}, C = {}, rotation = [], gifFilter = 'everything', gifPage = 0;
+let gifList = [], gifShown = [], selecting = false;
+const picked = new Set();
 
 function btn(label, fn, cls, testid) {
   const b = document.createElement('button'); b.textContent = label; b.onclick = fn;
@@ -190,7 +192,7 @@ function drawDwell() {
 }
 
 async function loadGifs() {
-  const list = await api('/api/gifs');
+  const list = gifList = await api('/api/gifs');
   const match = f => g => f === 'everything' ? true : f === 'all' ? g.theme === 'all'
     : f.startsWith('cat:') ? g.theme === 'all' && g.category === f.slice(4) : g.theme === f;
   const count = f => list.filter(match(f)).length;
@@ -200,23 +202,36 @@ async function loadGifs() {
     ...Object.entries(S.theme_names).map(([k, v]) => [k, v])];
   $('#gfilter').replaceChildren(...opts.map(([v, label]) => new Option(`${label} (${count(v)})`, v)));
   $('#gfilter').value = gifFilter;
+  $('#grename').hidden = !gifFilter.startsWith('cat:');
+  $('#gcats').replaceChildren(...[...new Set(list.map(g => g.category))].sort().map(c => new Option(c)));
+  for (const id of [...picked]) if (!list.some(g => g.id === id)) picked.delete(id);
+  drawPicked();
   const all = list.filter(match(gifFilter));
   const size = +$('#gsize').value, pages = Math.max(1, Math.ceil(all.length / size));
   gifPage = Math.min(gifPage, pages - 1);
-  const shown = all.slice(gifPage * size, (gifPage + 1) * size);
+  const shown = gifShown = all.slice(gifPage * size, (gifPage + 1) * size);
   $('#gcount').textContent = `${all.length} match · ${list.length} in the library`;
   $('#gpage').textContent = `Page ${gifPage + 1} of ${pages}` + (all.length ? ` · ${gifPage * size + 1}-${gifPage * size + shown.length}` : '');
   $('#gprev').disabled = gifPage === 0; $('#gnext').disabled = gifPage >= pages - 1;
   $('#gifs').replaceChildren(...shown.map(g => {
-    const d = document.createElement('div'); d.className = 'gif' + (g.hidden ? ' hidden' : ''); d.dataset.testid = 'gif-card';
+    const d = document.createElement('div'); d.dataset.testid = 'gif-card'; d.dataset.id = g.id;
+    d.className = 'gif' + (g.hidden ? ' hidden' : '') + (picked.has(g.id) ? ' picked' : '');
+    if (selecting) {
+      const box = el('input', {type: 'checkbox', className: 'pick', checked: picked.has(g.id), title: 'Select'});
+      box.setAttribute('aria-label', 'Select ' + g.name);
+      box.onchange = () => { box.checked ? picked.add(g.id) : picked.delete(g.id); d.classList.toggle('picked', box.checked); drawPicked(); };
+      d.append(box);
+    }
     const cap = document.createElement('div'); cap.className = 'stat'; cap.style.fontSize = '11px';
     cap.style.overflowWrap = 'anywhere'; cap.textContent = g.name.replace(/\.gif$/i, '');
     const img = document.createElement('img'); img.loading = 'lazy'; img.src = '/gif/' + encodeURI(g.id); img.title = g.name;
     const r = document.createElement('div'); r.className = 'row';
     r.append(btn('▶', () => api('/api/play', 'POST', {scene:'gif', params:{id:g.id}}).then(() => toast('Up next'))),
-      btn(g.hidden ? 'show' : 'hide', () => api('/api/gifs/hide', 'POST', {id:g.id, hidden:!g.hidden}).then(loadGifs)));
+      btn(g.hidden ? 'show' : 'hide', () => api('/api/gifs/hide', 'POST', {id:g.id, hidden:!g.hidden}).then(loadGifs)),
+      btn('✎', () => openClassify([g]), '', 'classify'));
     if (g.upload) r.append(btn('🗑', () => confirmDelete(g)));
-    d.append(img, cap);
+    d.append(img, cap, el('span', {className: 'cat' + (g.moved ? ' moved' : ''), textContent: g.category,
+      title: g.moved ? `moved here from ${g.default_category}, ${g.default_theme.replace('_', ' ')}` : 'category'}));
     if (g.theme !== 'all') {
       const tag = document.createElement('span'); tag.className = 'pill theme'; tag.textContent = g.theme.replace('_', ' ');
       d.append(tag);
@@ -224,6 +239,64 @@ async function loadGifs() {
     d.append(r); return d;
   }));
 }
+
+function drawPicked() {
+  $('#gbulk').hidden = !selecting;
+  $('#gselcount').textContent = `${picked.size} selected`;
+  $('#gmove').disabled = !picked.size;
+}
+
+function themeOptions(keep) {
+  return [...(keep ? [new Option("Keep each GIF's", '')] : []), new Option('All year', 'all'),
+    ...Object.entries(S.theme_names).map(([k, v]) => new Option(v, k))];
+}
+
+// Move one GIF, or every selected one, to another category and/or theme.
+function openClassify(gs) {
+  const dlg = $('#gdlg'), one = gs.length === 1 ? gs[0] : null;
+  $('#gdlgtitle').textContent = one ? 'Move ' + one.name.replace(/\.gif$/i, '') : `Move ${gs.length} GIFs`;
+  $('#gdlgabout').textContent = one
+    ? `Now: ${one.category}, ${one.theme === 'all' ? 'all year' : S.theme_names[one.theme] || one.theme}.` +
+      (one.moved ? ` Its file says ${one.default_category}, ${one.default_theme.replace('_', ' ')}.` : '')
+    : 'Changes only what you fill in.';
+  $('#gdlgcat').value = one ? one.category : '';
+  $('#gdlgtheme').replaceChildren(...themeOptions(!one));
+  $('#gdlgtheme').value = one ? one.theme : '';
+  $('#gdlgreset').hidden = !gs.some(g => g.moved);
+  const done = async (body, msg) => {
+    try { await api('/api/gifs/classify', 'POST', {ids: gs.map(g => g.id), ...body}); }
+    catch (e) { return toast(e.message); }
+    toast(msg); dlg.close(); picked.clear(); init();
+  };
+  $('#gdlgsave').onclick = () => {
+    const category = $('#gdlgcat').value.trim(), theme = $('#gdlgtheme').value;
+    done({...(category ? {category} : {}), ...(theme ? {theme} : {})}, one ? 'Moved' : `Moved ${gs.length} GIFs`);
+  };
+  $('#gdlgreset').onclick = () => done({reset: true}, 'Back to where the file is');
+  $('#gdlgcancel').onclick = () => dlg.close();
+  dlg.showModal();
+}
+
+$('#gselect').onclick = () => {
+  selecting = !selecting; if (!selecting) picked.clear();
+  $('#gselect').setAttribute('aria-pressed', selecting); loadGifs();
+};
+$('#gselall').onclick = () => { gifShown.forEach(g => picked.add(g.id)); loadGifs(); };
+$('#gmove').onclick = () => openClassify(gifList.filter(g => picked.has(g.id)));
+$('#grename').onclick = () => {
+  const old = gifFilter.slice(4), dlg = $('#rdlg');
+  $('#rdlgabout').textContent = `Renames "${old}" on every GIF in it.`;
+  $('#rdlgname').value = old;
+  $('#rdlgcancel').onclick = () => dlg.close();
+  $('#rdlgsave').onclick = async () => {
+    let r;
+    try { r = await api('/api/categories/rename', 'POST', {from: old, to: $('#rdlgname').value}); }
+    catch (e) { return toast(e.message); }
+    toast(`Renamed ${r.changed} GIFs`); dlg.close();
+    gifFilter = 'cat:' + $('#rdlgname').value.trim().toLowerCase().replace(/[-\s]+/g, '_'); init();
+  };
+  dlg.showModal();
+};
 
 function confirmDelete(g) { api('/api/gifs/' + encodeURI(g.id), 'DELETE').then(() => { toast('Deleted ' + g.name); loadGifs(); }); }
 
@@ -281,12 +354,49 @@ async function pollNow() {
     li.classList.toggle('current', n.source === 'playlist' && +li.dataset.index === n.index));
 }
 
-// Live updates, paused while the tab is in the background so an open tab costs nothing.
+// Live preview: the board streams every frame as it shows it (see /api/frames) and we
+// draw them on a canvas, so the preview runs at the panel's own speed.
+let stream = null;
+async function streamPreview() {
+  if (stream || document.hidden) return;
+  const ctl = stream = new AbortController(), cv = $('#preview'), g = cv.getContext('2d');
+  try {
+    const r = await fetch('/api/frames', {signal: ctl.signal, cache: 'no-store'});
+    if (!r.ok || !r.body) throw new Error('no stream');
+    const reader = r.body.getReader();
+    let buf = new Uint8Array(0);
+    for (;;) {
+      const {value, done} = await reader.read();
+      if (done) break;
+      const joined = new Uint8Array(buf.length + value.length); joined.set(buf); joined.set(value, buf.length); buf = joined;
+      let latest = null;   // a slow tab skips straight to the newest whole frame
+      while (buf.length >= 4) {
+        const cols = buf[0] << 8 | buf[1], rows = buf[2] << 8 | buf[3], end = 4 + cols * rows * 3;
+        if (buf.length < end) break;
+        latest = [cols, rows, buf.subarray(4, end)]; buf = buf.slice(end);
+      }
+      if (latest) drawFrame(cv, g, ...latest);
+    }
+  } catch (e) { if (ctl.signal.aborted) return; }
+  if (stream === ctl) stream = null;
+  if (!document.hidden) setTimeout(streamPreview, 2000);   // the board restarted or the stream timed out
+}
+function drawFrame(cv, g, cols, rows, rgb) {
+  if (cv.width !== cols || cv.height !== rows) { cv.width = cols; cv.height = rows; }
+  const img = g.createImageData(cols, rows);
+  for (let i = 0, j = 0; i < rgb.length; i += 3, j += 4) {
+    img.data[j] = rgb[i]; img.data[j + 1] = rgb[i + 1]; img.data[j + 2] = rgb[i + 2]; img.data[j + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+}
+
+// Everything else updates on a timer, paused while the tab is in the background.
 const live = fn => () => { if (!document.hidden) fn(); };
-setInterval(live(() => { $('#preview').src = '/preview.png?t=' + Date.now(); }), 1000);
 setInterval(live(() => pollNow().catch(() => {})), 2000);
 setInterval(live(refresh), 10000);
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) { refresh(); pollNow().catch(() => {}); }
+  if (document.hidden) { stream?.abort(); stream = null; }
+  else { refresh(); pollNow().catch(() => {}); streamPreview(); }
 });
+streamPreview();
 init().catch(e => $('#stat').textContent = 'error: ' + e.message);

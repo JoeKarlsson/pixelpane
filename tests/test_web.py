@@ -30,6 +30,30 @@ class WebTest(unittest.TestCase):
     def post(self, url, body):
         return self.client.post(url, json=body)
 
+    def test_classify_api(self):
+        r = self.client.patch("/api/gifs/repo/retro-mario-run.gif", json={"category": "Video Games", "theme": "halloween"})
+        self.assertEqual(r.get_json(), {"ok": True, "changed": 1})
+        g = {x["id"]: x for x in self.client.get("/api/gifs").get_json()}["repo/retro-mario-run.gif"]
+        self.assertEqual((g["category"], g["theme"]), ("video_games", "halloween"))
+        self.assertEqual(self.client.patch("/api/gifs/repo/nope.gif", json={"category": "x"}).status_code, 404)
+        self.assertEqual(self.client.patch("/api/gifs/repo/retro-sonic-dash.gif", json={"theme": "easter"}).status_code, 400)
+        self.assertEqual(self.client.patch("/api/gifs/repo/retro-sonic-dash.gif", json={"category": "a/b"}).status_code, 400)
+        r = self.post("/api/gifs/classify", {"ids": ["repo/retro-sonic-dash.gif", "repo/abstract-plasma.gif"],
+                                              "category": "games"})
+        self.assertEqual(r.get_json()["changed"], 2)
+        self.assertEqual(self.post("/api/gifs/classify", {"ids": "x"}).status_code, 400)
+        self.assertEqual(self.post("/api/categories/rename", {"from": "games", "to": "arcade"}).get_json()["changed"], 2)
+        self.assertEqual(self.post("/api/categories/rename", {"from": "games", "to": "x"}).status_code, 404)
+        self.assertIn("arcade", self.client.get("/api/state").get_json()["categories"])
+        self.assertEqual(self.post("/api/gifs/classify", {"ids": ["repo/retro-mario-run.gif"], "reset": True}).status_code, 200)
+        # writes from another site are refused, like every other write
+        r = self.client.patch("/api/gifs/repo/retro-mario-run.gif", json={"category": "x"},
+                              headers={"Origin": "https://evil.example"})
+        self.assertEqual(r.status_code, 403)
+        # and config PUT validates gif_meta
+        r = self.client.put("/api/config", json={"gif_meta": {"repo/x.gif": {"theme": "nope"}}})
+        self.assertEqual(r.status_code, 400)
+
     def test_index_page(self):
         r = self.client.get("/")
         self.assertEqual(r.status_code, 200)

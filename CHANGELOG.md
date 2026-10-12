@@ -11,6 +11,14 @@ and the project uses [semantic versioning](https://semver.org/).
   full moon, and names each full moon (Harvest, Hunter's, Wolf and the rest),
   calling out supermoons and blue moons; a `zodiac` scene with the sun sign's
   symbol, dates and element, and the sign the moon is in.
+- Move GIFs to another category or theme from the control page (one at a time,
+  or select several or a whole page), rename or merge categories, and undo a
+  move; also through the API. Moves are saved on the board, so deploys keep them.
+- The live preview plays at the panel's real speed: the board streams each frame
+  to the page (`/api/frames`) instead of the page fetching a snapshot a second.
+
+### Changed
+- The homelab dashboard skips its Plex page while nobody is streaming.
 
 ### Fixed
 - File responses (GIFs, the preview, static files) sent two `Date` headers,

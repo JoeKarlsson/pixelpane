@@ -153,7 +153,10 @@ LAN only, no authentication: keep the board on your home network.
 | `POST /api/data/<key>` | see each plugin | feed a scene |
 | `GET/PUT /api/config` | any config key, merged | playlist, timings, plugin settings |
 | `GET /api/gifs`, `POST /api/gifs`, `DELETE /api/gifs/<id>` | multipart `file`, `theme` | the GIF library |
+| `PATCH /api/gifs/<id>`, `POST /api/gifs/classify` | `{"category": "arcade", "theme": "all"}`, `{"ids": [...], ...}` or `{"reset": true}` | move GIFs between categories and themes ([docs/GIFS.md](docs/GIFS.md)) |
+| `POST /api/categories/rename` | `{"from": "retro", "to": "arcade"}` | rename or merge a category |
 | `GET /preview.png?scale=10` | | the current frame |
+| `GET /api/frames` | | a stream of every frame as the panel shows it (the page's live preview) |
 
 Icons for `notify` and tiles: bell, mail, alert, check, heart, door, music,
 calendar, package, home, lock, washer, thermometer, drop, info, camera, car,

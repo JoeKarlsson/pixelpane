@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
-from flask import Flask, abort, jsonify, request, send_file
+from flask import Flask, Response, abort, jsonify, request, send_file
 from PIL import Image
 from werkzeug.utils import secure_filename
 
@@ -204,6 +204,62 @@ def create_app(state, gifs, health):
         (hidden.add if b.get("hidden", True) else hidden.discard)(b.get("id"))
         state.update_config({"hidden_gifs": sorted(h for h in hidden if h)})
         return jsonify(ok=True)
+
+    @app.patch("/api/gifs/<path:gid>")
+    def api_classify_one(gid):
+        if not gifs.resolve(gid):
+            abort(404)
+        return classify([gid], body())
+
+    @app.post("/api/gifs/classify")
+    def api_classify():
+        b = body()
+        ids = b.get("ids")
+        if not isinstance(ids, list) or not all(isinstance(i, str) for i in ids):
+            abort(400, "ids must be a list of GIF ids")
+        return classify(ids, b)
+
+    def classify(ids, b):
+        """Body: {category, theme} to move GIFs (theme "all" = every day), or {reset: true}."""
+        try:
+            category = schema.category_name(b["category"]) if b.get("category") is not None else None
+            theme = schema.theme_name(b["theme"]) if b.get("theme") is not None else None
+        except schema.ConfigError as e:
+            abort(400, str(e))
+        n = gifs.classify(ids, category, theme, reset=bool(b.get("reset")))
+        return jsonify(ok=True, changed=n)
+
+    @app.post("/api/categories/rename")
+    def api_rename_category():
+        b = body()
+        try:
+            old, new = schema.category_name(b.get("from"), "from"), schema.category_name(b.get("to"), "to")
+        except schema.ConfigError as e:
+            abort(400, str(e))
+        n = gifs.rename_category(old, new)
+        if not n:
+            abort(404, f"no GIFs in category {old}")
+        return jsonify(ok=True, changed=n)
+
+    @app.get("/api/frames")
+    def frames_stream():
+        """Every frame the panel shows, as it shows it: per frame two big-endian uint16s
+        (cols, rows) then cols*rows RGB bytes. The control page draws these on a canvas,
+        so the preview plays at the board's real speed. Ends after 30 minutes (clients
+        reconnect) and sends the frame again every few seconds so a dead client is noticed."""
+        def gen():
+            last, sent_at, until = None, 0.0, time.monotonic() + 30 * 60
+            while time.monotonic() < until:
+                frame = state.last_frame if state.power else None
+                now = time.monotonic()
+                if frame is not last or now - sent_at > 5:
+                    cols, rows = panel_size(state.config)
+                    img = compose(frame if frame is not None else Image.new("RGB", (32, 32)), cols, rows)
+                    yield cols.to_bytes(2, "big") + rows.to_bytes(2, "big") + img.convert("RGB").tobytes()
+                    last, sent_at = frame, now
+                time.sleep(1 / 40)
+        return Response(gen(), mimetype="application/octet-stream",
+                        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
 
     @app.get("/preview.png")
     def preview():

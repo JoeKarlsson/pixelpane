@@ -40,10 +40,70 @@ test.afterEach(async ({ page }) => {
 test('page loads with status, themes and a live preview', async ({ page, request }) => {
   const h = await health(request);
   await expect(page.locator('#themes .pill')).toHaveCount(h.themes.length);
-  const preview = page.locator('#preview');
-  await expect.poll(() => preview.evaluate((img) => img.naturalWidth)).toBe(320);
-  const first = await preview.getAttribute('src');
-  await expect.poll(() => preview.getAttribute('src'), { timeout: 3000 }).not.toBe(first); // refreshes
+  // The preview is a canvas fed by the board's frame stream, so it moves at the panel's speed.
+  await request.post('/api/pin', { data: { scene: 'plasma' } });
+  const preview = page.getByTestId('preview');
+  await expect.poll(() => preview.evaluate((c) => c.width)).toBe(32);
+  const distinct = await preview.evaluate(async (c) => {
+    const seen = new Set();
+    for (let i = 0; i < 20; i++) {
+      seen.add(Array.from(c.getContext('2d').getImageData(0, 0, 32, 32).data).join());
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    return seen.size;
+  });
+  expect(distinct).toBeGreaterThan(8);   // about one second: a 1 fps snapshot would show 1 or 2
+});
+
+test('GIFs can be moved to another category or theme, one at a time or in bulk', async ({ page, request }) => {
+  const cards = page.getByTestId('gif-card');
+  const dlg = page.getByTestId('classify-dialog');
+  await page.getByTestId('gif-filter').selectOption('cat:space');
+  await expect(cards.first().locator('.stat')).toHaveText(/^space-/);   // the list has switched
+  const name = await cards.first().locator('.stat').textContent();
+  await cards.first().getByTestId('classify').click();
+  await expect(dlg.getByTestId('classify-category')).toHaveValue('space');
+  await dlg.getByTestId('classify-category').fill('Outer Space');
+  await dlg.getByTestId('classify-theme').selectOption('winter');
+  await dlg.getByTestId('classify-save').click();
+  await expect(page.locator('#toast')).toContainText('Moved');
+  const find = async () => (await (await request.get('/api/gifs')).json()).find((g) => g.id === `repo/${name}.gif`);
+  expect(await find()).toMatchObject({ category: 'outer_space', theme: 'winter', moved: true });
+
+  await page.getByTestId('gif-filter').selectOption('winter');
+  const moved = cards.filter({ hasText: name });
+  await expect(moved.locator('.cat')).toHaveText('outer_space');
+  await expect(moved.locator('.cat')).toHaveClass(/moved/);
+  await moved.getByTestId('classify').click();
+  await dlg.getByTestId('classify-reset').click();
+  await expect.poll(async () => (await config(request)).gif_meta).toEqual({});
+
+  // bulk: select the page, give every GIF a new category, then rename it back
+  await page.getByTestId('gif-filter').selectOption('cat:retro');
+  await expect(cards.first().locator('.stat')).toHaveText(/^retro-/);
+  const n = await cards.count();
+  await page.getByTestId('select-mode').click();
+  await expect(page.getByTestId('bulk-bar')).toBeVisible();
+  await expect(page.getByTestId('bulk-move')).toBeDisabled();
+  await page.getByRole('button', { name: 'Select page' }).click();
+  await expect(page.locator('#gselcount')).toHaveText(`${n} selected`);
+  await page.getByTestId('bulk-move').click();
+  await dlg.getByTestId('classify-category').fill('arcade');
+  await dlg.getByTestId('classify-save').click();
+  await expect(page.locator('#toast')).toContainText(`Moved ${n} GIFs`);
+  const arcade = (await (await request.get('/api/gifs')).json()).filter((g) => g.category === 'arcade');
+  expect(arcade.map((g) => g.theme)).toEqual(Array(n).fill('all'));   // bulk kept each GIF's theme
+  await expect(page.locator('#gselcount')).toHaveText('0 selected');
+
+  await page.getByTestId('gif-filter').selectOption('cat:arcade');
+  await expect(cards).toHaveCount(n);
+  await page.getByTestId('rename-category').click();
+  await page.getByTestId('rename-input').fill('retro');
+  await page.getByTestId('rename-save').click();
+  await expect(page.locator('#toast')).toContainText(`Renamed ${n} GIFs`);
+  await expect.poll(async () => (await config(request)).gif_meta).toEqual({});
+  await expect(page.getByTestId('gif-filter')).toHaveValue('cat:retro');
+  await expect(cards).toHaveCount(n);
 });
 
 test('every Play now button plays its scene', async ({ page, request }) => {
