@@ -7,6 +7,12 @@
 
 <p align="center"><b>A 32x32 LED art pane for your wall, driven by a Raspberry Pi.</b></p>
 
+<p align="center">
+  <a href="https://github.com/JoeKarlsson/pixelpane/actions/workflows/ci.yml"><img src="https://github.com/JoeKarlsson/pixelpane/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-a98bff" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/Raspberry%20Pi-3%20%7C%204%20%7C%205-58e0c8" alt="Raspberry Pi 3, 4, 5">
+</p>
+
 It mixes pixel-art
 GIFs with live, animated scenes: a clock, weather, what's playing (with album
 art), your next meeting, a homelab dashboard, seasonal and holiday animations,

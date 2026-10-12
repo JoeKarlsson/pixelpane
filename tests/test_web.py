@@ -129,6 +129,16 @@ class WebTest(unittest.TestCase):
                                      content_type="multipart/form-data")
         self.assertEqual(not_image.status_code, 400)
 
+    def test_cross_site_writes_are_refused(self):
+        evil = {"Origin": "http://evil.example"}
+        self.assertEqual(self.client.post("/api/state", json={"power": False}, headers=evil).status_code, 403)
+        self.assertEqual(self.client.delete("/api/pin", headers=evil).status_code, 403)
+        self.assertTrue(self.state.power)
+        self.assertEqual(self.client.get("/api/health", headers=evil).status_code, 200)   # reads are fine
+        same = {"Origin": "http://localhost"}  # the test client's host
+        self.assertEqual(self.client.post("/api/state", json={"brightness": 30}, headers=same).status_code, 200)
+        self.assertEqual(self.client.post("/api/state", json={"brightness": 31}).status_code, 200)  # no Origin (HA, curl)
+
     def test_preview_png(self):
         r = self.client.get("/preview.png?scale=4")
         self.assertEqual(r.mimetype, "image/png")

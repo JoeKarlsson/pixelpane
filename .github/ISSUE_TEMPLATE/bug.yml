@@ -1,0 +1,17 @@
+name: Bug report
+description: Something on the board or the control page isn't working
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes: { label: What happened, description: What you did, what you expected, and what you saw instead. }
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes: { label: Version, description: "The version shown on the control page (or `curl http://<board>/api/health`)." }
+  - type: dropdown
+    id: pi
+    attributes: { label: Raspberry Pi, options: [Pi 3, Pi 4, Pi 5, Zero 2 W, Other] }
+  - type: textarea
+    id: logs
+    attributes: { label: Logs, description: "`journalctl -u pixelpane -n 100 --no-pager`", render: text }

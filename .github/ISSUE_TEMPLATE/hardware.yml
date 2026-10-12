@@ -1,0 +1,18 @@
+name: Hardware report
+description: Tell us how PixelPane runs on your hardware (Pi 5 reports especially welcome)
+labels: [hardware]
+body:
+  - type: dropdown
+    id: pi
+    attributes: { label: Raspberry Pi, options: [Pi 3 B/B+, Pi 4, Pi 5, Zero 2 W, Other] }
+    validations: { required: true }
+  - type: input
+    id: board
+    attributes: { label: Driver board, placeholder: "Adafruit RGB Matrix HAT / Bonnet / other" }
+  - type: input
+    id: panel
+    attributes: { label: Panel, placeholder: "32x32 P6, 64x64 P3, ..." }
+  - type: textarea
+    id: result
+    attributes: { label: How did it go?, description: "Flicker, colors, settings you changed (gpio_slowdown, panel_bgr, hardware_mapping), photos welcome." }
+    validations: { required: true }

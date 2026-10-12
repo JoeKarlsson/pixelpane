@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pixelpane"
+version = "0.1.0"
+description = "A plugin-based 32x32 LED art pane for the Raspberry Pi: GIFs, live animated scenes, seasonal themes and Home Assistant."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{ name = "Joe Karlsson" }]
+dependencies = ["flask>=3", "pillow>=10", "numpy>=1.26"]
+
+[project.optional-dependencies]
+dev = ["pyflakes"]
+# On a Pi the LED driver comes from install.sh (hzeller/rpi-rgb-led-matrix, or
+# Adafruit-Blinka-Raspberry-Pi5-Piomatter on a Pi 5), not from here.
+
+[project.urls]
+Homepage = "https://github.com/JoeKarlsson/pixelpane"
+Issues = "https://github.com/JoeKarlsson/pixelpane/issues"
+
+[tool.setuptools]
+packages = ["pixelpane", "pixelpane.plugins"]
+
+[tool.setuptools.package-data]
+pixelpane = ["*.html", "*.json", "fonts/*", "static/*", "static/fonts/*"]

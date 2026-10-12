@@ -2,6 +2,7 @@
 import io
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 from flask import Flask, abort, jsonify, request, send_file
 from PIL import Image
@@ -32,6 +33,18 @@ def valid_scene(name, config=None):
 def create_app(state, gifs, health):
     app = Flask(__name__)
     app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
+
+    @app.before_request
+    def same_origin_writes():
+        """Refuse cross-site writes: a web page open in someone's browser on the LAN must
+        not be able to drive the board. Browsers send Origin on cross-site requests;
+        Home Assistant, curl and scripts send none and are allowed."""
+        if request.method in ("GET", "HEAD", "OPTIONS"):
+            return None
+        origin = request.headers.get("Origin")
+        if origin and urlparse(origin).netloc != request.host:
+            abort(403, "cross-site request refused")
+        return None
 
     def body():
         return request.get_json(silent=True) or {}
