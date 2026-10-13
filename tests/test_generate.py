@@ -66,6 +66,7 @@ class GenerateTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.server.shutdown()
+        cls.server.server_close()
 
     def test_parse_finds_the_json(self):
         self.assertEqual(generate.parse('<think>{"no": 1}</think> sure: {"a": "x}y", "b": {"c": 1}} bye'),
@@ -168,7 +169,8 @@ class GenerateTest(unittest.TestCase):
         # a draft is NOT in the library, but it is listed, viewable and playable
         self.assertFalse(any(g["upload"] for g in client.get("/api/gifs").get_json()))
         self.assertEqual([x["id"] for x in client.get("/api/drafts").get_json()], [d["id"]])
-        self.assertEqual(client.get(f"/draft/{d['id']}.gif").status_code, 200)
+        with client.get(f"/draft/{d['id']}.gif") as r:
+            self.assertEqual(r.status_code, 200)
         self.assertIn("spec", client.get(f"/api/drafts/{d['id']}").get_json())
         self.assertEqual(client.post("/api/play", json={"scene": "gif", "params": {"id": f"draft/{d['id']}.gif"}}).status_code, 200)
         # save it, with a name, category and theme of your choosing

@@ -259,7 +259,7 @@ class ClockColorTest(unittest.TestCase):
     def colors(self, hour, **settings):
         from pixelpane.testing import render
         frames = render("clock", 0.5, settings={"faces": ["classic"], **settings}, now=datetime(2026, 10, 12, hour, 30))
-        return set(frames[0][0].getdata())
+        return support.pixels(frames[0][0])
 
     def test_fixed_color_by_day_and_dimmed_at_night(self):
         self.assertIn((0, 255, 0), self.colors(12, color_mode="fixed", color="#00ff00"))

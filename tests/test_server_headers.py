@@ -1,5 +1,6 @@
 """Responses through the real HTTP server carry exactly one Date header (proxies warn otherwise)."""
 import http.client
+import logging
 import random
 import threading
 import unittest
@@ -20,11 +21,15 @@ class HeaderTest(unittest.TestCase):
         state = State()
         app = create_app(state, GifLibrary(state, random.Random(1)), health)
         self.state = state
+        self.werkzeug = logging.getLogger("werkzeug")
+        self.level, self.werkzeug.level = self.werkzeug.level, logging.WARNING   # no request lines in test output
         self.server = make_server("127.0.0.1", 0, app, threaded=True)
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
 
     def tearDown(self):
         self.server.shutdown()
+        self.server.server_close()
+        self.werkzeug.level = self.level
 
     def test_one_date_header_everywhere(self):
         for path in ("/", "/api/health", "/favicon.ico", "/static/app.css", "/preview.png",
@@ -52,6 +57,7 @@ class HeaderTest(unittest.TestCase):
         self.assertEqual((cols, rows, px[:3]), (32, 32, b"\0\0\0"))
         self.state.last_frame = Image.new("RGB", (32, 32), (255, 0, 0))   # what the player does
         self.assertEqual(frame()[2][:3], b"\xff\0\0")
+        r.close()
         conn.close()
 
 

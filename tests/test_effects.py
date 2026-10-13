@@ -49,7 +49,8 @@ class RegistryTest(unittest.TestCase):
             p = plugin.Plugin("half_loaded", "x")
             p.frames(lambda c, f, i: f)
             raise RuntimeError("oops")
-        plugin._guarded("file half.py", broken)
+        with self.assertLogs("pixelpane.plugin", level="ERROR"):
+            plugin._guarded("file half.py", broken)
         self.assertEqual(len(plugin.WRAPPERS), before)
         self.assertNotIn("half_loaded", plugin.PLUGINS)
         plugin.ERRORS.clear()
@@ -86,7 +87,7 @@ class TransitionTest(unittest.TestCase):
         prev = Image.new("RGB", (32, 32), RED)
         for style in ("wipe", "slide", "dissolve"):
             out = run({"transition": style}, prev=prev)
-            colors = [set(img.getdata()) for img, _ in out[:9]]
+            colors = [support.pixels(img) for img, _ in out[:9]]
             self.assertIn(RED, colors[1], style)
             self.assertIn(BLUE, colors[5], style)
             self.assertEqual(colors[0] | colors[-1], {RED, BLUE}, style)
@@ -126,16 +127,16 @@ class OverlayTest(unittest.TestCase):
         frames = solid(BLUE)
         out = run({"overlay": "time", "overlay_corner": "bottom_right", "transition": "none",
                    "status_dots": False}, frames=frames)
-        self.assertEqual(set(frames[0][0].getdata()), {BLUE})   # the cached GIF frame is untouched
+        self.assertEqual(support.pixels(frames[0][0]), {BLUE})   # the cached GIF frame is untouched
         img = out[0][0]
         corner = img.crop((14, 25, 32, 32))
-        self.assertIn((255, 255, 255), set(corner.getdata()))
-        self.assertIn((0, 0, 0), set(corner.getdata()))          # the outline
-        self.assertEqual(set(img.crop((0, 0, 14, 20)).getdata()), {BLUE})
+        self.assertIn((255, 255, 255), support.pixels(corner))
+        self.assertIn((0, 0, 0), support.pixels(corner))          # the outline
+        self.assertEqual(support.pixels(img.crop((0, 0, 14, 20))), {BLUE})
 
     def test_overlay_only_on_chosen_kinds(self):
         out = run({"overlay": "time", "transition": "none", "status_dots": False}, kind="widget")
-        self.assertEqual(set(out[0][0].getdata()), {BLUE})
+        self.assertEqual(support.pixels(out[0][0]), {BLUE})
 
     def test_long_holds_are_split(self):
         out = run({"overlay": "time", "transition": "none"}, frames=solid(BLUE, n=1, hold=2.0))
@@ -144,7 +145,7 @@ class OverlayTest(unittest.TestCase):
     def test_peek_shows_only_in_its_window(self):
         out = run({"overlay": "time", "overlay_mode": "peek", "transition": "none", "status_dots": False},
                   frames=solid(BLUE, n=1, hold=8.0))
-        shown = [len(set(img.getdata())) > 1 for img, _ in out]
+        shown = [len(support.pixels(img)) > 1 for img, _ in out]
         self.assertEqual(shown, [False] * 4 + [True] * 6 + [False] * 6)
 
     def test_texts(self):
@@ -288,7 +289,7 @@ class StatusDotsTest(unittest.TestCase):
     def test_junk_status_is_ignored(self):
         for junk in ({"dots": "x"}, {"dots": [1, None]}, ["x"]):
             out = run({"transition": "none"}, kind="widget", data={"status": junk})
-            self.assertEqual(set(out[0][0].getdata()), {BLUE})
+            self.assertEqual(support.pixels(out[0][0]), {BLUE})
 
 
 class PlayerTest(unittest.TestCase):

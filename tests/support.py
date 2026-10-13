@@ -7,6 +7,7 @@ import os
 import random
 import shutil
 import tempfile
+import time
 from pathlib import Path
 
 from PIL import Image
@@ -48,7 +49,16 @@ def reset():
     for rel, size in LIBRARY.items():
         make_gif(HOME / rel, size)
     (HOME / "gifs" / "README.md").write_text("not a gif")
-    VAR.mkdir(parents=True)
+    # A daemon thread from the test before (a player saving its state) can recreate the
+    # state dir between the rmtree and the mkdir; clear it again until it's ours.
+    for _ in range(20):
+        shutil.rmtree(VAR, ignore_errors=True)
+        try:
+            VAR.mkdir(parents=True)
+            return
+        except FileExistsError:
+            time.sleep(0.05)
+    raise RuntimeError(f"could not get an empty {VAR}")
 
 
 SAMPLE_DATA = {
@@ -69,3 +79,9 @@ def ctx_with(data=None, seed=1):
         state.put_data(k, v)
     rng = random.Random(seed)
     return Ctx(state, GifLibrary(state, rng), rng)
+
+
+def pixels(img):
+    """The set of (r, g, b) colors in an image (Pillow's getdata() is deprecated)."""
+    import numpy as np
+    return set(map(tuple, np.asarray(img.convert("RGB")).reshape(-1, 3).tolist()))

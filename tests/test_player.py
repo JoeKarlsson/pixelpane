@@ -38,7 +38,8 @@ class ResolveTest(unittest.TestCase):
         self.assertTrue(self.player.ctx.label.startswith("gif: retro-"))
 
     def test_unknown_scene(self):
-        self.assertIsNone(self.player.resolve("bogus"))
+        with self.assertLogs("pixelpane", level="WARNING"):
+            self.assertIsNone(self.player.resolve("bogus"))
 
     def test_birthday_boost_every_fourth_slot(self):
         self.state.update_config({"rotation": ["clock"]})
@@ -163,12 +164,13 @@ class RunLoopTest(unittest.TestCase):
             yield  # pragma: no cover
 
         boom.kind, boom.plugin = "widget", "clock"
-        with mock.patch.dict(SCENES, {"boom": boom}):
+        with mock.patch.dict(SCENES, {"boom": boom}), self.assertLogs("pixelpane", level="ERROR") as logs:
             self.state.request("boom")
             time.sleep(0.3)
             self.state.request("fire")
             self.wait_for(lambda: self.state.label == "fire", timeout=8)
         self.assertTrue(self.thread.is_alive())
+        self.assertIn("scene boom failed", logs.output[0])
 
 
 if __name__ == "__main__":

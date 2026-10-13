@@ -21,7 +21,8 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: pip install -e ".[dev]"
       - run: python -m pyflakes pixelpane tests/*.py
-      - run: python -m unittest discover -s tests -t . -v
+      # Deprecations from our own code or tests fail the build, so the run stays clean.
+      - run: python -W "error::DeprecationWarning:pixelpane" -W "error::DeprecationWarning:tests" -m unittest discover -s tests -t . -v
       - run: bash -n install.sh tools/deploy.sh tools/test.sh tools/ingest-gif.sh
 
   frontend:

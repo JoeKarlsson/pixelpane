@@ -123,8 +123,8 @@ class WebTest(unittest.TestCase):
     def test_gif_listing_and_file(self):
         rows = self.client.get("/api/gifs").get_json()
         self.assertEqual(len(rows), 6)
-        r = self.client.get("/gif/repo/retro-mario-run.gif")
-        self.assertEqual((r.status_code, r.mimetype), (200, "image/gif"))
+        with self.client.get("/gif/repo/retro-mario-run.gif") as r:
+            self.assertEqual((r.status_code, r.mimetype), (200, "image/gif"))
         self.assertEqual(self.client.get("/gif/repo/../state.py").status_code, 404)
 
     def test_upload_hide_delete(self):
