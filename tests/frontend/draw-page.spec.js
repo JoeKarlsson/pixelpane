@@ -160,16 +160,23 @@ test('Draw: every tool and button does its job', async ({ page, request }) => {
     await page.keyboard.press(key);
     expect(await page.evaluate(() => tool)).toBe(t);
   }
+  await page.getByTestId('tool-eraser').click();                                 // the Pen button
+  await page.getByTestId('tool-pen').click();
+  expect(await page.evaluate(() => tool)).toBe('pen');
+  await expect(page.getByTestId('tool-pen')).toHaveClass(/on/);
+  await blur(page);
   await page.keyboard.press('Control+z');
   expect(await px(page, 2, 2)).toEqual(BLUE);
 
-  await page.getByTestId('grid').uncheck();                                      // grid
+  await page.getByTestId('grid').uncheck();                                     // grid
   await expect(page.locator('#wrap')).not.toHaveClass(/grid/);
   await page.getByTestId('grid').check();
   await expect(page.locator('#wrap')).toHaveClass(/grid/);
 
   await page.getByTestId('draw-clear').click();                                  // clear
   expect(await page.evaluate(() => frames[cur].some(v => v))).toBe(false);
+  await page.getByTestId('draw-save').click();                                   // nothing to save yet
+  await expect(page.locator('#toast')).toHaveText('Draw something first');
 
   await expect.poll(async () => (await sketch(request)).frames[0]).toEqual(      // wait for the clear to land
     await page.evaluate(() => b64(Uint8Array.from(frames[cur]))));
@@ -180,6 +187,16 @@ test('Draw: every tool and button does its job', async ({ page, request }) => {
   expect((await sketch(request)).frames[0]).toEqual(before);
   await page.getByTestId('draw-live').check();                                   // and on again sends it
   await expect.poll(async () => (await sketch(request)).frames[0]).not.toEqual(before);
+
+  await page.getByTestId('draw-name').fill('draw test');                         // save, with a name and category
+  await page.getByTestId('draw-category').fill('Doodles');
+  await page.getByTestId('draw-save').click();
+  await expect(page.locator('#toast')).toContainText('doodles-draw-test.gif');
+  const gif = await request.get('/gif/upload/all/doodles-draw-test.gif');
+  expect(gif.headers()['content-type']).toBe('image/gif');
+  const saved = (await (await request.get('/api/gifs')).json()).find(g => g.id === 'upload/all/doodles-draw-test.gif');
+  expect(saved.category).toBe('doodles');
+  await request.delete('/api/gifs/upload/all/doodles-draw-test.gif');
   expect(page.errors).toEqual([]);
 });
 
