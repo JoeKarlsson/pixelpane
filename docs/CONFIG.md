@@ -18,7 +18,7 @@ curl -X PUT http://pixelpane.local/api/config -H 'Content-Type: application/json
 | Key | Default | What it does |
 |-----|---------|--------------|
 | `brightness` | `60` | 1 to 100. The board's brightness at start-up; the slider changes it live |
-| `rotation` | clock, gif, seasonal, ... | The playlist: scene names, `gif`, `gif:<category>`, `seasonal` or `generative`. Unknown names are refused |
+| `rotation` | clock, gif, seasonal, ... | The playlist: scene names, `gif`, `gif:<category>`, `seasonal`, `generative` or `ambient`. Unknown names are refused |
 | `dwell` | per scene | Seconds each scene stays on, `{"clock": 10, "gif": 20}`. A scene not listed gets 15 |
 | `data_ttl_minutes` | `{}` | How long pushed data stays fresh, per key, `{"weather": 90}`. Empty uses the plugin's own (see [Plugins](#plugins)) |
 | `schedule` | `[]` | Quiet hours, dimming and time-of-day playlists. See [Schedule](#schedule) |
@@ -98,7 +98,7 @@ and its data keys are refused). Secret settings come back from the API as
 | tiles | `temp_unit` (`F` or `C`), `comfy_low` and `comfy_high` (the comfortable range, `null` for 68 to 76F / 20 to 24C), `humidity_low`, `humidity_high` (%), `co2_high` (ppm), `cold_color`, `comfy_color`, `hot_color` (`#rrggbb`), `alert` (a reading that turns bad jumps the queue) | `tiles` (240 min) |
 | gifs | `theme_share`: 0 to 1, how often a GIF slot picks from an active theme | |
 | seasonal | `holiday_share`: 0 to 1, how often a holiday wins over the season; `birthday`: `{"month", "day", "name"}` or `null` | |
-| generative | `scenes`: which of fire, plasma, life, matrix_rain, starfield the `generative` slot picks from | |
+| generative | `scenes`: which of fire, plasma, life, matrix_rain, starfield, lava, ripples, reaction, sand, aurora, fireflies, aquarium, snake, hourglass and smog the `generative` and `ambient` slots pick from | |
 | generator | `provider` (`openai` or `anthropic`), `base_url`, `model`, `api_key` (secret), `review` | |
 | effects | `transition` (`none`, `fade`, `wipe`, `slide`, `dissolve`), `transition_seconds` (0.2 to 1.5), `overlay` (`off`, `time`, `date`, `time_date`, `temp`, `meeting`), `overlay_corner` (`auto` or `top_left`, `top_right`, `bottom_left`, `bottom_right`), `overlay_mode` (`always` or `peek`: 3 seconds every 20), `overlay_on` (any of gif, generative, seasonal), `overlay_color`, `status_dots` (`true`/`false`) | `status` (120 min) |
 | alerts, sky | | |

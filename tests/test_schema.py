@@ -32,7 +32,7 @@ class SchemaTest(unittest.TestCase):
                                  "seasonal": {"birthday": {"month": 4, "day": 13, "name": "Ada"}, "holiday_share": 0.5},
                                  "weather": {"latitude": None}}})
         self.assertEqual(c["plugins"]["seasonal"]["birthday"], {"month": 4, "day": 13, "name": "Ada"})
-        self.bad({"plugins": {"generative": {"scenes": ["lava"]}}}, "unknown choice")
+        self.bad({"plugins": {"generative": {"scenes": ["volcano"]}}}, "unknown choice")
         self.bad({"plugins": {"seasonal": {"birthday": {"month": 13, "day": 1}}}}, "month")
         self.bad({"plugins": {"seasonal": {"holiday_share": 2}}}, "between")
         self.bad({"plugins": {"gifs": {"enabled": "yes"}}}, "true or false")

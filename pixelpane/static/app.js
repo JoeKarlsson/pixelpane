@@ -33,7 +33,7 @@ async function init() {
   const cats = S.categories.map(c => 'gif:' + c);
   drawPlayNow(cats);
   $('#nicon').replaceChildren(...S.icons.map(i => new Option(i, i)));
-  $('#addsel').replaceChildren(...[...(S.scenes.widget||[]), 'gif', ...cats, 'seasonal', 'generative'].map(s => new Option(s, s)));
+  $('#addsel').replaceChildren(...[...(S.scenes.widget||[]), 'gif', ...cats, 'seasonal', 'generative', 'ambient'].map(s => new Option(s, s)));
   drawRot(); drawPlugins(); pollNow(); pluginFromHash();
 }
 
@@ -56,7 +56,7 @@ function drawPlayNow(cats) {
       : el('div', {className: 'group'}, el('div', {className: 'stat', textContent: title}), row);
   };
   $('#playnow').replaceChildren(...[
-    group('Scenes', [...(S.scenes.widget || []), 'gif', 'seasonal', 'generative']),
+    group('Scenes', [...(S.scenes.widget || []), 'gif', 'seasonal', 'generative', 'ambient']),
     group('Art', S.scenes.generative || []),
     group('Holidays and seasons', S.scenes.seasonal || [], true),
     group('GIF categories', cats, true),
@@ -241,6 +241,7 @@ function prettyScene(label, entry) {
   const nice = label.replace(/_/g, ' ');
   if (entry === 'seasonal') return `Seasonal · ${nice}`;
   if (entry === 'generative') return `Generative · ${nice}`;
+  if (entry === 'ambient') return `Ambient · ${nice}`;
   return nice.charAt(0).toUpperCase() + nice.slice(1);
 }
 

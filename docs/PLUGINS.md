@@ -84,8 +84,8 @@ not silently swapped in. Load errors show on the control page and in Settings, S
 | Method | Use |
 |--------|-----|
 | `@plugin.scene(name, kind="widget", pinnable=None, params=None, empty_text=None)` | register a scene. Kinds: `widget`, `gif`, `generative`, `seasonal`, `interrupt`, `mode`. `pinnable`: may `POST /api/pin` hold it (default yes for widget, generative, seasonal and mode). `params`: what `/api/play` and `/api/pin` may pass it, e.g. `{"text": "text", "color": "color"}` (types `text`, `color`, `number`, `bool`); anything else is refused. `empty_text`: shown when someone asks for the scene and it has nothing to show |
-| `@plugin.picker(name)` | a playlist entry that picks one of your scenes each time it comes up: `fn(ctx)` returns a scene name (or `None` to skip). `seasonal` and `generative` work this way |
 | `@plugin.frames` | a frame wrapper `fn(ctx, frames, info)` run around every scene while your plugin is on: it gets the scene's `(image, seconds)` pairs and yields its own. `info` is `{"scene", "kind", "prev"}`, where `prev` is the last frame of the scene before (or `None`). Images can be shared (GIF frames are cached), so draw on a copy. The effects plugin uses this for transitions, overlays and status dots |
+| `@plugin.picker(name)` | a playlist entry that picks one of your scenes each time it comes up: `fn(ctx)` returns a scene name (or `None` to skip). `seasonal`, `generative` and `ambient` work this way |
 | `@plugin.task` | a background function `fn(ctx, stop)` (fetch an API, poll a sensor). Loop with `while not stop.wait(seconds):`. It runs while the plugin is on: `stop` is set when it's turned off, and it starts again when it's turned back on. If it raises, the error is logged and shown on the page, and it is restarted after a growing pause |
 
 **`ctx`**, what a scene or task can use:

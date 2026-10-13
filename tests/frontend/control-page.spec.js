@@ -73,6 +73,7 @@ test('every Play now button plays its scene', async ({ page, request }) => {
     else if (scene.startsWith('gif:')) want = new RegExp(`^gif: ${scene.slice(4)}-`);
     else if (scene === 'seasonal') want = new RegExp(`^(${themes.join('|')})$`);
     else if (scene === 'generative') want = new RegExp(`^(${generative.join('|')})$`);
+    else if (scene === 'ambient') want = new RegExp(`^(${[...generative, 'smog'].join('|')})$`);
     else want = new RegExp(`^${scene}$`);
     await sceneIs(request, want);
     await expect(page.locator('#toast')).toContainText('Up next');

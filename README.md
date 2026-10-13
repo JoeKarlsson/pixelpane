@@ -125,7 +125,7 @@ pixelpane-library/
 | alerts | notify, on_air, message | |
 | gifs | gif, gif:&lt;category&gt; | |
 | seasonal | a scene per season and holiday, plus your birthday | |
-| generative | fire, plasma, life, matrix_rain, starfield | |
+| generative | fire, plasma, life, matrix_rain, starfield, lava, ripples, reaction, sand, aurora, fireflies, aquarium, snake, hourglass, smog; an `ambient` slot that picks one to suit the weather and air | |
 | sky | moon (phase, named full moons, supermoons, blue moons), zodiac | |
 | effects | no scenes: transitions, an overlay on GIFs, status dots | `status` |
 | generator | no scenes: settings for making GIFs from a prompt ([docs/GIFS.md](docs/GIFS.md#make-one-from-a-prompt)) | |

@@ -33,7 +33,7 @@ function drawStatus() {
 
 function scenesList() {
   const cats = (S.categories || []).map(c => 'gif:' + c);
-  return [...(S.scenes.widget || []), 'gif', ...cats, 'seasonal', 'generative', ...(S.scenes.generative || [])];
+  return [...(S.scenes.widget || []), 'gif', ...cats, 'seasonal', 'generative', 'ambient', ...(S.scenes.generative || [])];
 }
 
 function drawRules() {

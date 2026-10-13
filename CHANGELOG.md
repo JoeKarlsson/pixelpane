@@ -42,6 +42,13 @@ and the project uses [semantic versioning](https://semver.org/).
   for 3 seconds every 20, with auto picking the calmest corner; and status dots,
   up to four lights along the top edge pushed to `POST /api/data/status`.
 - `@plugin.frames`: plugins can wrap every scene's frames (docs/PLUGINS.md).
+- Ten new generative scenes: a lava lamp, rain ripples on a pond, reaction-diffusion
+  (coral, spots and worms), falling sand, an aurora, fireflies, an aquarium, a snake
+  that plays itself, an hourglass that drains toward your next meeting, and smog.
+- An `ambient` playlist slot that picks generative art to suit outside: ripples when
+  it rains, fire when it's hot, an aurora or fireflies on a clear night, and smog
+  when an air quality tile (`kind: "aqi"`) is over 150. Otherwise it keeps to the
+  scenes you ticked.
 - A `color` field type for plugin settings forms, and a table of every field type
   in docs/PLUGINS.md.
 - Your own holidays (Settings, Holidays): a name and date ranges, every year
