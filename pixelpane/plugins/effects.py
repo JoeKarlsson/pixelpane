@@ -238,7 +238,8 @@ def reading_text(item, feel):
 
 def overlay_text(ctx, what, t):
     now = ctx.now()
-    clock = f"{now.hour % 12 or 12}:{now.minute:02d}"
+    from .clock import hour_text   # 12 or 24 hours, as the clock plugin is set
+    clock = f"{hour_text(now, ctx.settings('clock'))}:{now.minute:02d}"
     if what == "time":
         return clock
     if what == "date":

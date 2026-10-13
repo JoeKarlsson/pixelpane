@@ -118,6 +118,10 @@ class OverlayTest(unittest.TestCase):
         self.assertEqual(effects.overlay_text(c, "meeting", 0), "IN 19M")
         self.assertEqual(effects.overlay_text(ctx(), "meeting", 0), "9:41")   # nothing soon: the time
 
+    def test_time_follows_the_clocks_24_hour_setting(self):
+        c = FakeCtx("clock", settings={"hours": "24"}, now=datetime(2026, 10, 13, 21, 5))
+        self.assertEqual(effects.overlay_text(c, "time", 0), "21:05")
+
     def test_auto_corner_is_dark_and_stays_put(self):
         def frame(dark):
             img = Image.new("RGB", (32, 32), (200, 200, 200))
