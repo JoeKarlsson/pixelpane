@@ -110,6 +110,10 @@ not silently swapped in. Load errors show on the control page and in Settings, S
 | `animated_icon(img, name, xy, t, level)` | the animated 8x8 icons (bell rings, washer spins, ...) |
 | `gauge(img, y, level, t, color)` | a bar that fills to `level` (0-1) |
 | `Particles`, `Fireworks`, `palette` | effects used by the seasonal and generative plugins |
+| `Mood(rng, name, amount, color, wind).frame(t)` | a dim, moving full-panel background to draw on: `calm`, `glow`, `frost`, `heat`, `haze`, `bubbles`, `droplets`, `rain`, `snow`, `stars`, `wind`, `fog`; `amount` (0-1) is how strong |
+| `outlined_text`, `outlined_center` | text with a dark edge, readable over a mood |
+| `temp_color(f)`, `SEVERITY`, `mix(a, b, f)` | a temperature as a color, colors for fine to hazardous, blending |
+| `sparkline(img, values, y0, y1)`, `arrow(img, x, y, up, color)` | a little history chart, a trend arrow |
 
 ## Settings forms
 

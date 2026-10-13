@@ -172,9 +172,19 @@ error so an unplugged board never fails it.
         path: data/tiles
         body:
           items: >-
-            {{ [{'icon': 'thermometer', 'text': states('sensor.office_temperature') ~ 'F office',
-                 'color': '#ffaa44', 'level': 0.6}] }}
+            {{ [{'kind': 'temp', 'value': states('sensor.office_temperature') | float(0), 'label': 'office'},
+                {'kind': 'aqi', 'value': states('sensor.outdoor_aqi') | float(0)},
+                {'kind': 'co2', 'value': states('sensor.office_co2') | float(0), 'label': 'office'}] }}
 ```
+
+A tile with a `kind` is a reading: send the raw number and the board decides how it
+looks. The whole panel takes on a mood (frost creeping in when it's cold, heat
+shimmer when it's hot, clear sparkling air or thick smog, condensation when it's
+humid, murky bubbles when CO2 is high), the number counts up in a color that
+follows it, an arrow shows the trend over the last half hour and a sparkline the
+last five hours. When a reading turns bad (unhealthy air, too hot or cold, stuffy,
+low battery) the board shows that tile right away, once an hour at most. The
+comfortable range, colors and alerts are in the tiles plugin's settings.
 
 For album art, let the board fetch from Home Assistant:
 `{"plugins": {"now_playing": {"art_hosts": ["http://homeassistant.local:8123/"]}}}`.
@@ -183,8 +193,8 @@ For album art, let the board fetch from Home Assistant:
 
 | Key | Fields |
 |-----|--------|
-| `weather` | `temp`, `condition` (HA's names: sunny, rainy, partlycloudy, ...), `high`, `low`, `precip` (%) |
+| `weather` | `temp`, `condition` (HA's names: sunny, rainy, partlycloudy, ...), `high`, `low`, `precip` (%), `wind` (mph: slants the rain, and 15 or more adds streaks), `unit` (`F` or `C`) |
 | `now_playing` | `state` (playing/idle), `title`, `artist`, `player`, `art` (image URL under an allowed host) |
 | `next_event` | `title`, `start` (ISO time; shown if within 12 hours) |
 | `homelab` | `alerts`, `names`, `warnings`, `checks_total`, `checks_passing`, `hosts: [{name, cpu, temp}]`, `nas: {used_pct, used_tb, up_mbs, down_mbs}`, `net: {wan_ms, dns_queries, blocked_pct}`, `ups: [{battery, load, status}]`, `plex: {watching}`. Every page is optional |
-| `tiles` | `items: [{icon, text, color, level (0-1, draws a gauge), sub}]` |
+| `tiles` | `items`, a list of readings `{kind, value, label, unit, history, alert}` and cards `{icon, text, color, level (0-1, draws a gauge), sub}`. `kind` is `temp`, `aqi` (US EPA), `humidity` (%), `co2` (ppm) or `battery` (%). `unit` (`F`/`C`) overrides the plugin's for one temp tile; `history` (a list of earlier values) replaces the board's own samples; `"alert": false` stops that tile jumping the queue |

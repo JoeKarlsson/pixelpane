@@ -5,11 +5,11 @@ import math
 import time
 import urllib.request
 
-from PIL import ImageDraw
+from PIL import Image, ImageChops, ImageDraw
 
 from .. import gfx
 from ..gfx import W
-from ..kit import scroll_text, ticks
+from ..kit import Mood, outlined_center, outlined_text, scroll_text, temp_color, ticks
 from ..plugin import Plugin
 
 log = logging.getLogger("pixelpane.weather")
@@ -17,7 +17,9 @@ log = logging.getLogger("pixelpane.weather")
 plugin = Plugin(
     "weather", "Current conditions and today's high/low",
     data={"weather": 180}, defaults={"latitude": None, "longitude": None},
-    about="An animated icon (rain falls, snow drifts, clouds roll), the temperature, "
+    about="The weather fills the panel: rain slanting in the wind, drifting snow, fog, "
+          "stars at night, a warm glow on sunny days, heat shimmer when it's hot and frost "
+          "when it's bitter. The temperature is colored from cold blue to hot red, with "
           "today's high and low and the chance of rain. Home Assistant can push it to "
           "POST /api/data/weather; if nothing does, the board fetches Open-Meteo itself "
           "for the location below.",
@@ -39,6 +41,20 @@ WEATHER_WORDS = {
 }
 
 
+# The whole panel behind the numbers: (mood, amount) for each condition.
+WEATHER_MOOD = {
+    "sunny": ("glow", 0.5), "clear-night": ("stars", 0.5), "partlycloudy": ("glow", 0.3),
+    "cloudy": ("fog", 0.1), "fog": ("fog", 1.0), "rainy": ("rain", 0.35), "pouring": ("rain", 1.0),
+    "lightning-rainy": ("rain", 0.7), "snowy": ("snow", 0.5), "snowy-rainy": ("snow", 0.3),
+    "hail": ("snow", 1.0), "lightning": ("fog", 0.2), "windy": ("wind", 0.6), "windy-variant": ("wind", 0.6),
+}
+
+
+def _fahrenheit(wx, v):
+    v = float(v)
+    return v * 9 / 5 + 32 if str(wx.get("unit", "F")).upper().startswith("C") else v
+
+
 @plugin.scene("weather", empty_text="NO WEATHER YET")
 def weather(ctx, secs):
     wx = ctx.data("weather")
@@ -47,6 +63,7 @@ def weather(ctx, secs):
     cond = str(wx.get("condition", "cloudy"))
     icon = WEATHER_ICON.get(cond, "cloud")
     temp = f"{round(float(wx['temp']))}"
+    temp_f = _fahrenheit(wx, wx["temp"])
     hl = []
     if wx.get("high") is not None:
         hl.append(f"H{round(float(wx['high']))}")
@@ -54,37 +71,42 @@ def weather(ctx, secs):
         hl.append(f"L{round(float(wx['low']))}")
     words = WEATHER_WORDS.get(cond, cond.upper().replace("-", " "))
     line = words + (f"  {int(wx['precip'])}% PRECIP" if wx.get("precip") else "")
+    wind = float(wx.get("wind") or 0)   # mph
+    if wind >= 15:
+        line += f"  WIND {wind:.0f}"
     rng = ctx.rng
-    drops = [[rng.randrange(1, 12), rng.randrange(11, 16)] for _ in range(4)]
+    name, amount = WEATHER_MOOD.get(cond, ("fog", 0.1))
+    if name == "wind":
+        amount = max(amount, min(1.0, wind / 35))
+    layers = [Mood(rng, name, amount, (255, 190, 60) if name == "glow" else (60, 220, 170), wind=wind / 20)]
+    if cond == "snowy-rainy":
+        layers.append(Mood(rng, "rain", 0.3, wind=wind / 20))
+    if wind >= 15 and name != "wind":
+        layers.append(Mood(rng, "wind", min(1.0, wind / 35)))
+    if temp_f >= 85:     # a hot day shimmers; a bitter one frosts over
+        layers.append(Mood(rng, "heat", min(1.0, (temp_f - 80) / 20)))
+    elif temp_f <= 25:
+        layers.append(Mood(rng, "frost", min(1.0, (32 - temp_f) / 30)))
+    color = temp_color(temp_f)
     for i, t in ticks(secs, 10):
-        img = gfx.blank()
+        img = layers[0].frame(t)
+        for layer in layers[1:]:
+            img = ImageChops.lighter(img, layer.frame(t))
+        if cond.startswith("lightning") and i % 37 in (0, 2):   # the sky lights up
+            img = Image.blend(img, gfx.blank((200, 200, 255)), 0.5)
         drift = round(math.sin(t * 1.2)) if icon in ("cloud", "partly", "fog") else 0
         gfx.paste(img, icon, (1 + drift, 1))
         d = ImageDraw.Draw(img)
-        if cond.startswith("windy") or cond == "fog":
-            for k in range(3):
-                x0 = int(t * (10 + k * 4) + k * 9) % 18 - 4
-                d.line((x0, 12 + k * 1, x0 + 3, 12 + k * 1), fill=(150, 150, 170))
-        if cond in ("rainy", "pouring", "lightning-rainy", "snowy", "snowy-rainy", "hail"):
-            snow = cond in ("snowy", "snowy-rainy", "hail")
-            for p in drops:
-                p[1] += 1 if snow else 2
-                if p[1] > 15:
-                    p[:] = [rng.randrange(1, 12), 10]
-                img.putpixel((p[0], p[1]), (230, 230, 255) if snow else (60, 130, 255))
         if cond.startswith("lightning") and i % 20 in (0, 1):
             d.line((6, 9, 4, 12, 7, 12, 5, 15), fill=(255, 230, 0))
         if cond == "sunny" and i % 10 < 5:
             for x, y in ((0, 4), (11, 4), (4, 0), (7, 9)):  # rays twinkle (sprite drawn at 1,1)
                 img.putpixel((x + 1, y + 1), (0, 0, 0))
-        if cond == "clear-night":
-            for k, (x, y) in enumerate(((14, 2), (9, 13), (2, 15))):
-                if (i // 4 + k) % 3:
-                    img.putpixel((x, y), (200, 200, 255))
-        gfx.text(img, (W - gfx.text_width(temp, "6x10") - 4, 2), temp, (255, 255, 255), "6x10")
-        d.rectangle((W - 3, 2, W - 2, 3), outline=(255, 255, 255))  # degree mark
+        tx = W - gfx.text_width(temp, "6x10") - 4
+        outlined_text(img, (tx, 2), temp, color, "6x10")
+        d.rectangle((W - 3, 2, W - 2, 3), outline=color)  # degree mark
         if hl:
-            gfx.text_center(img, 18, " ".join(hl), (170, 190, 255), "tom-thumb")
+            outlined_center(img, 18, " ".join(hl), (170, 190, 255), "tom-thumb")
         scroll_text(img, 25, line, (255, 200, 80), "tom-thumb", t, 16)
         yield img, 0.1
 
@@ -109,8 +131,8 @@ def open_meteo(ctx, stop):
             stop.wait(55)
             continue
         url = ("https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}"
-               "&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,"
-               "temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit"
+               "&current=temperature_2m,weather_code,is_day,wind_speed_10m&daily=temperature_2m_max,"
+               "temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&wind_speed_unit=mph"
                "&timezone=auto&forecast_days=1").format(latitude=fb["latitude"], longitude=fb["longitude"])
         try:
             with urllib.request.urlopen(url, timeout=15) as r:
@@ -121,6 +143,7 @@ def open_meteo(ctx, stop):
             state.put_data("weather", {
                 "temp": j["current"]["temperature_2m"], "condition": cond, "unit": "F",
                 "high": j["daily"]["temperature_2m_max"][0], "low": j["daily"]["temperature_2m_min"][0],
-                "precip": j["daily"]["precipitation_probability_max"][0], "source": "open-meteo"})
+                "precip": j["daily"]["precipitation_probability_max"][0],
+                "wind": j["current"].get("wind_speed_10m"), "source": "open-meteo"})
         except Exception as e:  # network blips are normal; retry next round
             log.warning("open-meteo: %s", e)

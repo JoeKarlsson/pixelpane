@@ -24,6 +24,18 @@ and the project uses [semantic versioning](https://semver.org/).
 - With a token set, logs and backups need it too.
 
 ### Added
+- Tiles that are readings: send `{kind, value}` for `temp`, `aqi`, `humidity`, `co2`
+  or `battery` and the whole panel takes on a mood that shows how it feels (frost,
+  heat shimmer, clear or smoggy air, condensation, murky bubbles). The number counts
+  up in a color that follows it, with a trend arrow and a sparkline of the last five
+  hours. A reading that turns bad jumps the queue (once an hour, can be switched
+  off). The comfortable range, units and colors are in the tiles plugin's settings.
+- The weather fills the panel: rain slanting in the wind, snow, fog, stars, a glow
+  on sunny days, lightning that lights the sky, heat shimmer on hot days and frost
+  on bitter ones. The temperature is colored from cold to hot. It takes a `wind`
+  field (mph), which the Open-Meteo fallback now fills in.
+- `kit.Mood` and friends (`temp_color`, `outlined_text`, `sparkline`, `arrow`) for
+  plugins that want the same full-panel moods.
 - A `color` field type for plugin settings forms, and a table of every field type
   in docs/PLUGINS.md.
 - Your own holidays (Settings, Holidays): a name and date ranges, every year

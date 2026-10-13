@@ -36,6 +36,10 @@ What it shows, panel's-eye view:
   scene with nothing to show (no music playing, no meeting soon) is skipped.
 - **Everything animates.** Icons ring, hop and spin; gauges fill; the homelab
   dashboard cycles through six animated pages.
+- **Readings you can feel from across the room.** Send a temperature, air quality,
+  humidity or CO2 reading and the whole panel shows it: frost creeping in, heat
+  shimmer, thick smog, condensation running down. The weather fills the panel too,
+  with rain slanting in the wind. A reading that turns bad jumps the queue.
 - **Seasons and holidays.** Autumn leaves, snow, flowers, beach days, Halloween,
   Thanksgiving, Christmas, New Year, Valentine's, St. Patrick's, the Fourth of
   July and your birthday, each with a scene and its own GIF folder. Add your
@@ -113,7 +117,7 @@ pixelpane-library/
 | now_playing | now_playing, with album art | `now_playing` |
 | calendar | calendar, with a countdown | `next_event` |
 | homelab | a six-page animated dashboard | `homelab` |
-| tiles | info cards with animated icons and gauges | `tiles` |
+| tiles | readings that look how they feel (temperature, air quality, humidity, CO2, battery), or cards with animated icons and gauges | `tiles` |
 | alerts | notify, on_air, message | |
 | gifs | gif, gif:&lt;category&gt; | |
 | seasonal | a scene per season and holiday, plus your birthday | |
