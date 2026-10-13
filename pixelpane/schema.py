@@ -75,8 +75,31 @@ def _gif_meta(v: Any) -> dict:
     return out
 
 
+def _items(f: dict, v: Any, what: str) -> list:
+    """A list of small records, each checked against the field's own sub-fields. A key
+    left out takes the sub-field's "default"; keys the field doesn't know are refused."""
+    if not isinstance(v, list):
+        raise ConfigError(f"{what} must be a list")
+    if len(v) > f.get("max", 20):
+        raise ConfigError(f"{what} holds at most {f.get('max', 20)}")
+    subs = {s["key"]: s for s in f.get("fields", [])}
+    out = []
+    for i, item in enumerate(v):
+        w = f"{what}[{i}]"
+        if not isinstance(item, dict):
+            raise ConfigError(f"{w} must be an object")
+        extra = set(item) - set(subs)
+        if extra:
+            raise ConfigError(f"{w}: unknown {sorted(extra)}")
+        out.append({k: _field(s, item[k], f"{w}.{k}") if k in item else s.get("default")
+                    for k, s in subs.items()})
+    return out
+
+
 def _field(f: dict, v: Any, what: str) -> Any:
     t = f.get("type")
+    if t == "items":
+        return _items(f, v, what)
     if t in ("number",):
         return _num(v, what, f.get("min"), f.get("max"), nullable=True)
     if t == "range":
@@ -120,6 +143,10 @@ def _field(f: dict, v: Any, what: str) -> Any:
                 "day": _num(v.get("day"), f"{what}.day", 1, 31, integer=True), "name": name}
     if not isinstance(v, str):
         raise ConfigError(f"{what} must be text")
+    if len(v) > f.get("maxlength", 500):
+        raise ConfigError(f"{what} is too long")
+    if f.get("pattern") and v and not re.fullmatch(f["pattern"], v):
+        raise ConfigError(f"{what} must look like {f.get('placeholder') or f['pattern']}")
     return v
 
 

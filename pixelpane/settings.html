@@ -20,7 +20,8 @@
     </div>
   </header>
   <nav class="toc" aria-label="Sections">
-    <a href="#schedule">Schedule</a><a href="#playback">Playback</a><a href="#holidays">Holidays</a>
+    <a href="#schedule">Schedule</a><a href="#playback">Playback</a><a href="#onscreen">On screen</a>
+    <a href="#notifications">Notifications</a><a href="#pluginsettings">Plugins</a><a href="#holidays">Holidays</a>
     <a href="#appearance">Appearance</a><a href="#display">Display</a>
     <a href="#access">Access</a><a href="#backup">Backup</a><a href="#system">System</a>
   </nav>
@@ -52,6 +53,25 @@
     <h2 style="margin-top:16px">Data stays fresh for (minutes)</h2>
     <p class="stat">How long pushed data (POST /api/data/&lt;key&gt;) is shown before a scene treats it as stale. Empty uses the plugin's default.</p>
     <div class="dwell" id="ttl"></div>
+  </section>
+
+  <section id="onscreen" data-testid="onscreen">
+    <h2>On screen</h2>
+    <p class="stat">What's drawn over every scene: how one scene turns into the next, a clock or reading in a
+      corner of GIFs and art, and status dots.</p>
+    <div id="onscreenforms"></div>
+  </section>
+
+  <section id="notifications" data-testid="notifications">
+    <h2>Notifications</h2>
+    <p class="stat">How notifications look, and the ones the board raises by itself.</p>
+    <div id="notificationsforms"></div>
+  </section>
+
+  <section id="pluginsettings" data-testid="plugin-settings">
+    <h2>Plugins</h2>
+    <p class="stat">Each plugin's own options. Switch plugins on or off on the <a href="/">control page</a>.</p>
+    <div id="pluginsettingsforms"></div>
   </section>
 
   <section id="holidays" data-testid="holidays">

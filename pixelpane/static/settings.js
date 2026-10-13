@@ -16,7 +16,42 @@ const PRESETS = {
 async function load() {
   [S, C] = await Promise.all([api('/api/state'), api('/api/config')]);
   rules = (C.schedule || []).map(r => ({...r}));
-  drawStatus(); drawRules(); drawPlayback(); drawHolidays(); drawAppearance(); drawHardware(); drawAccess(); drawSystem();
+  drawStatus(); drawRules(); drawPlayback(); drawPluginSections(); drawHolidays(); drawAppearance(); drawHardware(); drawAccess(); drawSystem();
+}
+
+// --- plugin settings: on screen, notifications, everything else -----------------
+
+// Which plugins' forms go in which section; the rest land under Plugins.
+const SECTIONS = {onscreen: ['effects'], notifications: ['alerts', 'triggers']};
+// Buttons a plugin's form gets beside Save: name -> (plugin, readSettings) => [buttons]
+const EXTRAS = {};
+
+function drawPluginSections() {
+  const placed = new Set(Object.values(SECTIONS).flat());
+  const withForm = S.plugins.filter(p => p.fields.length);
+  const groups = {...SECTIONS, pluginsettings: withForm.map(p => p.name).filter(n => !placed.has(n))};
+  for (const [id, names] of Object.entries(groups)) {
+    const ps = names.map(n => withForm.find(p => p.name === n)).filter(Boolean);
+    $('#' + id + 'forms').replaceChildren(...ps.map(p => pluginSection(p, id !== 'pluginsettings')));
+    $('#' + id).hidden = !ps.length;
+  }
+}
+
+function pluginSection(p, open) {
+  const [form, readers] = pluginForm(p, `sf-${p.name}-`);
+  const read = () => Object.fromEntries(Object.entries(readers).map(([k, r]) => [k, r()]));
+  const title = p.name.replace('_', ' ');
+  const save = btn('Save', async () => {
+    C = await api('/api/config', 'PUT', {plugins: {[p.name]: read()}});
+    S = await api('/api/state');
+    toast(`${title} saved`);
+  }, 'on', `save-plugin-${p.name}`);
+  const off = !p.enabled ? [el('p', {className: 'stat', textContent: `${title} is switched off, so these settings do nothing until it's on. `},
+    btn('Turn on', async () => { await api('/api/config', 'PUT', {plugins: {[p.name]: {enabled: true}}}); load(); }, '', `enable-${p.name}`))] : [];
+  return el('details', {className: 'psection', open, id: 'plugin-' + p.name},
+    el('summary', {}, title, el('small', {textContent: p.description})),
+    ...off, el('p', {className: 'stat', textContent: p.about || ''}), form,
+    el('div', {className: 'foot'}, save, ...(EXTRAS[p.name] ? EXTRAS[p.name](p, read) : [])));
 }
 
 function drawStatus() {

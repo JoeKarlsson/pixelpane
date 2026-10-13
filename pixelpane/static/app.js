@@ -63,55 +63,6 @@ function drawPlayNow(cats) {
   ].filter(Boolean));
 }
 
-function fieldInput(f, value) {
-  const id = 'pf-' + f.key;
-  if (f.type === 'range') {
-    const out = el('span', {className: 'stat', textContent: value ?? ''});
-    const inp = el('input', {type: 'range', id, min: f.min ?? 0, max: f.max ?? 1, step: f.step ?? .05, value: value ?? f.min ?? 0});
-    inp.oninput = () => out.textContent = inp.value;
-    return [el('div', {className: 'row'}, inp, out), () => +inp.value];
-  }
-  if (f.type === 'number') {
-    const inp = el('input', {type: 'number', id, step: f.step ?? 'any', value: value ?? ''});
-    return [inp, () => inp.value === '' ? null : +inp.value];
-  }
-  if (f.type === 'list') {
-    const ta = el('textarea', {id, placeholder: f.placeholder || '', value: (value || []).join('\n')});
-    return [ta, () => ta.value.split('\n').map(x => x.trim()).filter(Boolean)];
-  }
-  if (f.type === 'choices') {
-    const boxes = f.options.map(o => el('label', {}, el('input', {type: 'checkbox', value: o, checked: (value || []).includes(o)}), o.replace('_', ' ')));
-    return [el('div', {className: 'checks', id}, ...boxes), () => boxes.map(b => b.firstChild).filter(c => c.checked).map(c => c.value)];
-  }
-  if (f.type === 'monthday') {
-    const v = value || {};
-    const m = el('select', {id: id + '-month'}, new Option('Month', ''), ...['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((n, i) => new Option(n, i + 1)));
-    m.value = v.month || '';
-    const d = el('input', {type: 'number', id: id + '-day', min: 1, max: 31, placeholder: 'Day', value: v.day || ''});
-    const n = el('input', {id: id + '-name', placeholder: 'Name', value: v.name || ''});
-    return [el('div', {className: 'md'}, m, d, n), () => m.value && d.value ? {month: +m.value, day: +d.value, name: n.value.trim()} : null];
-  }
-  if (f.type === 'secret') {
-    const inp = el('input', {type: 'password', id, value: value ?? '', placeholder: f.placeholder || '', autocomplete: 'off'});
-    return [inp, () => inp.value];
-  }
-  if (f.type === 'select') {
-    const sel = el('select', {id}, ...f.options.map(o => new Option(o.label, o.value)));
-    sel.value = value ?? f.options[0].value;
-    return [sel, () => sel.value];
-  }
-  if (f.type === 'color') {
-    const inp = el('input', {type: 'color', id, value: value || '#ffffff'});
-    return [inp, () => inp.value];
-  }
-  if (f.type === 'toggle') {
-    const box = el('input', {type: 'checkbox', id, checked: value !== false});
-    return [el('label', {className: 'toggle'}, box, f.text || 'On'), () => box.checked];
-  }
-  const inp = el('input', {id, value: value ?? '', placeholder: f.placeholder || ''});
-  return [inp, () => inp.value];
-}
-
 function openPlugin(name) {
   const p = S.plugins.find(x => x.name === name), dlg = $('#pdlg');
   const readers = {};
@@ -135,14 +86,9 @@ function openPlugin(name) {
         `POST /api/data/${k} · ` + (k in S.data ? `last received ${ago(S.data[k])}` : 'nothing received yet') + ` · fresh for ${p.data[k]} min`}))));
   }
   if (p.fields.length) {
-    const form = el('div', {className: 'block'}, el('h2', {textContent: 'Settings'}));
-    for (const f of p.fields) {
-      const [input, read] = fieldInput(f, p.settings[f.key]);
-      readers[f.key] = read;
-      form.append(el('div', {className: 'field'}, el('label', {htmlFor: 'pf-' + f.key, textContent: f.label}), input,
-        ...(f.help ? [el('small', {textContent: f.help})] : [])));
-    }
-    kids.push(form);
+    const [form, read] = pluginForm(p);
+    for (const [k, r] of Object.entries(read)) readers[k] = r;
+    kids.push(el('div', {className: 'block'}, el('h2', {textContent: 'Settings'}), form));
   }
   const save = btn('Save', async () => {
     const settings = {}, dwell = {};

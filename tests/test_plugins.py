@@ -34,7 +34,7 @@ class RegistryTest(unittest.TestCase):
             self.assertGreater(len(p.about), 40, p.name)
             for f in p.fields:
                 self.assertIn(f["key"].split(".")[0], p.defaults, (p.name, f["key"]))
-                self.assertIn(f["type"], ("number", "range", "text", "list", "choices", "monthday", "secret", "select", "toggle", "color"), p.name)
+                self.assertIn(f["type"], ("number", "range", "text", "list", "choices", "monthday", "secret", "select", "toggle", "color", "items"), p.name)
         rows = {r["name"]: r for r in plugin.describe({})}
         self.assertEqual(rows["seasonal"]["fields"][1]["type"], "monthday")
         self.assertEqual(rows["weather"]["data"], {"weather": 180})

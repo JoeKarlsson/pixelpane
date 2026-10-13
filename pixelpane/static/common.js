@@ -56,3 +56,104 @@ function showStatus(S) {
   const v = document.getElementById('footver');
   if (v) v.textContent = S.version ? `version ${S.version}` : '';
 }
+
+// --- plugin settings forms (control page dialogs and the Settings page) ---------
+
+function fieldInput(f, value, id = 'pf-' + f.key) {
+  if (f.type === 'items') return itemsInput(f, value, id);
+  if (f.type === 'range') {
+    const out = el('span', {className: 'stat', textContent: value ?? ''});
+    const inp = el('input', {type: 'range', id, min: f.min ?? 0, max: f.max ?? 1, step: f.step ?? .05, value: value ?? f.min ?? 0});
+    inp.oninput = () => out.textContent = inp.value;
+    return [el('div', {className: 'row'}, inp, out), () => +inp.value];
+  }
+  if (f.type === 'number') {
+    const inp = el('input', {type: 'number', id, step: f.step ?? 'any', value: value ?? ''});
+    return [inp, () => inp.value === '' ? null : +inp.value];
+  }
+  if (f.type === 'list') {
+    const ta = el('textarea', {id, placeholder: f.placeholder || '', value: (value || []).join('\n')});
+    return [ta, () => ta.value.split('\n').map(x => x.trim()).filter(Boolean)];
+  }
+  if (f.type === 'choices') {
+    const boxes = f.options.map(o => el('label', {}, el('input', {type: 'checkbox', value: o, checked: (value || []).includes(o)}), o.replace('_', ' ')));
+    return [el('div', {className: 'checks', id}, ...boxes), () => boxes.map(b => b.firstChild).filter(c => c.checked).map(c => c.value)];
+  }
+  if (f.type === 'monthday') {
+    const v = value || {};
+    const m = el('select', {id: id + '-month'}, new Option('Month', ''), ...['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((n, i) => new Option(n, i + 1)));
+    m.value = v.month || '';
+    const d = el('input', {type: 'number', id: id + '-day', min: 1, max: 31, placeholder: 'Day', value: v.day || ''});
+    const n = el('input', {id: id + '-name', placeholder: 'Name', value: v.name || ''});
+    return [el('div', {className: 'md'}, m, d, n), () => m.value && d.value ? {month: +m.value, day: +d.value, name: n.value.trim()} : null];
+  }
+  if (f.type === 'secret') {
+    const inp = el('input', {type: 'password', id, value: value ?? '', placeholder: f.placeholder || '', autocomplete: 'off'});
+    return [inp, () => inp.value];
+  }
+  if (f.type === 'select') {
+    const sel = el('select', {id}, ...f.options.map(o => new Option(o.label, o.value)));
+    sel.value = value ?? f.options[0].value;
+    return [sel, () => sel.value];
+  }
+  if (f.type === 'color') {
+    const inp = el('input', {type: 'color', id, value: value || '#ffffff'});
+    return [inp, () => inp.value];
+  }
+  if (f.type === 'toggle') {
+    const box = el('input', {type: 'checkbox', id, checked: value !== false});
+    return [el('label', {className: 'toggle'}, box, f.text || 'On'), () => box.checked];
+  }
+  const inp = el('input', {id, value: value ?? '', placeholder: f.placeholder || '', ...(f.maxlength ? {maxLength: f.maxlength} : {})});
+  return [inp, () => inp.value];
+}
+
+// One labelled form row for a field (or a sub-field of an items field).
+function fieldRow(f, value, id) {
+  const [input, read] = fieldInput(f, value, id);
+  const row = el('div', {className: 'field' + (f.type === 'items' ? ' wide' : '')},
+    el('label', {htmlFor: id, textContent: f.label}), input, ...(f.help ? [el('small', {textContent: f.help})] : []));
+  return [row, read];
+}
+
+// "items": a list of small records (overlays, reminders...), each a card of sub-fields.
+// A sub-field with show_when: {key: [values]} only shows while that sub-field has one of them.
+function itemsInput(f, value, id) {
+  const list = el('div', {className: 'items', id}), rows = [];
+  const add = item => {
+    const readers = {}, wraps = {};
+    const card = el('div', {className: 'item'});
+    const n = rows.length + Math.random().toString(36).slice(2, 6);
+    for (const sf of f.fields) {
+      const [row, read] = fieldRow(sf, item[sf.key] ?? sf.default, `${id}-${n}-${sf.key}`);
+      readers[sf.key] = read; wraps[sf.key] = row; card.append(row);
+    }
+    const sync = () => {
+      for (const sf of f.fields) {
+        const when = sf.show_when; if (!when) continue;
+        wraps[sf.key].hidden = !Object.entries(when).every(([k, vals]) => vals.includes(readers[k]()));
+      }
+    };
+    card.addEventListener('change', sync); sync();
+    const entry = {card, read: () => Object.fromEntries(f.fields.map(sf => [sf.key, readers[sf.key]()]))};
+    card.append(el('div', {className: 'itemfoot'}, btn('Remove', () => { card.remove(); rows.splice(rows.indexOf(entry), 1); },
+      '', `${id}-remove`, `Remove this ${(f.item_label || 'item').toLowerCase()}`)));
+    rows.push(entry); list.append(card);
+  };
+  (value || []).forEach(add);
+  const addBtn = btn('+ ' + (f.add_label || 'Add'), () => {
+    if (rows.length >= (f.max || 20)) return toast(`At most ${f.max || 20}`);
+    add(Object.fromEntries(f.fields.map(sf => [sf.key, sf.default])));
+  }, '', `${id}-add`);
+  return [el('div', {}, list, addBtn), () => rows.map(r => r.read())];
+}
+
+// A plugin's whole settings form: [node, {key: reader}].
+function pluginForm(p, prefix = 'pf-') {
+  const form = el('div', {className: 'pform'}), readers = {};
+  for (const f of p.fields) {
+    const [row, read] = fieldRow(f, p.settings[f.key], prefix + f.key);
+    readers[f.key] = read; form.append(row);
+  }
+  return [form, readers];
+}

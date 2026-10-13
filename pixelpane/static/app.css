@@ -259,3 +259,25 @@ a.pill.sched { color: var(--teal); border-color: color-mix(in srgb, var(--teal) 
 .toc a { font: 12.5px var(--mono); color: var(--dim); text-decoration: none; padding: 3px 10px; border: 1px solid var(--line); border-radius: 99px; }
 .toc a:hover { color: var(--accent-ink); border-color: var(--accent-ink); }
 #access .form { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+
+/* plugin settings forms: the control page's dialogs and the Settings page */
+.pform { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px 16px; }
+dialog .pform { grid-template-columns: 1fr; gap: 0; }
+.pform .field { display: grid; gap: 4px; align-content: start; }
+.pform .field.wide { grid-column: 1 / -1; }
+.pform .field label { color: var(--bright); font-size: 14px; }
+.pform .field small { color: var(--dim); font-size: 12px; }
+.pform .field[hidden] { display: none; }
+.pform .checks { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.pform .checks label { display: flex; gap: 4px; align-items: center; color: var(--text); font-size: 13.5px; }
+.pform textarea { font: 13px var(--mono); color: var(--text); background: var(--bar); border: 1px solid var(--line); border-radius: 6px; padding: 8px; min-height: 64px; }
+.items { display: grid; gap: 10px; margin-bottom: 8px; }
+.item { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px 14px; padding: 12px 14px;
+  background: var(--bar); border: 1px solid var(--line); border-radius: 8px; }
+.item .field label { font-size: 13px; }
+.itemfoot { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; }
+.psection + .psection { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.psection > summary { cursor: pointer; font: 600 14px var(--mono); color: var(--bright); }
+.psection > summary small { font: 12.5px var(--sans); color: var(--dim); margin-left: 8px; }
+.psection[open] > summary { margin-bottom: 12px; }
+.psection .foot { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
