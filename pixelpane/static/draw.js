@@ -350,23 +350,28 @@ async function pump() {
     inflight = false; setTimeout(pump, 40);
   }
 }
-// Put the animation on the board once, whether or not Live is on.
-$('#fshow').onclick = async () => {
-  stopPlaying();
-  await send('/api/sketch', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload())});
-  showing(true); toast($('#live').checked ? 'Playing on the board' : 'Playing on the board (edits stay here until you show it again)');
+// One button puts the drawing on the board (once, whether or not Live is on) or takes it off.
+let onBoard = false;
+$('#board').onclick = async () => {
+  if (onBoard) {
+    $('#live').checked = false;
+    const sk = await api('/api/sketch');
+    if (sk.showing) await api('/api/pin', 'DELETE');
+    showing(false); toast('Back to the playlist');
+  } else {
+    stopPlaying();
+    await send('/api/sketch', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload())});
+    showing(true); toast($('#live').checked ? 'On the board' : 'On the board (edits stay here until you show it again)');
+  }
 };
-$('#live').onchange = () => { if ($('#live').checked) { dirty = true; pump(); } else status(''); };
-$('#stop').onclick = async () => {
-  $('#live').checked = false;
-  const sk = await api('/api/sketch');
-  if (sk.showing) await api('/api/pin', 'DELETE');
-  showing(false); toast('Back to the playlist');
-};
+$('#live').onchange = () => { if ($('#live').checked) { dirty = true; pump(); } else showing(onBoard); };
 function status(t) { $('#livestat').textContent = t; }
 function showing(on) {
   status(on ? '● Showing on the board' : $('#live').checked ? 'Draw something to show it on the board' : 'Not on the board');
   $('#livestat').classList.toggle('live', on);
+  onBoard = on;
+  $('#board').textContent = on ? 'Stop showing' : 'Show on board';
+  $('#board').classList.toggle('on', !on);
 }
 
 $('#save').onclick = async () => {
@@ -399,7 +404,7 @@ async function init() {
       'The examples above are good to pull apart: step through their frames to see what changes. ' +
       '← and → step through them (Shift moves this one), N adds a frame, D copies this one, space plays. With Live on, the board plays your loop as you edit it.';
   } else {
-    $('#hint').textContent = 'With Live on, the board shows your drawing while you draw it, and stays on it until you press Stop showing. ' +
+    $('#hint').textContent = 'With Live on, the board shows your drawing while you draw it, and stays on it until you press Stop showing. Show on board puts it back. ' +
       'B pen, E eraser, F fill, I picks a color, Ctrl+Z undoes.';
   }
   document.querySelector(`[data-testid=${ANIM ? 'animate' : 'draw'}-link]`).setAttribute('aria-current', 'page');

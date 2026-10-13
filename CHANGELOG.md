@@ -147,6 +147,9 @@ and the project uses [semantic versioning](https://semver.org/).
   your uploads and saved GIFs, a Hidden filter, and three thumbnail sizes.
 
 ### Changed
+- Draw and Animate have one board button beside the preview: Show on board puts
+  your drawing on the board and turns into Stop showing, which takes it off. The
+  separate Show on board button under the frames is gone.
 - During a transition the new scene keeps playing (a GIF animates through it)
   instead of freezing on its first frame, and it keeps its full length.
 - A plugin's card on the control page now opens its section on the Settings page,

@@ -66,7 +66,7 @@ What it shows, panel's-eye view:
   before as a teal onion-skin ghost. Start from an example (a bouncing ball, a
   heartbeat, a blinking face, a spinner, a rainbow wave) and pull it apart. With Live
   on, the board plays your loop while you edit it; with it off, Show on board sends
-  it when you're ready. Either page saves to the GIF library.
+  it when you're ready. The same button then reads Stop showing. Either page saves to the GIF library.
 - **Transitions and overlays.** Scenes fade (or wipe, slide, dissolve, iris, melt, switch off like an old TV, and more) into each
   other, GIFs can carry a small clock, date, temperature or meeting countdown in
   their calmest corner, and Home Assistant can light status dots along the top edge

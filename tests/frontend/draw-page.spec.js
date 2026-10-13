@@ -35,8 +35,14 @@ test('what you draw shows on the board while you draw it', async ({ page, reques
   expect(sk.frames).toHaveLength(1);
   expect(Buffer.from(sk.frames[0], 'base64').some(v => v)).toBeTruthy();   // something was drawn
 
-  await page.getByTestId('draw-stop').click();
+  await expect(page.getByTestId('board-toggle')).toHaveText('Stop showing');
+  await page.getByTestId('board-toggle').click();
   await expect.poll(async () => (await health(request)).pinned).toBeNull();
+  await expect(page.getByTestId('board-toggle')).toHaveText('Show on board');
+  await expect(page.getByTestId('draw-live')).not.toBeChecked();
+  await page.getByTestId('board-toggle').click();   // and back on, with Live off
+  await expect.poll(async () => (await health(request)).pinned?.scene).toBe('sketch');
+  await expect(page.getByTestId('board-toggle')).toHaveText('Stop showing');
   expect(page.errors).toEqual([]);
 });
 
@@ -63,7 +69,7 @@ test('onion skin shows the frame before (the last one on frame 1), and Show on b
   expect(await pixels()).toEqual(withOnion);
 
   await page.getByTestId('draw-live').uncheck();
-  await page.getByTestId('anim-show').click();
+  await page.getByTestId('board-toggle').click();
   await expect.poll(async () => (await health(request)).pinned?.scene).toBe('sketch');
   expect((await sketch(request)).frames).toHaveLength(10);
   expect(page.errors).toEqual([]);

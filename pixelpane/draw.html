@@ -49,7 +49,7 @@
         <div class="stat">On the board now</div>
         <div class="panel"><canvas id="preview" width="32" height="32" role="img" aria-label="live panel preview" data-testid="preview"></canvas></div>
         <label class="toggle"><input type="checkbox" id="live" checked data-testid="draw-live"> Live on the board</label>
-        <div class="row"><button id="stop" data-testid="draw-stop">Stop showing</button></div>
+        <div class="row"><button id="board" class="on" data-testid="board-toggle" title="Put it on the board, or take it off">Show on board</button></div>
         <div class="stat" id="livestat" role="status" data-testid="draw-status"></div>
       </div>
     </div>
@@ -72,7 +72,6 @@
         <label for="fps">Speed <span id="fpsv"></span></label>
         <input type="range" id="fps" min="1" max="24" value="8" style="width:140px" aria-label="Frames per second" data-testid="fps">
         <button id="play" data-testid="anim-play" title="Play it here (space)">▶ Play</button>
-        <button id="fshow" class="on" data-testid="anim-show" title="Play it on the board">Show on board</button>
       </div>
     </div>
 
