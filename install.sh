@@ -203,6 +203,30 @@ PermitRootLogin no
 EOF
   sshd -t && systemctl reload ssh
 fi
+# Redeploys without a password: the deploying user may run exactly this installer, as
+# root, from the staging folder in its own home that tools/deploy.sh fills. Anyone who
+# can log in as that user can then run code as root, so ssh keys only (above) matter.
+# PIXELPANE_DEPLOY_NOPASSWD=0 in deploy.env takes the rule away again.
+if [ "${PIXELPANE_DEPLOY_NOPASSWD:-1}" = 0 ]; then
+  if [ -e /etc/sudoers.d/pixelpane-deploy ]; then
+    rm -f /etc/sudoers.d/pixelpane-deploy
+    echo "sudoers: deploy rule removed"
+  fi
+elif [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ]; then
+  home="$(getent passwd "$SUDO_USER" | cut -d: -f6)"
+  rule="$SUDO_USER ALL=(root) NOPASSWD: /usr/bin/bash $home/pixelpane-deploy/install.sh"
+  if [ "$(cat /etc/sudoers.d/pixelpane-deploy 2>/dev/null)" != "$rule" ]; then
+    printf '%s\n' "$rule" > /etc/sudoers.d/.pixelpane-deploy   # sudo skips names with a dot
+    chmod 440 /etc/sudoers.d/.pixelpane-deploy
+    if visudo -cqf /etc/sudoers.d/.pixelpane-deploy; then
+      mv /etc/sudoers.d/.pixelpane-deploy /etc/sudoers.d/pixelpane-deploy
+      echo "sudoers: $SUDO_USER can redeploy without a password"
+    else
+      rm -f /etc/sudoers.d/.pixelpane-deploy
+      echo "sudoers: deploy rule did not validate, skipped"
+    fi
+  fi
+fi
 # Nothing here uses Bluetooth, cloud-init (first boot only) or udisks.
 if ! grep -q '^dtoverlay=disable-bt' "$BOOT/config.txt"; then
   echo 'dtoverlay=disable-bt' >> "$BOOT/config.txt"
