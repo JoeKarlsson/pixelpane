@@ -1,6 +1,7 @@
 """Drawing helpers for a 32x32 panel: fonts, text, colors, sprites."""
 import colorsys
 import os
+import unicodedata
 from functools import lru_cache
 from pathlib import Path
 
@@ -25,12 +26,32 @@ def font(name="5x7"):
     return ImageFont.load(str(stem.with_suffix(".pil")))
 
 
+# Bitmap fonts only hold Latin-1, so other characters from feeds (calendar titles,
+# song names, notifications) become their nearest Latin-1 look-alike, or go.
+PLAIN = str.maketrans({"\u2018": "'", "\u2019": "'", "\u201c": '"', "\u201d": '"', "\u2013": "-",
+                       "\u2014": "-", "\u2022": "\u00b7", "\u2026": "...", "\u00a0": " "})
+
+
+def plain(s):
+    """s with only characters the panel's fonts can draw."""
+    s = str(s).translate(PLAIN)
+    if s.isascii():
+        return s
+    out = []
+    for ch in s:
+        if ord(ch) < 256:
+            out.append(ch)
+        else:   # accented letters lose the accent; emoji and the like are dropped
+            out.append("".join(c for c in unicodedata.normalize("NFKD", ch) if ord(c) < 256 and not unicodedata.combining(c)))
+    return "".join(out)
+
+
 def text_width(text, name="5x7"):
-    return int(font(name).getlength(text))
+    return int(font(name).getlength(plain(text)))
 
 
 def text(img, xy, s, color, name="5x7"):
-    ImageDraw.Draw(img).text(xy, s, font=font(name), fill=color)
+    ImageDraw.Draw(img).text(xy, plain(s), font=font(name), fill=color)
 
 
 def text_center(img, y, s, color, name="5x7"):

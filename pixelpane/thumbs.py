@@ -9,7 +9,9 @@ import random
 import threading
 import time
 
-from . import plugin
+from PIL import Image
+
+from . import gfx, plugin
 from .plugin import PICKERS, SCENES
 
 SECONDS = 3.0      # how much of the scene a thumbnail shows
@@ -18,8 +20,10 @@ WALL = 2.5         # stop rendering after this long, however far the scene got
 # Scenes that follow live data go stale; art and seasons only change with the date.
 TTL = {"widget": 600, "mode": 3600}
 LONG_TTL = 6 * 3600
-SKIP_KINDS = {"gif", "interrupt"}
-WARMUP = {"generative": 1.5}   # art that starts empty (sand, snake) shows from a little way in   # GIFs would take a turn from the playlist; interrupts need a message
+SKIP_KINDS = {"gif", "interrupt"}   # GIFs would take a turn from the playlist; interrupts need a message
+WARMUP = {"generative": 1.5}   # art that starts empty (sand, snake) shows from a little way in
+# What a button shows when its scene has nothing to show (no song playing) or can't be previewed.
+ICONS = {"gif": "camera", "now_playing": "music", "calendar": "calendar", "weather": "partly"}
 
 
 class Thumbs:
@@ -39,7 +43,7 @@ class Thumbs:
             hit = self.cache.get(name)
             if hit and time.time() - hit[0] < self._ttl(name):
                 return hit[1]
-            data = self._render(name)
+            data = self._render(name) or self._icon(name)
             self.cache[name] = (time.time(), data)
             return data
 
@@ -57,6 +61,20 @@ class Thumbs:
     def _ttl(self, name):
         fn = SCENES.get(name)
         return TTL.get(getattr(fn, "kind", None), LONG_TTL) if fn else TTL["widget"]
+
+    def _icon(self, name):
+        icon = ICONS.get(name)
+        fn = SCENES.get(name)
+        if not icon or (fn and not plugin.enabled(self.state.config, fn.plugin)):
+            return None
+        sprite = gfx.sprite(icon)
+        k = min((gfx.W - 4) // sprite.width, (gfx.H - 4) // sprite.height)
+        sprite = sprite.resize((sprite.width * k, sprite.height * k), Image.NEAREST)
+        img = gfx.blank()
+        img.paste(sprite, ((gfx.W - sprite.width) // 2, (gfx.H - sprite.height) // 2), sprite)
+        buf = io.BytesIO()
+        img.save(buf, "GIF")
+        return buf.getvalue()
 
     def _render(self, name):
         fn = self._scene(name)

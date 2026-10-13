@@ -7,6 +7,7 @@ from PIL import Image
 from tests import support
 
 support.load_plugins()
+from pixelpane import gfx  # noqa: E402
 from pixelpane.plugin import SCENES  # noqa: E402
 from pixelpane.seasons import THEMES  # noqa: E402
 
@@ -63,6 +64,13 @@ class ScenesTest(unittest.TestCase):
         self.assertEqual(frames("calendar", ev(timedelta(hours=13))), [])
         self.assertEqual(frames("calendar", ev(timedelta(minutes=-30))), [])
         self.assertEqual(frames("calendar", support.ctx_with({"next_event": {"title": "T", "start": "garbage"}})), [])
+
+    def test_text_outside_the_fonts_is_drawn_not_crashed_on(self):
+        # Calendar titles from Home Assistant carry bullets, dashes, emoji; the fonts are Latin-1
+        start = (datetime.now() + timedelta(hours=3)).isoformat()
+        title = "Art and Poetry • Collage — “Joe” café \U0001f3b5 東京"
+        self.assertTrue(frames("calendar", support.ctx_with({"next_event": {"title": title, "start": start}})))
+        self.assertEqual(gfx.plain(title), 'Art and Poetry · Collage - "Joe" café  ')
 
     def test_calendar_accepts_timezone_offsets(self):
         start = (datetime.now().astimezone() + timedelta(hours=1)).isoformat()

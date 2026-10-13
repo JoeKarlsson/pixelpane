@@ -42,7 +42,7 @@ def _clip_scroll(img, box, s, color, font, t, speed):
     w, width = gfx.text_width(s, font), x1 - x0
     x = x0 + (width - w) // 2 if w <= width else x1 - int(t * speed) % (w + width)
     mask = Image.new("L", (W, H))
-    ImageDraw.Draw(mask).text((x, y), s, font=gfx.font(font), fill=255)
+    ImageDraw.Draw(mask).text((x, y), gfx.plain(s), font=gfx.font(font), fill=255)
     mask.paste(0, (0, 0, x0, H))
     mask.paste(0, (x1, 0, W, H))
     img.paste(color, (0, 0, W, H), mask)

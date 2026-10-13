@@ -207,7 +207,8 @@ function startPreview(sel) {
 // A Play now button's little animated preview of its scene (see /api/scenes/<name>/thumb.gif).
 // Scenes with nothing to show, GIFs and categories get none.
 function sceneThumb(scene) {
-  if (!scene || scene === 'gif' || scene.includes(':')) return [];
+  if (scene?.startsWith('gif:')) scene = 'gif';   // GIF categories share the GIF icon
+  if (!scene || scene.includes(':')) return [];
   const img = el('img', {className: 'thumb', src: `/api/scenes/${encodeURIComponent(scene)}/thumb.gif`, alt: '', loading: 'lazy',
     width: 32, height: 32});
   img.onerror = () => img.remove();
