@@ -45,10 +45,11 @@ What it shows, panel's-eye view:
   July and your birthday, each with a scene and its own GIF folder. Add your
   own holidays (Diwali, Lunar New Year, an anniversary), switch built-in ones
   off, or flip the seasons for the southern hemisphere.
-- **A web app in three pages**: a control page (live preview, a "now playing"
+- **A web app in five pages**: a control page (live preview, a "now playing"
   view that follows the playlist, a drag-and-drop playlist editor and plugin
-  switches), a GIFs page (the generator and the library; uploads convert
-  anything to 32x32) and Settings. Dark, light or match-the-device, in an accent
+  switches), Draw (scribble on the board live), Animate (frame-by-frame loops
+  that save as GIFs), a GIFs page (the generator and the library; uploads
+  convert anything to 32x32) and Settings. Dark, light or match-the-device, in an accent
   color you pick.
 - **GIFs from a prompt.** Type "a cat chasing a laser dot" (or press Surprise
   me) and a chat model (any OpenAI-compatible server such as LiteLLM,
@@ -201,6 +202,7 @@ Allowed host names. See [SECURITY.md](SECURITY.md).
 | `PATCH /api/gifs/<id>`, `POST /api/gifs/classify` | `{"category": "arcade", "theme": "all"}`, `{"ids": [...], ...}` or `{"reset": true}` | move GIFs between categories and themes ([docs/GIFS.md](docs/GIFS.md)) |
 | `POST /api/gifs/generate`, `GET /api/gifs/generate/<job>` | `{"prompt": "a cat chasing a laser dot"}` or `{"from": "<draft>", "change": "make it bigger"}` | make a draft from a prompt, or rework one; poll the job |
 | `GET /api/drafts`, `GET /draft/<id>.gif`, `POST /api/drafts/<id>/save`, `DELETE /api/drafts/<id>` | `{"name": "...", "category": "...", "theme": "all"}` | list, view, save to the library, or discard drafts |
+| `GET/PUT /api/sketch`, `POST /api/sketch/save` | `{"width": 32, "height": 32, "ms": 125, "frames": ["<base64 RGB>"], "show": true}`, plus `name`, `category`, `theme` to save | the Draw and Animate pages' drawing: PUT shows it on the board (and holds it there), save puts it in the GIF library |
 | `POST /api/categories/rename` | `{"from": "retro", "to": "arcade"}` | rename or merge a category |
 | `GET /api/backup`, `POST /api/restore` | a backup file | your settings as a file (secrets stay on the board), and back |
 | `GET /api/logs?since=<unix time>` | | recent log lines |

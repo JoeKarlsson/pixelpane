@@ -14,14 +14,14 @@ from flask import Flask, Response, abort, jsonify, request, send_file
 from PIL import Image
 from werkzeug.utils import secure_filename
 
-from . import generate, gfx, logbuf, plugin, schema, seasons
+from . import generate, gfx, logbuf, plugin, schema, seasons, sketch
 from .display import compose, panel_size
 from .plugin import PICKERS, SCENES
 from .state import VAR, _read, convert_upload
 from .state import now as local_now
 from .thumbs import Thumbs
 
-PAGES = {name: Path(__file__).with_name(f"{name}.html") for name in ("index", "library", "settings")}
+PAGES = {name: Path(__file__).with_name(f"{name}.html") for name in ("index", "library", "settings", "draw")}
 NOTIFY_STYLES = ["classic", "banner", "burst", "ticker"]   # pixelpane.plugins.alerts.STYLES
 MAX_STREAMS = 6   # live previews at once; each one costs the Pi a little CPU
 # Reads that give away more than the board's status: when a token is set they need it too.
@@ -152,6 +152,11 @@ def create_app(state, gifs, health, restart=_exit_soon):
     @app.get("/settings")
     def settings_page():
         return page("settings")
+
+    @app.get("/draw")
+    @app.get("/animate")
+    def draw_page():
+        return page("draw")   # one page, two modes: draw.js reads the path
 
     @app.get("/favicon.ico")
     def favicon():
@@ -494,6 +499,54 @@ def create_app(state, gifs, health, restart=_exit_soon):
         if not n:
             abort(404, f"no GIFs in category {old}")
         return jsonify(ok=True, changed=n)
+
+    def sketch_frames():
+        try:
+            return sketch.parse(body(), gifs.gif_size())
+        except sketch.SketchError as e:
+            abort(400, str(e))
+
+    @app.get("/api/sketch")
+    def api_sketch():
+        """The drawing on the board, and the size drawings are made at."""
+        frames, ms, version = state.sketch.get()
+        w, h = gifs.gif_size()
+        pin = state.active_pin()
+        return jsonify(sketch.encode(frames, ms) | {"size": [w, h], "version": version,
+                                                     "showing": bool(pin and pin["scene"] == "sketch")})
+
+    @app.put("/api/sketch")
+    def api_put_sketch():
+        """Replace the drawing: {"width", "height", "ms", "frames": [base64 RGB]}. Pages
+        send it many times a second while you draw. "show": true (the default) also holds
+        the board on it, unless it already is."""
+        frames, ms = sketch_frames()
+        if not plugin.enabled(state.config, "draw"):
+            abort(400, "the draw plugin is off")
+        state.sketch.set(frames, ms)
+        pin = state.active_pin()
+        if body().get("show", True) and not (pin and pin["scene"] == "sketch"):
+            state.pin("sketch")
+        return jsonify(ok=True)
+
+    @app.post("/api/sketch/save")
+    def api_save_sketch():
+        """Into the GIF library: the frames, plus {"name", "category", "theme"}."""
+        frames, ms = sketch_frames()
+        b = body()
+        try:
+            category = schema.category_name(b.get("category") or "drawn")
+            theme = schema.theme_name(b.get("theme") or "all")
+        except schema.ConfigError as e:
+            abort(400, str(e))
+        name = generate.slug(b.get("name") or "", "drawing")
+        dest = VAR / "uploads" / theme / f"{category}-{name}.gif"
+        n = 1
+        while dest.exists():
+            dest = dest.with_name(f"{category}-{name}-{n}.gif")
+            n += 1
+        sketch.save_gif(frames, ms, dest)
+        return jsonify(ok=True, id=gifs.gif_id(dest), name=dest.name)
 
     @app.get("/api/frames")
     def frames_stream():

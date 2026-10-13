@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PixelPane Draw</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1 class="brand"><img src="/static/favicon.svg" alt=""><span class="px">PIXEL</span><span class="pn" id="brandword">draw</span></h1>
+    <div class="row">
+      <span class="pill" id="stat">connecting…</span>
+      <nav class="row" aria-label="Pages"><a class="navlink" href="/" data-testid="home-link">Control</a><a class="navlink" href="/draw" data-testid="draw-link">Draw</a><a class="navlink" href="/animate" data-testid="animate-link">Animate</a><a class="navlink" href="/library" data-testid="library-link">GIFs</a><a class="navlink" href="/settings" data-testid="settings-link">Settings</a></nav>
+    </div>
+  </header>
+
+  <section class="studio-draw">
+    <div class="titlebar" id="drawtitle">pixelpane@board: draw</div>
+    <div class="tools" role="toolbar" aria-label="Drawing tools">
+      <div class="row" id="toolrow">
+        <button data-tool="pen" class="on" title="Pen (B)">✎ Pen</button>
+        <button data-tool="eraser" title="Eraser (E)">⌫ Eraser</button>
+        <button data-tool="fill" title="Fill (F)">▧ Fill</button>
+        <button data-tool="picker" title="Pick a color (I)">⊙ Pick</button>
+      </div>
+      <div class="row">
+        <label>Size <select id="size" aria-label="Brush size"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="5">5</option></select></label>
+        <label><input type="checkbox" id="mirror"> mirror</label>
+        <label><input type="checkbox" id="grid" checked> grid</label>
+      </div>
+      <div class="row palette" id="palette" aria-label="Colors"></div>
+      <div class="row"><input type="color" id="color" value="#ff004d" aria-label="Color" data-testid="draw-color">
+        <button id="undo" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
+        <button id="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">↷</button>
+        <button id="clear" data-testid="draw-clear">Clear</button></div>
+    </div>
+    <div class="easel">
+      <div class="canvaswrap grid" id="wrap"><canvas id="canvas" data-testid="draw-canvas" aria-label="Drawing canvas"></canvas></div>
+      <div class="side">
+        <div class="stat">On the board now</div>
+        <div class="panel"><canvas id="preview" width="32" height="32" role="img" aria-label="live panel preview" data-testid="preview"></canvas></div>
+        <label class="toggle"><input type="checkbox" id="live" checked data-testid="draw-live"> Live on the board</label>
+        <div class="row"><button id="stop" data-testid="draw-stop">Stop showing</button></div>
+        <div class="stat" id="livestat" role="status" data-testid="draw-status"></div>
+      </div>
+    </div>
+
+    <div class="frames" id="framebox" hidden data-testid="frames">
+      <h2>Frames</h2>
+      <div class="strip" id="strip"></div>
+      <div class="row">
+        <button id="fadd" title="New blank frame (N)">+ New</button>
+        <button id="fdup" title="Copy this frame (D)">Duplicate</button>
+        <button id="fdel">Delete</button>
+        <button id="fleft" aria-label="Move frame earlier" title="Move frame earlier">◀</button>
+        <button id="fright" aria-label="Move frame later" title="Move frame later">▶</button>
+        <label><input type="checkbox" id="onion" checked> onion skin</label>
+        <label for="fps">Speed <span id="fpsv"></span></label>
+        <input type="range" id="fps" min="1" max="24" value="8" style="width:140px" aria-label="Frames per second">
+        <button id="play" data-testid="anim-play">▶ Play</button>
+      </div>
+    </div>
+
+    <div class="row savebar">
+      <input id="gname" placeholder="name" maxlength="40" aria-label="GIF name" data-testid="draw-name">
+      <input id="gcat" placeholder="category (drawn)" maxlength="24" aria-label="Category">
+      <button id="save" class="on" data-testid="draw-save">Save to GIF library</button>
+    </div>
+    <p class="stat" id="hint"></p>
+  </section>
+
+  <dialog id="tokdlg" data-testid="token-dialog">
+    <h3>Token needed</h3>
+    <p class="about">This board asks for a token before it accepts changes. It's the <code>api_token</code> in its config.</p>
+    <input id="tokinput" type="password" autocomplete="off" placeholder="Token" style="width:100%">
+    <div class="foot"><button id="tokcancel">Cancel</button><button id="toksave" class="on">Use token</button></div>
+  </dialog>
+  <footer class="foot-bar" data-testid="footer">
+    <a href="https://github.com/JoeKarlsson/pixelpane" target="_blank" rel="noopener" data-testid="github-link">PixelPane on GitHub</a>
+    <span data-testid="maker">Made by <a href="https://www.joekarlsson.com" target="_blank" rel="noopener">Joe Karlsson</a></span>
+    <span class="stat" id="footver"></span>
+  </footer>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="/static/common.js"></script>
+<script src="/static/draw.js"></script>
+</body>
+</html>

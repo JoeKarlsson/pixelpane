@@ -11,6 +11,7 @@ from PIL import Image, ImageSequence
 
 from . import plugin, schedule, seasons
 from .gfx import H, W
+from .sketch import Sketch
 
 HOME = Path(os.environ.get("PIXELPANE_HOME", "/opt/pixelpane"))
 VAR = Path(os.environ.get("PIXELPANE_STATE", "/var/lib/pixelpane"))
@@ -87,6 +88,7 @@ class State:
         self.last_frame = Image.new("RGB", (W, H))
         self.started = time.time()
         self.override_until = 0.0   # "turn on anyway" during scheduled off time, until then
+        self.sketch = Sketch(VAR / "sketch.png")   # the Draw and Animate pages' drawing
 
     # -- persistence --
     def save_state(self):

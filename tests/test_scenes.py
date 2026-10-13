@@ -2,6 +2,8 @@ import unittest
 from datetime import datetime, timedelta
 from unittest import mock
 
+from PIL import Image
+
 from tests import support
 
 support.load_plugins()
@@ -29,6 +31,7 @@ class ScenesTest(unittest.TestCase):
             "title": "Standup", "start": (datetime.now() + timedelta(minutes=20)).isoformat()}))
         params = {"notify": {"text": "Doorbell", "flash": True, "sub": "front door"},
                   "message": {"text": "Hello there friend"}}
+        ctx.state.sketch.set([Image.new("RGB", (32, 32), (255, 0, 77))], 100)
         for name in SCENES:
             with self.subTest(scene=name):
                 self.assert_frames(frames(name, ctx, **params.get(name, {})), name)
@@ -46,7 +49,7 @@ class ScenesTest(unittest.TestCase):
 
     def test_data_scenes_skip_without_data(self):
         ctx = support.ctx_with()
-        for name in ("weather", "now_playing", "calendar", "homelab", "tiles"):
+        for name in ("weather", "now_playing", "calendar", "homelab", "tiles", "sketch"):
             self.assertEqual(frames(name, ctx), [], name)
 
     def test_now_playing_skips_when_idle(self):
