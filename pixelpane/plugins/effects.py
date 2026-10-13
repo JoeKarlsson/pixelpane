@@ -8,7 +8,9 @@ from PIL import Image, ImageFilter
 from .. import gfx
 from ..plugin import Plugin
 
-STYLES = ["fade", "wipe", "slide", "dissolve"]
+STYLES = ["fade", "wipe", "slide", "dissolve", "iris", "zoom", "pixelate", "blinds", "blocks",
+          "diagonal", "push", "melt", "dip", "tv"]
+NAMES = {"dip": "Dip to black", "tv": "TV switch-off", "push": "Push up"}
 TRANSITIONS = ["none", *STYLES, "random"]
 OVERLAYS = ["off", "time", "date", "time_date", "temp", "meeting"]
 CORNERS = ["auto", "top_left", "top_right", "bottom_left", "bottom_right"]
@@ -34,7 +36,7 @@ plugin = Plugin(
           "the top edge that stay on while something is true (laundry done, a door open): "
           "POST /api/data/status with {dots: [{color, blink}]}, and an empty list to clear them.",
     fields=[{"key": "transition", "label": "Transition", "type": "select",
-             "options": [{"label": t.capitalize(), "value": t} for t in TRANSITIONS]},
+             "options": [{"label": NAMES.get(t, t.capitalize()), "value": t} for t in TRANSITIONS]},
             {"key": "transition_seconds", "label": "Transition length (seconds)", "type": "range",
              "min": 0.2, "max": 1.5, "step": 0.1},
             {"key": "transition_mix", "label": "Random mixes", "type": "choices", "options": STYLES,
@@ -141,26 +143,95 @@ def transition(frames, prev, style, secs, seed=0):
     yield from it
 
 
+_YY, _XX = np.mgrid[0:32, 0:32]
+
+
+def _grid(w, h):
+    """Pixel row and column indexes for a panel of this size."""
+    if (h, w) == _YY.shape:
+        return _YY, _XX
+    return np.mgrid[0:h, 0:w]
+
+
+def _mix(a, b, mask):
+    """b where mask is true, a elsewhere."""
+    return Image.fromarray(np.where(mask[..., None], b, a).astype(np.uint8), "RGB")
+
+
 def blend(a, b, p, style, order=None):
     """One in-between frame, p of the way from a to b."""
     w, h = b.size
+    a, b = a.convert("RGB"), b.convert("RGB")
     if style == "fade":
-        return Image.blend(a.convert("RGB"), b.convert("RGB"), p)
-    out = a.convert("RGB").copy()
+        return Image.blend(a, b, p)
     edge = round(w * p)
     if style == "wipe":
+        out = a.copy()
         out.paste(b.crop((0, 0, edge, h)), (0, 0))
-    elif style == "slide":           # the new scene pushes the old one out to the left
+        return out
+    if style == "slide":             # the new scene pushes the old one out to the left
         out = Image.new("RGB", (w, h))
         out.paste(a.crop((edge, 0, w, h)), (0, 0))
         out.paste(b.crop((0, 0, edge, h)), (w - edge, 0))
-    else:                            # dissolve: pixels flip over in a random order
-        flat_a = np.asarray(a.convert("RGB")).reshape(-1, 3).copy()
-        flat_b = np.asarray(b.convert("RGB")).reshape(-1, 3)
-        pick = order[:round(len(order) * p)]
-        flat_a[pick] = flat_b[pick]
-        out = Image.fromarray(flat_a.reshape(h, w, 3), "RGB")
-    return out
+        return out
+    if style == "push":              # the new scene pushes the old one up and out
+        top = round(h * p)
+        out = Image.new("RGB", (w, h))
+        out.paste(a.crop((0, top, w, h)), (0, 0))
+        out.paste(b.crop((0, 0, w, top)), (0, h - top))
+        return out
+    if style == "zoom":              # the new scene grows out of the middle
+        size = max(1, round(w * p)), max(1, round(h * p))
+        out = a.copy()
+        out.paste(b.resize(size, Image.NEAREST), ((w - size[0]) // 2, (h - size[1]) // 2))
+        return out
+    if style == "dip":               # fade to black, then up into the new scene
+        return Image.blend(a, Image.new("RGB", (w, h)), p * 2) if p < 0.5 else \
+            Image.blend(Image.new("RGB", (w, h)), b, p * 2 - 1)
+    if style == "pixelate":          # the old scene breaks into blocks, the new one comes into focus
+        k = 1 - abs(p * 2 - 1)      # 0 -> 1 -> 0
+        block = max(1, round(1 + k * 7))
+        src = a if p < 0.5 else b
+        small = src.resize((max(1, w // block), max(1, h // block)), Image.BILINEAR)
+        return small.resize((w, h), Image.NEAREST)
+    if style == "tv":                # the old picture squashes to a bright line, the new one opens out
+        out = Image.new("RGB", (w, h))
+        k = abs(p * 2 - 1)           # 1 -> 0 -> 1
+        src = a if p < 0.5 else b
+        rows = max(1, round(h * k ** 1.5))
+        out.paste(src.resize((w, rows), Image.NEAREST), (0, (h - rows) // 2))
+        if rows <= 2:
+            out.paste((255, 255, 255), (round(w * (1 - k) / 2), h // 2, w - round(w * (1 - k) / 2), h // 2 + 1))
+        return out
+    A, B = np.asarray(a), np.asarray(b)
+    ys, xs = _grid(w, h)
+    if style == "iris":              # a circle opens from the middle
+        r = np.hypot(xs - (w - 1) / 2, ys - (h - 1) / 2)
+        return _mix(A, B, r <= p * np.hypot(w, h) / 2)
+    if style == "blinds":            # four bands open together
+        band = h // 4 or 1
+        return _mix(A, B, (ys % band) < p * band)
+    if style == "blocks":            # 8px squares flip over in a random order
+        cols = -(-w // 8)
+        rank = np.argsort(np.argsort(order[:cols * -(-h // 8)])) if order is not None else np.arange(cols * -(-h // 8))
+        square = (ys // 8) * cols + xs // 8
+        return _mix(A, B, rank[square] < p * len(rank))
+    if style == "diagonal":          # a wipe from the top-left corner
+        return _mix(A, B, (xs + ys) < p * (w + h))
+    if style == "melt":              # columns of the old scene drip down, each at its own pace
+        lag = (order[:w] % 9) / 9 * 0.35 if order is not None else np.zeros(w)
+        drop = np.clip((p - lag) / (1 - 0.35), 0, 1) * h * 1.15
+        out = B.copy()
+        for x in range(w):
+            d = int(drop[x])
+            if d < h:
+                out[d:, x] = A[:h - d, x]
+        return Image.fromarray(out, "RGB")
+    # dissolve: pixels flip over in a random order
+    flat_a = A.reshape(-1, 3).copy()
+    pick = order[:round(len(order) * p)]
+    flat_a[pick] = B.reshape(-1, 3)[pick]
+    return Image.fromarray(flat_a.reshape(h, w, 3), "RGB")
 
 
 # --- overlay and status dots ----------------------------------------------------

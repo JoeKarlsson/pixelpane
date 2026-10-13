@@ -55,7 +55,7 @@ What it shows, panel's-eye view:
   OpenRouter or Ollama, or Anthropic's API) designs a looping animation. Preview
   it, refine it, then save it to your library or throw it out. See
   [which models draw best](docs/GIFS.md#choosing-a-model).
-- **Transitions and overlays.** Scenes fade (or wipe, slide, dissolve) into each
+- **Transitions and overlays.** Scenes fade (or wipe, slide, dissolve, iris, melt, switch off like an old TV, and more) into each
   other, GIFs can carry a small clock, date, temperature or meeting countdown in
   their calmest corner, and Home Assistant can light status dots along the top edge
   (laundry done, garage open).

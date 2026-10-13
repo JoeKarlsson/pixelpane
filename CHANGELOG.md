@@ -24,6 +24,9 @@ and the project uses [semantic versioning](https://semver.org/).
 - With a token set, logs and backups need it too.
 
 ### Added
+- Ten more transitions: iris, zoom, pixelate, blinds, blocks, diagonal, push up, melt
+  (columns drip away), dip to black and TV switch-off. Random picks from all of them
+  unless you untick some.
 - Random transitions: each scene change picks one of the styles you tick, never the
   same one twice in a row.
 - Settings, Notifications: write a message (with a second line, icon, style, color and

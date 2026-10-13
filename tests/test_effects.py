@@ -74,6 +74,18 @@ class TransitionTest(unittest.TestCase):
             self.assertIn(BLUE, colors[5], style)
             self.assertEqual(colors[0] | colors[-1], {RED, BLUE}, style)
 
+    def test_every_style_goes_from_the_old_scene_to_the_new(self):
+        a, b = Image.new("RGB", (32, 32), RED), Image.new("RGB", (32, 32), BLUE)
+        order = np.random.default_rng(1).permutation(32 * 32)
+        dist = lambda img, ref: np.abs(np.asarray(img, int) - np.asarray(ref, int)).mean()  # noqa: E731
+        for style in effects.STYLES:
+            early, late = effects.blend(a, b, 0.1, style, order), effects.blend(a, b, 0.9, style, order)
+            self.assertEqual(early.size, (32, 32), style)
+            self.assertLess(dist(early, a), dist(late, a), style)
+            self.assertLess(dist(late, b), dist(early, b), style)
+        self.assertEqual(len(effects.STYLES), len(set(effects.STYLES)))
+        self.assertIn("random", effects.TRANSITIONS)
+
     def test_random_picks_from_the_mix_and_never_repeats(self):
         c = ctx({"transition_mix": ["wipe", "dissolve", "fade"]})
         picks = [effects.pick_style(c, ["wipe", "dissolve", "fade"]) for _ in range(40)]
