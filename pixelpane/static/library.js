@@ -244,7 +244,7 @@ $('#ggo').onclick = () => {
 };
 $('#gprompt').onkeydown = e => { if (e.key === 'Enter') $('#ggo').click(); };
 $('#gsurprise').onclick = () => runJob({prompt: ''});
-$('#gsetup').onclick = () => { location.href = '/#plugin=generator'; };   // its settings are on the control page
+$('#gsetup').onclick = () => { location.href = '/settings#plugin-generator'; };
 $('#sdagain').onclick = () => draft && runJob({prompt: draft.prompt || ''});
 $('#sdrefine').onclick = () => {
   const c = $('#sdchange').value.trim();

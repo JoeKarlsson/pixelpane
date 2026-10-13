@@ -37,18 +37,17 @@ async function init() {
   drawRot(); drawPlugins(); pollNow(); pluginFromHash();
 }
 
-// /#plugin=generator (the GIFs page links here) opens that plugin's settings
+// Old links (/#plugin=generator) go to that plugin's settings, which live on the Settings page now
 function pluginFromHash() {
   const want = new URLSearchParams(location.hash.slice(1)).get('plugin');
-  if (want && S.plugins?.some(p => p.name === want) && !$('#pdlg').open) openPlugin(want);
+  if (want) location.replace('/settings#plugin-' + encodeURIComponent(want));
 }
 window.addEventListener('hashchange', pluginFromHash);
 
 // Play now, grouped: everyday scenes and generative art as buttons; the longer lists
 // (holidays and seasons, GIF categories) fold away until you open them.
 function drawPlayNow(cats) {
-  const play = s => btn(s.replace(/_/g, ' ').replace('gif:', ''),
-    () => api('/api/play', 'POST', {scene: s}).then(() => toast('Up next: ' + s)), '', 'play-' + s);
+  const play = s => playButton(s, 'play-' + s);
   const group = (title, list, fold) => {
     if (!list.length) return null;
     const row = el('div', {className: 'row'}, ...list.map(play));
@@ -63,56 +62,16 @@ function drawPlayNow(cats) {
   ].filter(Boolean));
 }
 
-function openPlugin(name) {
-  const p = S.plugins.find(x => x.name === name), dlg = $('#pdlg');
-  const readers = {};
-  const kids = [el('h3', {textContent: p.name.replace('_', ' ')}), el('div', {className: 'stat', textContent: p.description}),
-    el('p', {className: 'about', textContent: p.about || ''})];
-  const dwellKeys = [...new Set([...p.scenes.filter(sc => sc in C.dwell), ...(p.name in C.dwell ? [p.name] : [])])];
-  if (p.scenes.length) {
-    kids.push(el('div', {className: 'block'}, el('h2', {textContent: 'Scenes'}),
-      el('div', {className: 'row'}, ...p.scenes.map(sc => btn('▶ ' + sc.replace('_', ' '),
-        () => api('/api/play', 'POST', {scene: sc}).then(() => toast('Up next: ' + sc)), '', 'dlg-play-' + sc)))));
-  }
-  if (dwellKeys.length) {
-    kids.push(el('div', {className: 'block'}, el('h2', {textContent: 'Seconds on screen'}), el('div', {className: 'dwell'},
-      ...dwellKeys.map(k => { const inp = el('input', {type: 'number', min: 3, value: C.dwell[k], id: 'pd-' + k});
-        readers['dwell:' + k] = () => +inp.value; return el('label', {}, k.replace('_', ' ') + ' ', inp); }))));
-  }
-  const keys = Object.keys(p.data || {});
-  if (keys.length) {
-    kids.push(el('div', {className: 'block'}, el('h2', {textContent: 'Data it takes'}),
-      ...keys.map(k => el('div', {className: 'stat', textContent:
-        `POST /api/data/${k} · ` + (k in S.data ? `last received ${ago(S.data[k])}` : 'nothing received yet') + ` · fresh for ${p.data[k]} min`}))));
-  }
-  if (p.fields.length) {
-    const [form, read] = pluginForm(p);
-    for (const [k, r] of Object.entries(read)) readers[k] = r;
-    kids.push(el('div', {className: 'block'}, el('h2', {textContent: 'Settings'}), form));
-  }
-  const save = btn('Save', async () => {
-    const settings = {}, dwell = {};
-    for (const [k, read] of Object.entries(readers)) (k.startsWith('dwell:') ? (dwell[k.slice(6)] = read()) : (settings[k] = read()));
-    C = await api('/api/config', 'PUT', {plugins: {[p.name]: settings}, ...(Object.keys(dwell).length ? {dwell} : {})});
-    toast(`${p.name} saved`); dlg.close(); init();
-  }, 'on', 'dlg-save');
-  const toggle = btn(p.enabled ? 'Turn off' : 'Turn on', () =>
-    api('/api/config', 'PUT', {plugins: {[p.name]: {enabled: !p.enabled}}}).then(() => { dlg.close(); init(); }), '', 'dlg-toggle');
-  kids.push(el('div', {className: 'foot'}, toggle, btn('Close', () => dlg.close(), '', 'dlg-close'),
-    ...(p.fields.length || dwellKeys.length ? [save] : [])));
-  dlg.replaceChildren(...kids);
-  dlg.showModal();
-}
-
 function drawPlugins() {
   const errs = S.plugin_errors || [];
   $('#pluginerrs').hidden = !errs.length;
   $('#pluginerrs').replaceChildren(...errs.map(e => el('div', {textContent: `⚠ ${e.source} didn't load: ${e.error}`})));
   $('#plugins').replaceChildren(...S.plugins.map(p => {
     const row = document.createElement('div'); row.className = 'plugin'; row.dataset.testid = 'plugin-' + p.name;
-    row.title = 'Details and settings'; row.onclick = e => { if (!e.target.closest('button')) openPlugin(p.name); };
-    row.tabIndex = 0; row.setAttribute('role', 'button'); row.setAttribute('aria-label', `${p.name} details and settings`);
-    row.onkeydown = e => { if (e.target === row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openPlugin(p.name); } };
+    const go = () => { location.href = '/settings#plugin-' + p.name; };
+    row.title = 'Settings and details'; row.onclick = e => { if (!e.target.closest('button')) go(); };
+    row.tabIndex = 0; row.setAttribute('role', 'link'); row.setAttribute('aria-label', `${p.name} settings and details`);
+    row.onkeydown = e => { if (e.target === row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); go(); } };
     const info = document.createElement('div');
     const name = document.createElement('strong'); name.textContent = p.name;
     const desc = document.createElement('small'); desc.textContent = p.description;

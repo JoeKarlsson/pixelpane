@@ -203,3 +203,19 @@ function startPreview(sel) {
   });
   streamPreview();
 }
+
+// A Play now button's little animated preview of its scene (see /api/scenes/<name>/thumb.gif).
+// Scenes with nothing to show, GIFs and categories get none.
+function sceneThumb(scene) {
+  if (!scene || scene === 'gif' || scene.includes(':')) return [];
+  const img = el('img', {className: 'thumb', src: `/api/scenes/${encodeURIComponent(scene)}/thumb.gif`, alt: '', loading: 'lazy',
+    width: 32, height: 32});
+  img.onerror = () => img.remove();
+  return [img];
+}
+// A button that plays a scene next, with its preview.
+function playButton(scene, testid, label) {
+  const b = btn('', () => api('/api/play', 'POST', {scene}).then(() => toast('Up next: ' + scene.replace(/_/g, ' '))), 'scenebtn', testid);
+  b.append(...sceneThumb(scene), el('span', {textContent: label ?? scene.replace(/_/g, ' ').replace('gif:', '')}));
+  return b;
+}

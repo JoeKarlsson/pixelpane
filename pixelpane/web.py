@@ -19,6 +19,7 @@ from .display import compose, panel_size
 from .plugin import PICKERS, SCENES
 from .state import VAR, _read, convert_upload
 from .state import now as local_now
+from .thumbs import Thumbs
 
 PAGES = {name: Path(__file__).with_name(f"{name}.html") for name in ("index", "library", "settings")}
 NOTIFY_STYLES = ["classic", "banner", "burst", "ticker"]   # pixelpane.plugins.alerts.STYLES
@@ -79,6 +80,7 @@ def _exit_soon():
 def create_app(state, gifs, health, restart=_exit_soon):
     app = Flask(__name__)
     app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
+    thumbs = Thumbs(state, gifs)   # the Play now buttons' little previews
     streams = {}   # stream -> when it last ran; the dev server never closes a dropped
     streams_lock = threading.Lock()   # stream, so a stream that stops running is gone
 
@@ -214,6 +216,16 @@ def create_app(state, gifs, health, restart=_exit_soon):
             abort(400, "unknown or disabled scene")
         state.request(b["scene"], params_of(b))
         return jsonify(ok=True)
+
+    @app.get("/api/scenes/<name>/thumb.gif")
+    def api_scene_thumb(name):
+        """A few seconds of the scene as a little looping GIF (204 when it has nothing to show)."""
+        if not valid_scene(name, state.config) or ":" in name:
+            abort(404)
+        data = thumbs.get(name)
+        if not data:
+            return Response(status=204)
+        return Response(data, mimetype="image/gif", headers={"Cache-Control": "max-age=300"})
 
     @app.post("/api/notify")
     def api_notify():

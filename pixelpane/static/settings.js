@@ -43,31 +43,66 @@ const EXTRAS = {
 
 function drawPluginSections() {
   const placed = new Set(Object.values(SECTIONS).flat());
-  const withForm = S.plugins.filter(p => p.fields.length);
-  const groups = {...SECTIONS, pluginsettings: withForm.map(p => p.name).filter(n => !placed.has(n))};
+  const groups = {...SECTIONS, pluginsettings: S.plugins.map(p => p.name).filter(n => !placed.has(n))};
   for (const [id, names] of Object.entries(groups)) {
-    const ps = names.map(n => withForm.find(p => p.name === n)).filter(Boolean);
+    const ps = names.map(n => S.plugins.find(p => p.name === n)).filter(Boolean);
     $('#' + id + 'forms').replaceChildren(...ps.map(p => pluginSection(p, id !== 'pluginsettings')));
     $('#' + id).hidden = !ps.length;
   }
+  openFromHash();
 }
 
-function pluginSection(p, open) {
-  const [form, readers] = pluginForm(p, `sf-${p.name}-`);
-  const read = () => Object.fromEntries(Object.entries(readers).map(([k, r]) => [k, r()]));
-  const title = p.name.replace('_', ' ');
-  const save = btn('Save', async () => {
-    C = await api('/api/config', 'PUT', {plugins: {[p.name]: read()}});
-    S = await api('/api/state');
-    toast(`${title} saved`);
-  }, 'on', `save-plugin-${p.name}`);
-  const off = !p.enabled ? [el('p', {className: 'stat', textContent: `${title} is switched off, so these settings do nothing until it's on. `},
-    btn('Turn on', async () => { await api('/api/config', 'PUT', {plugins: {[p.name]: {enabled: true}}}); load(); }, '', `enable-${p.name}`))] : [];
-  return el('details', {className: 'psection', open, id: 'plugin-' + p.name},
-    el('summary', {}, title, el('small', {textContent: p.description})),
-    ...off, el('p', {className: 'stat', textContent: p.about || ''}), form,
-    el('div', {className: 'foot'}, save, ...(EXTRAS[p.name] ? EXTRAS[p.name](p, read) : [])));
+// /settings#plugin-weather (the control page's plugin cards link here) opens that plugin
+function openFromHash() {
+  const sec = location.hash.startsWith('#plugin-') && document.getElementById(location.hash.slice(1));
+  if (!sec) return;
+  sec.open = true;
+  sec.scrollIntoView({block: 'start'});
+  sec.classList.add('flash'); setTimeout(() => sec.classList.remove('flash'), 1600);
 }
+window.addEventListener('hashchange', openFromHash);
+
+function pluginSection(p, open) {
+  const title = p.name.replace('_', ' ');
+  const kids = [];
+  const toggle = btn(p.enabled ? 'On' : 'Off', async () => {
+    await api('/api/config', 'PUT', {plugins: {[p.name]: {enabled: !p.enabled}}});
+    toast(`${title} ${p.enabled ? 'off' : 'on'}`); await load();
+  }, p.enabled ? 'on' : '', `toggle-${p.name}`, `Switch ${title} ${p.enabled ? 'off' : 'on'}`);
+  if (!p.enabled) kids.push(el('p', {className: 'stat warn', textContent: `${title} is switched off: its scenes don't play and its settings do nothing until it's on.`}));
+  kids.push(el('p', {className: 'stat', textContent: p.about || ''}));
+  if (p.scenes.length && p.enabled) {   // a switched-off plugin's scenes can't play
+    kids.push(el('div', {className: 'pmeta'}, el('span', {className: 'stat', textContent: 'Play now'}),
+      el('div', {className: 'row scenebtns'}, ...p.scenes.map(sc => playButton(sc, `play-${p.name}-${sc}`)))));
+  }
+  const keys = Object.keys(p.data || {});
+  if (keys.length) {
+    kids.push(el('div', {className: 'pmeta'}, el('span', {className: 'stat', textContent: 'Data'}),
+      el('div', {}, ...keys.map(k => el('div', {className: 'stat mono', textContent:
+        `POST /api/data/${k} · ` + (k in (S.data || {}) ? `last received ${ago(S.data[k])}` : 'nothing received yet') + ` · fresh for ${p.data[k]} min`})))));
+  }
+  const crashed = (p.tasks || []).filter(t => t.crashes);
+  if (crashed.length) kids.push(el('p', {className: 'stat warn', textContent: `⚠ task ${crashed[0].name} crashed: ${crashed[0].last_error}`}));
+  const foot = [];
+  let read = () => ({});
+  if (p.fields.length) {
+    const [form, readers] = pluginForm(p, `sf-${p.name}-`);
+    read = () => Object.fromEntries(Object.entries(readers).map(([k, r]) => [k, r()]));
+    kids.push(form);
+    foot.push(btn('Save', async () => {
+      C = await api('/api/config', 'PUT', {plugins: {[p.name]: read()}});
+      S = await api('/api/state');
+      toast(`${title} saved`);
+    }, 'on', `save-plugin-${p.name}`));
+  }
+  foot.push(...(EXTRAS[p.name] ? EXTRAS[p.name](p, read) : []));
+  if (foot.length) kids.push(el('div', {className: 'foot'}, ...foot));
+  const summary = el('summary', {}, title, el('small', {textContent: p.description}),
+    ...(p.source !== 'built-in' || p.version ? [el('small', {textContent: [p.source, p.version && 'v' + p.version].filter(Boolean).join(' · ')})] : []));
+  return el('details', {className: 'psection' + (p.enabled ? '' : ' off'), open, id: 'plugin-' + p.name},
+    summary, el('div', {className: 'ptoggle'}, toggle), ...kids);
+}
+
 
 function drawStatus() {
   showStatus(S);

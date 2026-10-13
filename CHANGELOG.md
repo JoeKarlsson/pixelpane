@@ -24,6 +24,8 @@ and the project uses [semantic versioning](https://semver.org/).
 - With a token set, logs and backups need it too.
 
 ### Added
+- Play now buttons show a little animated preview of their scene, rendered on the
+  board from its real data (`GET /api/scenes/<name>/thumb.gif`).
 - Every plugin's settings are on the Settings page too: On screen (transitions,
   overlays, status dots), Notifications and Plugins, with a small live preview in the
   corner so you can watch a change land.
@@ -130,6 +132,10 @@ and the project uses [semantic versioning](https://semver.org/).
   your uploads and saved GIFs, a Hidden filter, and three thumbnail sizes.
 
 ### Changed
+- A plugin's card on the control page now opens its section on the Settings page,
+  which has its options, Play now buttons, the data it has received and its on/off
+  switch. The control page's plugin dialog is gone; old `/#plugin=<name>` links
+  still land in the right place.
 - Make a GIF and the GIF library moved to their own page, `/library` (GIFs in the
   header). The control page keeps the live controls, playlist and plugins.
 - Play now is grouped: scenes, art, then holidays and GIF categories folded away.

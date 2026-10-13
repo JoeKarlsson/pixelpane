@@ -136,7 +136,8 @@ pixelpane-library/
 | triggers | no scenes: reminders and watches that raise notifications | |
 | generator | no scenes: settings for making GIFs from a prompt ([docs/GIFS.md](docs/GIFS.md#make-one-from-a-prompt)) | |
 
-Switch plugins on or off on the control page, or in the config. Writing your
+Switch plugins on or off on the control page (a card opens that plugin on the Settings
+page, with its options, its scenes and the data it has received), or in the config. Writing your
 own takes one Python file: see **[docs/PLUGINS.md](docs/PLUGINS.md)**.
 
 ![Plugin switches on the control page](docs/images/plugins.png)

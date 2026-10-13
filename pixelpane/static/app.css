@@ -289,3 +289,20 @@ dialog .pform { grid-template-columns: 1fr; gap: 0; }
 .minipreview[open] summary { margin-bottom: 6px; }
 .minipreview canvas { width: 128px; height: auto; image-rendering: pixelated; display: block; border-radius: 4px; background: #000; }
 @media (max-width: 560px) { .minipreview canvas { width: 80px; } }
+.psection { position: relative; }
+.psection .ptoggle { position: absolute; right: 0; top: -4px; }
+.psection + .psection .ptoggle { top: 10px; }
+.psection.off > summary { color: var(--dim); }
+.psection.flash { animation: flash 1.6s ease-out; }
+@keyframes flash { 0% { box-shadow: 0 0 0 2px var(--accent); border-radius: 6px; } 100% { box-shadow: 0 0 0 2px transparent; } }
+.pmeta { display: grid; grid-template-columns: 70px 1fr; gap: 6px 10px; align-items: start; margin: 8px 0; }
+.pmeta .mono { font-family: var(--mono); font-size: 12px; }
+.scenebtns { gap: 6px; flex-wrap: wrap; }
+.stat.warn { color: var(--amber); }
+@media (max-width: 560px) { .pmeta { grid-template-columns: 1fr; } }
+
+/* Play now buttons carry a tiny live-ish preview of their scene */
+button.scenebtn { display: inline-flex; align-items: center; gap: 7px; }
+button.scenebtn .thumb { width: 22px; height: 22px; image-rendering: pixelated; border-radius: 3px; background: #000; flex: none;
+  margin: -3px 0 -3px -4px; }
+.pform .field select, .pform .field input:not([type=checkbox]):not([type=color]):not([type=range]) { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }

@@ -118,8 +118,7 @@ not silently swapped in. Load errors show on the control page and in Settings, S
 
 ## Settings forms
 
-`fields` turns your `defaults` into a form, shown in the plugin's dialog on the control page
-and on the Settings page.
+`fields` turns your `defaults` into a form in the plugin's section of the Settings page.
 Each field is a dict with `key` (dotted for nested settings, like `"birthday.month"`),
 `label`, `type` and optional `help`. The board validates every save against the field,
 so a bad value is refused with a message instead of reaching your scene.
