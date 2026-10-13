@@ -205,7 +205,7 @@ function startPreview(sel) {
 }
 
 // A Play now button's little animated preview of its scene (see /api/scenes/<name>/thumb.gif).
-// Scenes with nothing to show, GIFs and categories get none.
+// Scenes with nothing to show yet get an icon (GIF categories share the GIF one).
 function sceneThumb(scene) {
   if (scene?.startsWith('gif:')) scene = 'gif';   // GIF categories share the GIF icon
   if (!scene || scene.includes(':')) return [];

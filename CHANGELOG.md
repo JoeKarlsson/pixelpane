@@ -180,6 +180,7 @@ and the project uses [semantic versioning](https://semver.org/).
   which reverse proxies log as an error on every request.
 - The control page polls half as often and stops polling in a background tab.
 - GIFs that are not square keep their whole subject instead of being cropped.
+- Switching a plugin off or on in Settings no longer folds its section shut.
 
 ## [0.1.0] - 2026-10-12
 

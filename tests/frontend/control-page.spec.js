@@ -278,7 +278,8 @@ test('Play now buttons show a little preview of their scene', async ({ page }) =
   const fire = page.getByTestId('play-fire').locator('img.thumb');
   await expect(fire).toBeVisible();
   await expect.poll(() => fire.evaluate(img => img.complete && img.naturalWidth)).toBe(32);
-  await expect(page.getByTestId('play-gif').locator('img')).toHaveCount(0);
+  const gif = page.getByTestId('play-gif').locator('img');                    // nothing to preview: an icon
+  await expect.poll(() => gif.evaluate(img => img.complete && img.naturalWidth)).toBe(32);
 });
 
 test('with a token set, the page asks for it once and then works', async ({ page, request }) => {
@@ -310,3 +311,86 @@ test('footer links to the project on GitHub', async ({ page }) => {
   await expect(page.getByTestId('footer').getByRole('link')).toHaveCount(2);
 });
 
+
+test('Skip moves on to the next scene', async ({ page, request }) => {
+  await request.post('/api/pin', { data: { scene: 'clock' } });
+  await request.delete('/api/pin');
+  const skipped = page.waitForResponse((r) => r.url().endsWith('/api/skip') && r.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Skip ⏭' }).click();
+  expect((await skipped).ok()).toBeTruthy();
+  await expect(page.locator('#toast')).toContainText('Skipped');
+});
+
+test('a notification sends its style and color', async ({ page, request }) => {
+  await page.locator('#ntext').fill('Styled');
+  await page.getByTestId('notify-style').selectOption('banner');
+  await page.locator('#ncolor').fill('#ff8800');
+  const sent = page.waitForRequest((r) => r.url().endsWith('/api/notify') && r.method() === 'POST');
+  await page.locator('#nsend').click();
+  expect((await sent).postDataJSON()).toMatchObject({ text: 'Styled', style: 'banner', color: '#ff8800' });
+  await expect(page.locator('#toast')).toContainText('Sent');
+  await sceneIs(request, /^notify$/);
+});
+
+test('playlist Move down moves an entry later', async ({ page, request }) => {
+  const original = (await config(request)).rotation;
+  const rows = page.locator('#rot li');
+  await rows.first().getByRole('button', { name: 'Move down' }).click();
+  await expect(rows.nth(0)).toContainText(original[1]);
+  await expect(rows.nth(1)).toContainText(original[0]);
+  await page.locator('#saverot').click();
+  await expect.poll(async () => (await config(request)).rotation.slice(0, 2)).toEqual([original[1], original[0]]);
+  await request.put('/api/config', { data: { rotation: original } });
+});
+
+test('the playlist note links to Settings', async ({ page }) => {
+  await page.locator('main').getByRole('link', { name: 'Settings', exact: true }).last().click();
+  await expect(page).toHaveURL(/\/settings$/);
+});
+
+// Every page has the same header links and footer.
+const PAGES = { '/': 'home-link', '/draw': 'draw-link', '/animate': 'animate-link', '/library': 'library-link', '/settings': 'settings-link' };
+for (const [from, current] of Object.entries(PAGES)) {
+  test(`${from} links to every page and has the footer`, async ({ page }) => {
+    await page.goto(from);
+    await expect(page.getByTestId(current)).toHaveAttribute('aria-current', 'page');
+    for (const [to, link] of Object.entries(PAGES)) await expect(page.getByTestId(link)).toHaveAttribute('href', to);
+    await expect(page.getByTestId('github-link')).toHaveAttribute('href', 'https://github.com/JoeKarlsson/pixelpane');
+    await expect(page.getByTestId('maker').getByRole('link')).toHaveAttribute('href', 'https://www.joekarlsson.com');
+    await expect(page.getByTestId('footer').getByRole('link')).toHaveCount(2);
+    page.errors = page.errors.filter((e) => !e.includes('503'));   // see below
+  });
+}
+
+test('the header links take you round every page', async ({ page }) => {
+  for (const [to, link] of [...Object.entries(PAGES).slice(1), ['/', 'home-link']]) {
+    await page.getByTestId(link).click();
+    await expect(page).toHaveURL(new RegExp(`127.0.0.1:\\d+${to}$`));
+    await expect(page.getByTestId(link)).toHaveAttribute('aria-current', 'page');
+  }
+  // Pages this quick leave the test server's dropped previews counted for a moment, so it can
+  // refuse a new one (503) until they lapse; the preview tries again by itself.
+  page.errors = page.errors.filter((e) => !e.includes('503'));
+});
+
+for (const where of ['/', '/draw', '/library', '/settings']) {
+  test(`${where}: Cancel on the token prompt leaves things as they were`, async ({ page, request }) => {
+    await request.put('/api/config', { data: { api_token: 'correct-horse' } });
+    try {
+      await page.goto(where);
+      await page.evaluate(() => localStorage.removeItem('pixelpane-token'));
+      // any write asks for the token
+      const write = page.evaluate(() => api('/api/skip', 'POST').then(() => 'sent', (e) => 'refused'));
+      const dlg = page.getByTestId('token-dialog');
+      await expect(dlg).toBeVisible();
+      await page.locator('#tokcancel').click();
+      await expect(dlg).toBeHidden();
+      expect(await write).toBe('refused');
+      expect(await page.evaluate(() => localStorage.getItem('pixelpane-token'))).toBeNull();
+    } finally {
+      await request.put('/api/config', { data: { api_token: null }, headers: { 'X-PixelPane-Token': 'correct-horse' } });
+    }
+    // the refusal that asked for it, and a preview refused while the last page's lapses (see above)
+    page.errors = page.errors.filter((e) => !e.includes('401') && !e.includes('503'));
+  });
+}

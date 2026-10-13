@@ -55,7 +55,7 @@ test('GIFs can be moved to another category or theme, one at a time or in bulk',
 
   await page.getByTestId('gif-filter').selectOption('winter');
   const moved = cards.filter({ hasText: name });
-  await expect(moved.locator('.cat')).toHaveText('outer_space');
+  await expect(moved.locator('.cat')).toHaveText(/^outer_space\b/);   // plus a play count, if the playlist played it
   await expect(moved.locator('.cat')).toHaveClass(/moved/);
   await moved.getByTestId('classify').click();
   await dlg.getByTestId('classify-reset').click();
@@ -270,9 +270,9 @@ test('library sorts, searches, filters and resizes', async ({ page, request }) =
   const gifs = await (await request.get('/api/gifs')).json();
   expect(gifs.find((g) => g.name === 'space-purple-blink.gif').plays).toBeGreaterThan(0);
   const top = Math.max(...gifs.map((g) => g.plays));
+  await expect(cards.first().locator('.cat')).toContainText(`▶${top}`);         // most played first, once it re-sorts
   const firstName = await cards.first().locator('.stat').textContent();
-  expect(gifs.find((g) => g.name === firstName + '.gif').plays).toBe(top);      // most played first
-  await expect(cards.first().locator('.cat')).toContainText(`▶${top}`);
+  expect(gifs.find((g) => g.name === firstName + '.gif').plays).toBe(top);
   // search by words in the name, category or theme
   await page.getByTestId('gif-search').fill('purple');
   await expect(cards).toHaveCount(1);
@@ -291,4 +291,79 @@ test('library sorts, searches, filters and resizes', async ({ page, request }) =
   await expect(page.getByTestId('gif-sort')).toHaveValue('most');
   await page.getByTestId('gif-thumb').selectOption('64');
   await page.getByTestId('gif-sort').selectOption('newest');
+});
+
+test('Cancel closes the move and rename dialogs without changing anything', async ({ page, request }) => {
+  const before = (await config(request)).gif_meta;
+  await page.getByTestId('gif-filter').selectOption('cat:space');
+  const cards = page.getByTestId('gif-card');
+  await expect(cards.first().locator('.stat')).toHaveText(/^space-/);
+  await cards.first().getByTestId('classify').click();
+  const dlg = page.getByTestId('classify-dialog');
+  await expect(dlg).toBeVisible();
+  await dlg.getByTestId('classify-category').fill('nowhere');
+  await page.locator('#gdlgcancel').click();
+  await expect(dlg).toBeHidden();
+
+  await page.getByTestId('rename-category').click();
+  await expect(page.getByTestId('rename-input')).toBeVisible();
+  await page.getByTestId('rename-input').fill('nowhere');
+  await page.locator('#rdlgcancel').click();
+  await expect(page.getByTestId('rename-input')).toBeHidden();
+  expect((await config(request)).gif_meta).toEqual(before);
+  expect((await (await request.get('/api/gifs')).json()).some((g) => g.category === 'nowhere')).toBe(false);
+});
+
+test('upload with smooth on fills the panel instead of fitting it with black bars', async ({ page, request }) => {
+  const upload = async (smooth) => {
+    await page.locator('#gfile').setInputFiles(path.join(__dirname, 'fixtures', 'wide-photo.gif'));
+    await page.locator('#gsmooth').setChecked(smooth);
+    await page.locator('#gup').click();
+    await expect(page.locator('#toast')).toContainText('Uploaded');
+    let mine;
+    await expect.poll(async () => {
+      mine = (await (await request.get('/api/gifs')).json()).find((g) => g.upload && g.name.includes('wide-photo'));
+      return !!mine;
+    }).toBe(true);
+    const card = page.getByTestId('gif-card').filter({ hasText: 'wide-photo' });
+    await expect.poll(() => card.locator('img').evaluate((img) => img.naturalWidth)).toBe(32);
+    const bytes = await (await request.get(`/gif/${mine.id}`)).body();
+    await request.delete(`/api/gifs/${mine.id}`);
+    await page.reload();
+    return bytes.toString('base64');
+  };
+  const sharp = await upload(false);
+  const smooth = await upload(true);
+  expect(smooth).not.toEqual(sharp);
+});
+
+test('Surprise me and Try again make new drafts', async ({ page, request }) => {
+  const spec = { name: 'Surprise', category: 'toys', seconds: 1, fps: 8, background: '#000000',
+    layers: [{ type: 'circle', x: 16, y: 16, r: 5, color: '#40ff60', motion: { bob: 4 } }] };
+  const prompts = [];
+  const stub = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => { body += c; });
+    req.on('end', () => {
+      prompts.push(body);
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(spec) } }] }));
+    });
+  });
+  await new Promise((r) => stub.listen(0, '127.0.0.1', r));
+  try {
+    await request.put('/api/config', { data: { plugins: { generator: {
+      base_url: `http://127.0.0.1:${stub.address().port}/v1`, model: 'stub', review: false } } } });
+    await page.reload();
+    await page.getByTestId('surprise').click();
+    await expect(page.getByTestId('draft')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('draft-thumb')).toHaveCount(1);
+    await page.getByTestId('draft-again').click();
+    await expect(page.getByTestId('draft-thumb')).toHaveCount(2, { timeout: 15_000 });
+    expect(prompts.length).toBeGreaterThanOrEqual(2);
+  } finally {
+    for (const d of await (await request.get('/api/drafts')).json()) await request.delete(`/api/drafts/${d.id}`);
+    await request.put('/api/config', { data: { plugins: { generator: { base_url: '', model: '' } } } });
+    stub.close();
+  }
 });

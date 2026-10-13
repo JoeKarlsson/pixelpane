@@ -75,9 +75,10 @@ function drawPluginSections() {
   drawComposer();
   const placed = new Set(Object.values(SECTIONS).flat());
   const groups = {...SECTIONS, pluginsettings: S.plugins.map(p => p.name).filter(n => !placed.has(n))};
+  const wasOpen = new Set([...document.querySelectorAll('details.psection[open]')].map(d => d.id));   // a redraw keeps them open
   for (const [id, names] of Object.entries(groups)) {
     const ps = names.map(n => S.plugins.find(p => p.name === n)).filter(Boolean);
-    $('#' + id + 'forms').replaceChildren(...ps.map(p => pluginSection(p, id !== 'pluginsettings')));
+    $('#' + id + 'forms').replaceChildren(...ps.map(p => pluginSection(p, id !== 'pluginsettings' || wasOpen.has('plugin-' + p.name))));
     $('#' + id).hidden = !ps.length;
   }
   openFromHash();

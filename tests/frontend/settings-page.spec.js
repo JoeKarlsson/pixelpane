@@ -265,3 +265,141 @@ test('notifications: write a message and send it, keep one on screen, clear it',
   await box.getByTestId('compose-clear').click();
   await expect.poll(async () => (await health(request)).pinned).toBeNull();
 });
+
+test('every section link jumps to its section', async ({ page }) => {
+  const links = page.getByRole('navigation', { name: 'Sections' }).getByRole('link');
+  const targets = await links.evaluateAll((els) => els.map((a) => a.getAttribute('href')));
+  expect(targets.length).toBe(11);
+  for (const href of targets) {
+    await page.getByRole('navigation', { name: 'Sections' }).locator(`a[href="${href}"]`).click();
+    await expect(page).toHaveURL(new RegExp(`${href}$`));
+    await expect(page.locator(href)).toBeInViewport();
+  }
+});
+
+test('Default puts the accent color back without saving', async ({ page, request }) => {
+  const before = (await config(request)).ui;
+  await page.getByTestId('ui-accent').fill('#123456');
+  await page.getByTestId('ui-default').click();
+  await expect(page.getByTestId('ui-accent')).toHaveValue('#fdae84');
+  expect((await config(request)).ui).toEqual(before);
+});
+
+test('Restart PixelPane, and Save and restart, wait for the board to come back', async ({ page, request }) => {
+  // the real restart would end the test server, so the board's answer is stood in for
+  let restarts = 0;
+  await page.route('**/api/system/restart', (route) => { restarts += 1; route.fulfill({ json: { ok: true } }); });
+  await page.getByTestId('restart').click();
+  await expect(page.locator('#toast')).toHaveText('Restarting…');
+  await expect(page.locator('#toast')).toHaveText('Back up', { timeout: 10_000 });
+  try {
+    await page.locator('#hw-gpio_slowdown').fill('3');
+    await page.getByTestId('restart-display').click();
+    await expect(page.locator('#toast')).toHaveText('Restarting…');
+    await expect(page.locator('#toast')).toHaveText('Back up', { timeout: 10_000 });
+    expect((await config(request)).gpio_slowdown).toBe(3);
+    expect(restarts).toBe(2);
+  } finally {
+    await request.put('/api/config', { data: { gpio_slowdown: null } });
+  }
+});
+
+test('allowed host names save', async ({ page, request }) => {
+  try {
+    await page.getByTestId('allowed-hosts').fill('pane.example.com\n\n  board.lan  ');
+    await page.getByTestId('save-hosts').click();
+    await expect.poll(async () => (await config(request)).allowed_hosts).toEqual(['pane.example.com', 'board.lan']);
+  } finally {
+    await request.put('/api/config', { data: { allowed_hosts: [] } });
+  }
+});
+
+test('the log can show only warnings and errors', async ({ page, request }) => {
+  await request.post('/api/play', { data: { scene: 'no_such_scene' } });   // logs a warning, maybe
+  await page.getByTestId('load-logs').click();
+  const lines = page.getByTestId('logs').locator('div');
+  await expect(lines.first()).toBeVisible();
+  const levels = () => lines.evaluateAll((els) => els.map((e) => e.className));
+  expect(await levels()).toContain('INFO');
+  await page.locator('#onlyproblems').check();
+  await expect.poll(async () => (await levels()).filter((l) => l === 'INFO' || l === 'DEBUG')).toEqual([]);
+  await page.locator('#onlyproblems').uncheck();
+  await expect.poll(levels).toContain('INFO');
+  page.errors = page.errors.filter((e) => !e.includes('400'));
+});
+
+test('the live preview folds away and back', async ({ page }) => {
+  const box = page.getByTestId('mini-preview');
+  await expect(box.locator('canvas')).toBeVisible();
+  await box.locator('summary').click();
+  await expect(box.locator('canvas')).toBeHidden();
+  await box.locator('summary').click();
+  await expect(box.locator('canvas')).toBeVisible();
+});
+
+test('Show a GIF now and Try the reminders send to the board', async ({ page, request }) => {
+  const reset = { plugins: { triggers: { reminders: [], watches: [] } } };
+  await request.put('/api/config', { data: reset });
+  // a notification from an earlier test always plays to the end: wait it out
+  await expect.poll(async () => (await health(request)).scene, { timeout: 30_000 }).not.toBe('notify');
+  await page.reload();
+  try {
+    await page.getByTestId('effects-try').click();
+    await expect(page.locator('#toast')).toContainText('Playing a GIF');
+    await expect.poll(async () => (await health(request)).scene).toMatch(/^gif: /);
+
+    await page.getByTestId('test-reminders').click();
+    await expect(page.locator('#toast')).toContainText('Add a reminder with some text first');
+    await page.getByTestId('sf-triggers-reminders-add').click();
+    await page.locator('#sf-triggers-reminders .item').first().getByLabel('Text').fill('Water plants');
+    const sent = page.waitForRequest((r) => r.url().endsWith('/api/notify') && r.method() === 'POST');
+    await page.getByTestId('test-reminders').click();
+    expect((await sent).postDataJSON().text).toBe('Water plants');
+    await expect(page.locator('#toast')).toHaveText('Sent');
+  } finally {
+    await request.put('/api/config', { data: reset });
+  }
+});
+
+test('a plugin switches off and on from its settings', async ({ page, request }) => {
+  const enabled = async () => (await (await request.get('/api/state')).json()).plugins.find((p) => p.name === 'generative').enabled;
+  try {
+    await page.locator('#plugin-generative > summary').click();   // folded until opened
+    await expect(page.getByTestId('toggle-generative')).toHaveText('On');
+    await page.getByTestId('toggle-generative').click();
+    await expect(page.getByTestId('toggle-generative')).toHaveText('Off');
+    await expect(page.locator('#plugin-generative')).toContainText('is switched off');
+    expect(await enabled()).toBe(false);
+    await page.getByTestId('toggle-generative').click();
+    await expect(page.getByTestId('toggle-generative')).toHaveText('On');
+    expect(await enabled()).toBe(true);
+    // previews still loading when it went off are refused while it's off
+    page.errors = page.errors.filter((e) => !e.includes('404'));
+  } finally {
+    await request.put('/api/config', { data: { plugins: { generative: { enabled: true } } } });
+  }
+});
+
+test('a rule keeps its name and can be switched off', async ({ page, request }) => {
+  await page.getByTestId('rule-preset').selectOption('dim');
+  await page.getByTestId('add-rule').click();
+  const rule = page.getByTestId('rule');
+  await rule.getByPlaceholder('Name (optional)').fill('Evening dim');
+  await rule.getByLabel('on', { exact: true }).uncheck();
+  await expect(rule).toHaveClass(/off/);
+  await page.getByTestId('save-schedule').click();
+  await expect(page.locator('#toast')).toContainText('Schedule saved');
+  expect((await config(request)).schedule[0]).toMatchObject({ label: 'Evening dim', enabled: false, action: 'dim' });
+});
+
+test('a holiday you added can be deleted', async ({ page, request }) => {
+  try {
+    await page.getByTestId('add-holiday').click();
+    await page.getByTestId('add-holiday').click();
+    await expect(page.getByTestId('holiday')).toHaveCount(2);
+    await page.getByTestId('holiday').first().getByTestId('delete-holiday').click();
+    await expect(page.getByTestId('holiday')).toHaveCount(1);
+  } finally {
+    await request.put('/api/config', { data: { themes: { hemisphere: 'north', off: [], custom: [] } } });
+  }
+});

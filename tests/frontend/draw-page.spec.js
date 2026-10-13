@@ -275,3 +275,41 @@ test('Animate: frame buttons and keys step, add, copy, delete, move, change spee
   await expect(page.getByTestId('anim-play')).toHaveText('▶ Play');
   expect(page.errors).toEqual([]);
 });
+
+test('every palette swatch picks its color, and Ctrl+Shift+Z redoes', async ({ page }) => {
+  await page.goto('/draw');
+  await expect(page.getByTestId('draw-status')).not.toBeEmpty();
+  const swatches = page.locator('#palette .swatch');
+  const hexes = await swatches.evaluateAll(els => els.map(e => e.dataset.color));
+  expect(hexes.length).toBeGreaterThan(8);
+  for (const h of hexes) {
+    await page.getByRole('button', { name: h, exact: true }).click();
+    await expect(page.getByTestId('draw-color')).toHaveValue(h);
+    await expect(page.locator('#palette .swatch.on')).toHaveCount(1);
+    await expect(page.getByRole('button', { name: h, exact: true })).toHaveClass(/on/);
+  }
+  await page.getByRole('button', { name: '#ff004d', exact: true }).click();
+  await tap(page, 4, 4);
+  expect(await px(page, 4, 4)).toEqual([255, 0, 77]);
+  await blur(page);
+  await page.keyboard.press('Control+z');
+  expect(await px(page, 4, 4)).toEqual([0, 0, 0]);
+  await page.keyboard.press('Control+Shift+z');
+  expect(await px(page, 4, 4)).toEqual([255, 0, 77]);
+  expect(page.errors).toEqual([]);
+});
+
+test('every Animate example loads its frames and plays them on the board', async ({ page, request }) => {
+  await page.goto('/animate');
+  await expect(page.getByTestId('frame-9')).toBeVisible();
+  const want = { 'bouncing-ball': 10, heartbeat: 6, 'blinking-face': 8, 'loading-spinner': 8, 'rainbow-wave': 12 };
+  const buttons = await page.getByTestId('examples').getByRole('button').evaluateAll(els => els.map(e => e.dataset.testid));
+  expect(buttons.sort()).toEqual(Object.keys(want).map(k => `example-${k}`).sort());
+  for (const [name, n] of Object.entries(want)) {
+    await page.getByTestId(`example-${name}`).click();
+    await expect(page.locator('#strip > *')).toHaveCount(n);
+    await expect(page.getByTestId('frame-pos')).toContainText(`/ ${n}`);
+    await expect.poll(async () => (await sketch(request)).frames.length).toBe(n);
+  }
+  expect(page.errors).toEqual([]);
+});
