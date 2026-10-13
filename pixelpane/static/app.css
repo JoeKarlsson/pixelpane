@@ -281,3 +281,11 @@ dialog .pform { grid-template-columns: 1fr; gap: 0; }
 .psection > summary small { font: 12.5px var(--sans); color: var(--dim); margin-left: 8px; }
 .psection[open] > summary { margin-bottom: 12px; }
 .psection .foot { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+/* the Settings page's live preview, floating in a corner while you change things */
+.minipreview { position: fixed; right: 16px; bottom: 16px; z-index: 5; background: var(--card); border: 1px solid var(--line);
+  border-radius: 10px; padding: 6px 8px 8px; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.minipreview summary { cursor: pointer; font: 11.5px var(--mono); color: var(--dim); }
+.minipreview[open] summary { margin-bottom: 6px; }
+.minipreview canvas { width: 128px; height: auto; image-rendering: pixelated; display: block; border-radius: 4px; background: #000; }
+@media (max-width: 560px) { .minipreview canvas { width: 80px; } }

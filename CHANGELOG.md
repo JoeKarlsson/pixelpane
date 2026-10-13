@@ -24,6 +24,16 @@ and the project uses [semantic versioning](https://semver.org/).
 - With a token set, logs and backups need it too.
 
 ### Added
+- Every plugin's settings are on the Settings page too: On screen (transitions,
+  overlays, status dots), Notifications and Plugins, with a small live preview in the
+  corner so you can watch a change land.
+- Up to four overlays at once, each with what it shows (time, date, outside
+  temperature, a tile reading such as the office temperature or CO2, minutes to the
+  next meeting, or your own text), a corner, size, style (outlined, on a dark box or
+  plain), color (or colored by the reading), peek or always, and which scenes it's on.
+  Auto corners never overlap.
+- An `items` field type for plugin settings: a list of small records with Add and
+  Remove, each sub-field validated.
 - Tiles that are readings: send `{kind, value}` for `temp`, `aqi`, `humidity`, `co2`
   or `battery` and the whole panel takes on a mood that shows how it feels (frost,
   heat shimmer, clear or smoggy air, condensation, murky bubbles). The number counts

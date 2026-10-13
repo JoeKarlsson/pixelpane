@@ -164,3 +164,36 @@ test('appearance: light theme and an accent color repaint every page', async ({ 
     await request.put('/api/config', { data: { ui: { theme: 'dark', accent: '#fdae84' } } });
   }
 });
+
+test('on screen: add two overlays, fields follow the choice, save, remove', async ({ page, request }) => {
+  await request.put('/api/config', { data: { plugins: { effects: { overlays: [] } } } });
+  await page.reload();
+  const section = page.getByTestId('onscreen');
+  await expect(section).toBeVisible();
+  await page.getByTestId('sf-effects-overlays-add').click();
+  await page.getByTestId('sf-effects-overlays-add').click();
+  const cards = section.locator('.item');
+  await expect(cards).toHaveCount(2);
+  const first = cards.nth(0);
+  await expect(first.getByLabel('Tile label')).toBeHidden();          // only for readings
+  await first.getByLabel('Show', { exact: true }).selectOption('reading');
+  await expect(first.getByLabel('Tile label')).toBeVisible();
+  await first.getByLabel('Reading').selectOption('co2');
+  await first.getByLabel('Tile label').fill('office');
+  await first.getByLabel('Corner').selectOption('bottom_right');
+  await cards.nth(1).getByLabel('Show', { exact: true }).selectOption('text');
+  await cards.nth(1).getByLabel('Text', { exact: true }).fill('hi joe');
+  await page.getByTestId('save-plugin-effects').click();
+  await expect(page.locator('#toast')).toContainText('effects saved');
+  let o = (await config(request)).plugins.effects.overlays;
+  expect(o.map(x => x.show)).toEqual(['reading', 'text']);
+  expect([o[0].reading, o[0].label, o[0].corner, o[1].text]).toEqual(['co2', 'office', 'bottom_right', 'hi joe']);
+  await cards.nth(1).getByRole('button', { name: 'Remove this overlay' }).click();
+  await expect(cards).toHaveCount(1);
+  const saved = page.waitForResponse(r => r.url().endsWith('/api/config') && r.request().method() === 'PUT');
+  await page.getByTestId('save-plugin-effects').click();
+  await saved;
+  o = (await config(request)).plugins.effects.overlays;
+  expect(o.map(x => x.show)).toEqual(['reading']);
+  await request.put('/api/config', { data: { plugins: { effects: { overlays: [] } } } });
+});

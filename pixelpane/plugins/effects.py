@@ -13,40 +13,77 @@ OVERLAYS = ["off", "time", "date", "time_date", "temp", "meeting"]
 CORNERS = ["auto", "top_left", "top_right", "bottom_left", "bottom_right"]
 OVER_KINDS = ["gif", "generative", "seasonal"]
 
+SHOWS = [("time", "Time"), ("date", "Date"), ("time_date", "Time and date, taking turns"),
+         ("temp", "Outside temperature"), ("reading", "A tile reading"),
+         ("meeting", "Minutes to the next meeting"), ("text", "Your own text")]
+READINGS = ["temp", "aqi", "humidity", "co2", "battery"]
+
 plugin = Plugin(
-    "effects", "Transitions, a clock over GIFs, status dots",
+    "effects", "Transitions, overlays and status dots",
     data={"status": 120},
-    defaults={"transition": "fade", "transition_seconds": 0.5,
+    defaults={"transition": "fade", "transition_seconds": 0.5, "status_dots": True, "overlays": None,
+              # the single overlay from before "overlays"; used while overlays is unset
               "overlay": "off", "overlay_corner": "auto", "overlay_mode": "always",
-              "overlay_on": ["gif"], "overlay_color": "#ffffff", "status_dots": True},
+              "overlay_on": ["gif"], "overlay_color": "#ffffff"},
     about="Polish that works on every scene. Transitions blend one scene into the next "
-          "instead of cutting. The overlay puts the time, date, outside temperature or "
-          "minutes to your next meeting in a corner of GIFs (and, if you like, generative "
-          "and seasonal scenes), outlined so it stays readable; auto finds the calmest "
-          "corner. Status dots are tiny lights along the top edge that stay on while "
-          "something is true (laundry done, a door open): POST /api/data/status with "
-          "{dots: [{color, blink}]}, and an empty list to clear them.",
+          "instead of cutting. Overlays put the time, date, outside temperature, a tile "
+          "reading (office temperature, CO2...), minutes to your next meeting or your own "
+          "text in a corner of GIFs, art or seasonal scenes, outlined so they stay "
+          "readable; auto finds the calmest free corner. Status dots are tiny lights along "
+          "the top edge that stay on while something is true (laundry done, a door open): "
+          "POST /api/data/status with {dots: [{color, blink}]}, and an empty list to clear them.",
     fields=[{"key": "transition", "label": "Transition", "type": "select",
              "options": [{"label": t.capitalize(), "value": t} for t in TRANSITIONS]},
             {"key": "transition_seconds", "label": "Transition length (seconds)", "type": "range",
              "min": 0.2, "max": 1.5, "step": 0.1},
-            {"key": "overlay", "label": "Overlay", "type": "select",
-             "options": [{"label": "Off", "value": "off"}, {"label": "Time", "value": "time"},
-                         {"label": "Date", "value": "date"},
-                         {"label": "Time and date, taking turns", "value": "time_date"},
-                         {"label": "Outside temperature", "value": "temp"},
-                         {"label": "Minutes to the next meeting", "value": "meeting"}],
-             "help": "Temperature and meeting show the time when there is nothing to show."},
-            {"key": "overlay_corner", "label": "Overlay corner", "type": "select",
-             "options": [{"label": c.replace("_", " ").capitalize(), "value": c} for c in CORNERS],
-             "help": "Auto picks the darkest, calmest corner of each scene."},
-            {"key": "overlay_mode", "label": "Overlay shows", "type": "select",
-             "options": [{"label": "All the time", "value": "always"},
-                         {"label": "For 3 seconds every 20", "value": "peek"}]},
-            {"key": "overlay_on", "label": "Overlay on", "type": "choices", "options": OVER_KINDS},
-            {"key": "overlay_color", "label": "Overlay color", "type": "color"},
             {"key": "status_dots", "label": "Status dots", "type": "toggle",
-             "text": "Show status dots on every scene"}])
+             "text": "Show status dots on every scene"},
+            {"key": "overlays", "label": "Overlays", "type": "items", "max": 4,
+             "add_label": "Add an overlay", "item_label": "Overlay",
+             "help": "Up to four, one per corner. Temperature, readings and meetings show "
+                     "nothing while there's nothing to show.",
+             "fields": [
+                 {"key": "show", "label": "Show", "type": "select", "default": "time",
+                  "options": [{"label": label, "value": v} for v, label in SHOWS]},
+                 {"key": "reading", "label": "Reading", "type": "select", "default": "temp",
+                  "options": [{"label": r.upper() if r in ("aqi", "co2") else r.capitalize(), "value": r}
+                              for r in READINGS],
+                  "show_when": {"show": ["reading"]}},
+                 {"key": "label", "label": "Tile label", "type": "text", "default": "",
+                  "placeholder": "office", "maxlength": 24, "show_when": {"show": ["reading"]},
+                  "help": "Empty: the first tile of that kind."},
+                 {"key": "text", "label": "Text", "type": "text", "default": "", "maxlength": 8,
+                  "placeholder": "HI JOE", "show_when": {"show": ["text"]}},
+                 {"key": "corner", "label": "Corner", "type": "select", "default": "auto",
+                  "options": [{"label": c.replace("_", " ").capitalize(), "value": c} for c in CORNERS]},
+                 {"key": "mode", "label": "Shows", "type": "select", "default": "always",
+                  "options": [{"label": "All the time", "value": "always"},
+                              {"label": "For 3 seconds every 20", "value": "peek"}]},
+                 {"key": "size", "label": "Size", "type": "select", "default": "small",
+                  "options": [{"label": "Small", "value": "small"}, {"label": "Large", "value": "large"}]},
+                 {"key": "style", "label": "Style", "type": "select", "default": "outline",
+                  "options": [{"label": "Outlined", "value": "outline"}, {"label": "On a dark box", "value": "box"},
+                              {"label": "Plain", "value": "plain"}]},
+                 {"key": "color", "label": "Color", "type": "color", "default": "#ffffff"},
+                 {"key": "color_by_value", "label": "Color by value", "type": "toggle", "default": True,
+                  "text": "Blue when cold, red when hot or bad",
+                  "show_when": {"show": ["reading", "temp"]}},
+                 {"key": "on", "label": "On", "type": "choices", "default": ["gif"], "options": OVER_KINDS},
+             ]}])
+
+FONTS = {"small": "tom-thumb", "large": "5x7"}
+
+
+def overlays(cfg):
+    """The configured overlays, or the single overlay from before there were several."""
+    if cfg.get("overlays") is not None:
+        return [o for o in cfg["overlays"] if isinstance(o, dict)]
+    if cfg.get("overlay", "off") == "off":
+        return []
+    return [{"show": cfg["overlay"], "corner": cfg.get("overlay_corner", "auto"),
+             "mode": cfg.get("overlay_mode", "always"), "color": cfg.get("overlay_color", "#ffffff"),
+             "on": cfg.get("overlay_on") or ["gif"], "legacy": True}]
+
 
 STEP = 0.05           # seconds per transition frame
 MAX_HOLD = 0.5        # long GIF frames are re-shown this often so the overlay keeps time
@@ -58,10 +95,10 @@ DOT_X0 = -2           # status dots run leftwards from the top-right corner
 def effects(ctx, frames, info):
     cfg = ctx.settings("effects")
     kind = info.get("kind")
-    over = cfg.get("overlay") if kind in (cfg.get("overlay_on") or []) else "off"
+    over = [o for o in overlays(cfg) if kind in (o.get("on") or [])]
     dots = cfg.get("status_dots") and kind not in ("interrupt", "mode")
-    if over != "off" or dots:
-        frames = decorate(ctx, frames, cfg, over or "off", dots)
+    if over or dots:
+        frames = decorate(ctx, frames, over, dots)
     style = cfg.get("transition", "none")
     if style != "none" and info.get("prev") is not None:
         frames = transition(frames, info["prev"], style, float(cfg.get("transition_seconds") or 0.5),
@@ -113,23 +150,33 @@ def blend(a, b, p, style, order=None):
 
 # --- overlay and status dots ----------------------------------------------------
 
-def decorate(ctx, frames, cfg, over, dots):
-    """Draw the overlay and dots on a copy of every frame, splitting long holds so the
+def decorate(ctx, frames, over, dots):
+    """Draw the overlays and dots on a copy of every frame, splitting long holds so the
     clock, the peek window and blinking dots keep time."""
-    color = gfx.hex_color(cfg.get("overlay_color"))
-    peek = cfg.get("overlay_mode") == "peek"
-    corner = Corner(cfg.get("overlay_corner", "auto"), avoid="top_right" if dots else None)
+    fixed = {o.get("corner") for o in over if o.get("corner", "auto") != "auto"}
+    avoid = fixed | ({"top_right"} if dots else set())
+    corners = [Corner(o.get("corner", "auto"), avoid) for o in over]
     elapsed = 0.0
     for img, hold in frames:
-        corner.see(img, elapsed)
+        for c in corners:
+            c.see(img, elapsed)
         left = hold
         while True:
             part = min(left, MAX_HOLD)
             out = img.copy() if img.mode == "RGB" else img.convert("RGB")
-            if over != "off" and (not peek or (elapsed - PEEK_AT) % PEEK_EVERY < PEEK_FOR):
-                text = overlay_text(ctx, over, elapsed)
-                if text:
-                    draw_label(out, text, corner.pick(out, text), color)
+            placed = []   # rectangles already drawn this frame; fixed corners go first
+            for o, corner in sorted(zip(over, corners), key=lambda oc: oc[1].choice == "auto"):
+                if o.get("mode") == "peek" and (elapsed - PEEK_AT) % PEEK_EVERY >= PEEK_FOR:
+                    continue
+                shown = overlay_value(ctx, o, elapsed)
+                if shown:
+                    text, color = shown
+                    font = FONTS.get(o.get("size"), "tom-thumb")
+                    size = label_size(text, font)
+                    spot = corner.pick(out, size, placed)
+                    if spot:      # no free corner it fits in: skip it rather than overlap
+                        placed.append(rect(out, size, spot))
+                        draw_label(out, text, spot, color, font, o.get("style", "outline"))
             if dots:
                 draw_dots(out, ctx.data("status"), elapsed)
             yield out, part
@@ -137,6 +184,56 @@ def decorate(ctx, frames, cfg, over, dots):
             left -= part
             if left <= 1e-6:
                 break
+
+
+def overlay_value(ctx, o, t):
+    """(text, color) for one overlay, or None when it has nothing to show right now."""
+    what = o.get("show", "time")
+    color = gfx.hex_color(o.get("color"), (255, 255, 255))
+    if what == "reading":
+        item = find_reading(ctx.data("tiles"), o.get("reading", "temp"), o.get("label"))
+        if not item:
+            return None
+        from .tiles import read   # the tiles plugin knows how a reading feels
+        feel = read(item, ctx.settings("tiles")) or {}
+        if o.get("color_by_value", True) and feel.get("color"):
+            color = feel["color"]
+        return reading_text(item, feel), color
+    if what == "temp" and o.get("color_by_value", True) and not o.get("legacy"):
+        wx = ctx.data("weather")
+        if wx and wx.get("temp") is not None:
+            f = float(wx["temp"]) * 9 / 5 + 32 if str(wx.get("unit", "F")).upper().startswith("C") else float(wx["temp"])
+            from ..kit import temp_color
+            color = temp_color(f)
+    if what == "text":
+        text = str(o.get("text") or "").upper()[:8]
+        return (text, color) if text else None
+    text = overlay_text(ctx, what, t)
+    if text is None:
+        return None
+    return text, color
+
+
+def find_reading(tiles, kind, label=None):
+    """The first tile reading of that kind (and label, if given)."""
+    want = str(label or "").strip().upper()
+    for item in (tiles or {}).get("items") or []:
+        if isinstance(item, dict) and item.get("kind") == kind and item.get("value") is not None:
+            if not want or str(item.get("label") or "").upper() == want:
+                return item
+    return None
+
+
+def reading_text(item, feel):
+    v = float(item["value"])
+    kind = item["kind"]
+    if kind == "temp":
+        return f"{v:.0f}{feel.get('unit') or 'F'}"
+    if kind == "aqi":
+        return f"AQI{v:.0f}"
+    if kind == "co2":
+        return f"{v:.0f}"    # colored by how stuffy it is; "PPM" won't fit beside another label
+    return f"{v:.0f}%"
 
 
 def overlay_text(ctx, what, t):
@@ -176,16 +273,16 @@ def minutes_to(ev, now):
 
 
 @lru_cache(maxsize=64)
-def _glyphs(text):
+def _glyphs(text, font="tom-thumb"):
     """(mask of the text, mask of its 1px outline), as L images of the label's size."""
-    w = gfx.text_width(text, "tom-thumb")
-    mask = Image.new("L", (w + 2, 7))
-    gfx.text(mask, (1, 1), text, 255, "tom-thumb")
+    w = gfx.text_width(text, font)
+    mask = Image.new("L", (w + 2, gfx.FONT_METRICS[font][0] + 1))
+    gfx.text(mask, (1, 1), text, 255, font)
     return mask, mask.filter(ImageFilter.MaxFilter(3))
 
 
-def label_size(text):
-    return _glyphs(text)[0].size
+def label_size(text, font="tom-thumb"):
+    return _glyphs(text, font)[0].size
 
 
 def corner_xy(img, size, corner):
@@ -195,22 +292,26 @@ def corner_xy(img, size, corner):
     return x, y
 
 
-def draw_label(img, text, corner, color):
-    """Text with a black outline, so it reads over anything."""
-    mask, outline = _glyphs(text)
+def draw_label(img, text, corner, color, font="tom-thumb", style="outline"):
+    """Text that reads over anything: outlined in black, on a dark box, or plain."""
+    mask, outline = _glyphs(text, font)
     xy = corner_xy(img, mask.size, corner)
-    img.paste((0, 0, 0), xy, outline)
+    if style == "box":
+        box = img.crop((*xy, xy[0] + mask.width, xy[1] + mask.height))
+        img.paste(Image.blend(box, Image.new("RGB", box.size), 0.75), xy)
+    elif style != "plain":
+        img.paste((0, 0, 0), xy, outline)
     img.paste(color, xy, mask)
 
 
 class Corner:
-    """Where the overlay goes. A fixed corner, or auto: the corner that has been darkest
-    and calmest so far, picked on the first frame and only changed (at most every 10 s)
-    when another corner is clearly better, so the label doesn't hop about."""
+    """Where an overlay goes. A fixed corner, or auto: the free corner that has been
+    darkest and calmest so far, picked on the first frame and only changed (at most
+    every 10 s) when another is clearly better, so the label doesn't hop about."""
 
-    def __init__(self, choice, avoid=None):
-        self.choice, self.avoid = choice, avoid
-        self.scores = {c: 0.0 for c in CORNERS[1:] if c != avoid}
+    def __init__(self, choice, avoid=()):
+        self.choice = choice
+        self.scores = {c: 0.0 for c in CORNERS[1:] if c not in avoid} or {c: 0.0 for c in CORNERS[1:]}
         self.current, self.decided_at, self.t = None, 0.0, 0.0
 
     def see(self, img, t):
@@ -225,15 +326,30 @@ class Corner:
             patch = arr[ys, xs]
             self.scores[c] += patch.mean() + patch.std()
 
-    def pick(self, img, text):
+    def pick(self, img, size=(18, 7), placed=()):
+        """The corner to draw a label of this size in, clear of the rectangles already
+        placed; None when no corner has room."""
         if self.choice != "auto":
             return self.choice
-        best = min(self.scores, key=lambda c: (self.scores[c], CORNERS.index(c)))
-        if self.current is None:
+        fits = lambda c: not any(overlaps(rect(img, size, c), r) for r in placed)  # noqa: E731
+        free = [c for c in self.scores if fits(c)] or [c for c in CORNERS[1:] if fits(c)]
+        if not free:
+            return None
+        best = min(free, key=lambda c: (self.scores.get(c, 1e9), CORNERS.index(c)))
+        if self.current not in free:
             self.current, self.decided_at = best, self.t
-        elif self.t - self.decided_at >= 10 and self.scores[best] < 0.75 * self.scores[self.current]:
+        elif self.t - self.decided_at >= 10 and self.scores.get(best, 1e9) < 0.75 * self.scores.get(self.current, 1e9):
             self.current, self.decided_at = best, self.t
         return self.current
+
+
+def rect(img, size, corner):
+    x, y = corner_xy(img, size, corner)
+    return x, y, x + size[0], y + size[1]
+
+
+def overlaps(a, b):
+    return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
 
 
 def draw_dots(img, status, t):

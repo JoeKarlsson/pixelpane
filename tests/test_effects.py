@@ -2,6 +2,7 @@ import random
 import unittest
 from datetime import datetime
 
+import numpy as np
 from PIL import Image
 
 from tests import support
@@ -128,10 +129,101 @@ class OverlayTest(unittest.TestCase):
         for i in range(30):   # dark bottom right for a while, then dark top left
             img, _ = frame("bottom_right" if i < 4 else "top_left")
             c.see(img, i * 0.5)
-            picks.append(c.pick(img, "9:41"))
+            picks.append(c.pick(img, (18, 7)))
         self.assertEqual(picks[0], "bottom_right")
         self.assertEqual(set(picks[:20]), {"bottom_right"})     # no hopping within 10 s
         self.assertEqual(picks[-1], "top_left")                 # but it moves once it's clearly better
+
+
+def colors(img, box=None):
+    return set(map(tuple, np.asarray(img.crop(box) if box else img).reshape(-1, 3).tolist()))
+
+
+TILES = {"tiles": {"items": [{"kind": "aqi", "value": 12},
+                             {"kind": "temp", "value": 95, "label": "attic"},
+                             {"kind": "temp", "value": 71, "label": "office"}]}}
+
+
+class OverlaysTest(unittest.TestCase):
+    """Several overlays, from config["plugins"]["effects"]["overlays"]."""
+
+    def over(self, *items, data=None, kind="gif"):
+        out = run({"transition": "none", "status_dots": False, "overlays": list(items)}, data=data, kind=kind)
+        return out[0][0]
+
+    def test_two_overlays_take_two_corners(self):
+        img = self.over({"show": "time", "corner": "auto", "on": ["gif"]},
+                        {"show": "date", "corner": "auto", "on": ["gif"]})
+        white = (255, 255, 255)
+        self.assertIn(white, colors(img, (0, 0, 32, 8)))     # one label on top
+        self.assertIn(white, colors(img, (0, 24, 32, 32)))   # the other (too wide to share the row) below
+
+    def test_fixed_corner_wins_and_auto_moves_out_of_its_way(self):
+        img = self.over({"show": "time", "corner": "auto", "on": ["gif"]},
+                        {"show": "text", "text": "hi", "corner": "top_left", "color": "#ff0000", "on": ["gif"]})
+        self.assertIn(RED, colors(img, (0, 0, 10, 8)))
+        self.assertNotIn((255, 255, 255), colors(img, (0, 0, 12, 8)))   # the time went elsewhere
+        self.assertIn((255, 255, 255), colors(img))
+
+    def test_reading_by_label_colored_by_value(self):
+        c = ctx(data=TILES)
+        o = {"show": "reading", "reading": "temp", "label": "attic", "color_by_value": True}
+        text, color = effects.overlay_value(c, o, 0)
+        self.assertEqual(text, "95F")
+        self.assertGreater(color[0], color[2])             # hot: red, not blue
+        self.assertEqual(effects.overlay_value(c, dict(o, label="office"), 0)[0], "71F")
+        self.assertEqual(effects.overlay_value(c, dict(o, reading="aqi", label=""), 0)[0], "AQI12")
+        self.assertIsNone(effects.overlay_value(c, dict(o, reading="co2"), 0))   # no such tile: nothing
+        plain = effects.overlay_value(c, dict(o, color_by_value=False, color="#00ff00"), 0)[1]
+        self.assertEqual(plain, (0, 255, 0))
+
+    def test_own_text_and_box_style(self):
+        img = self.over({"show": "text", "text": "hey", "corner": "bottom_left", "style": "box",
+                         "color": "#ffffff", "on": ["gif"]})
+        box = colors(img, (0, 25, 12, 32))
+        self.assertIn((255, 255, 255), box)
+        self.assertTrue(any(0 < b < 255 and r == 0 for r, g, b in box))   # dimmed blue behind the text
+
+    def test_labels_never_overlap(self):
+        data = {"tiles": {"items": [{"kind": "co2", "value": 1450}]}, "weather": {"temp": 55, "unit": "F"}}
+        out = run({"transition": "none", "status_dots": False, "overlays": [
+            {"show": "time", "size": "large", "corner": "auto", "on": ["gif"]},
+            {"show": "reading", "reading": "co2", "corner": "auto", "on": ["gif"]},
+            {"show": "temp", "corner": "auto", "on": ["gif"]},
+            {"show": "date", "size": "large", "corner": "auto", "on": ["gif"]}]}, data=data)
+        img = out[0][0]
+        rows = [colors(img, (0, y, 32, y + 1)) for y in range(32)]
+        self.assertTrue(any(len(r) > 1 for r in rows[:8]) and any(len(r) > 1 for r in rows[24:]))
+        c = effects.Corner("auto")
+        c.see(img, 0)
+        wide = (30, 9)   # as wide as the panel: once the top row has a label, only the bottom is left
+        self.assertEqual(c.pick(img, wide, [(0, 0, 18, 7)]).split("_")[0], "bottom")
+        self.assertIsNone(c.pick(img, wide, [(0, 0, 18, 7), (0, 25, 18, 32)]))
+
+    def test_large_size_is_bigger(self):
+        small = effects.label_size("9:41", "tom-thumb")
+        large = effects.label_size("9:41", "5x7")
+        self.assertGreater(large[0], small[0])
+        self.assertGreater(large[1], small[1])
+
+    def test_only_on_its_kinds(self):
+        img = self.over({"show": "time", "on": ["generative"]})
+        self.assertEqual(colors(img), {BLUE})
+
+    def test_old_single_overlay_still_works_until_overlays_is_saved(self):
+        self.assertEqual(effects.overlays({"overlay": "time"})[0]["show"], "time")
+        self.assertEqual(effects.overlays({"overlay": "time", "overlays": []}), [])
+        self.assertEqual(effects.overlays({}), [])
+
+    def test_schema_fills_defaults_and_refuses_junk(self):
+        from pixelpane import schema
+        clean = schema._plugins({"effects": {"overlays": [{"show": "reading", "reading": "co2"}]}})
+        o = clean["effects"]["overlays"][0]
+        self.assertEqual((o["corner"], o["mode"], o["on"], o["style"]), ("auto", "always", ["gif"], "outline"))
+        for bad in ([{"show": "weather_radar"}], [{"show": "time", "spin": True}], [{"show": "text", "text": "x" * 20}],
+                    [{"show": "time"}] * 5, "time"):
+            with self.assertRaises(schema.ConfigError, msg=bad):
+                schema._plugins({"effects": {"overlays": bad}})
 
 
 class StatusDotsTest(unittest.TestCase):

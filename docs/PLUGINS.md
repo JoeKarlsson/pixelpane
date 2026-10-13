@@ -118,7 +118,8 @@ not silently swapped in. Load errors show on the control page and in Settings, S
 
 ## Settings forms
 
-`fields` turns your `defaults` into a form in the plugin's dialog on the control page.
+`fields` turns your `defaults` into a form, shown in the plugin's dialog on the control page
+and on the Settings page.
 Each field is a dict with `key` (dotted for nested settings, like `"birthday.month"`),
 `label`, `type` and optional `help`. The board validates every save against the field,
 so a bad value is refused with a message instead of reaching your scene.
@@ -135,6 +136,7 @@ so a bad value is refused with a message instead of reaching your scene.
 | `color` | a color picker | | `"#rrggbb"` |
 | `monthday` | month, day and name | | `{"month", "day", "name"}` or `null` |
 | `secret` | a password box; the API never sends the value back | `placeholder` | a string |
+| `items` | a card per record with Add and Remove, for lists like overlays or reminders | `fields` (the sub-fields; each may have a `default` and `show_when: {key: [values]}` to show only while another sub-field has one of those values), `max`, `add_label`, `item_label` | a list of objects; keys left out get their sub-field's `default` |
 
 For the countdown example above:
 

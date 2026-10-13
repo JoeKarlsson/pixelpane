@@ -24,7 +24,9 @@ async function load() {
 // Which plugins' forms go in which section; the rest land under Plugins.
 const SECTIONS = {onscreen: ['effects'], notifications: ['alerts', 'triggers']};
 // Buttons a plugin's form gets beside Save: name -> (plugin, readSettings) => [buttons]
-const EXTRAS = {};
+const EXTRAS = {
+  effects: () => [btn('Show a GIF now', () => api('/api/play', 'POST', {scene: 'gif'}).then(() => toast('Playing a GIF: watch the preview')), '', 'effects-try')],
+};
 
 function drawPluginSections() {
   const placed = new Set(Object.values(SECTIONS).flat());
@@ -372,3 +374,4 @@ load().then(() => {
   if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
 }).catch(e => $('#stat').textContent = 'error: ' + e.message);
 setInterval(() => { if (!document.hidden) api('/api/state').then(s => { S = s; drawStatus(); drawSystem(); }).catch(() => {}); }, 15000);
+startPreview('#livepreview');

@@ -127,7 +127,7 @@ pixelpane-library/
 | seasonal | a scene per season and holiday, plus your birthday | |
 | generative | fire, plasma, life, matrix_rain, starfield, lava, ripples, reaction, sand, aurora, fireflies, aquarium, snake, hourglass, smog; an `ambient` slot that picks one to suit the weather and air | |
 | sky | moon (phase, named full moons, supermoons, blue moons), zodiac | |
-| effects | no scenes: transitions, an overlay on GIFs, status dots | `status` |
+| effects | no scenes: transitions, up to four overlays (time, date, temperature, a tile reading, your next meeting, your own text), status dots | `status` |
 | generator | no scenes: settings for making GIFs from a prompt ([docs/GIFS.md](docs/GIFS.md#make-one-from-a-prompt)) | |
 
 Switch plugins on or off on the control page, or in the config. Writing your

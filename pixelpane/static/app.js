@@ -203,49 +203,12 @@ async function pollNow() {
     li.classList.toggle('current', n.source === 'playlist' && +li.dataset.index === n.index));
 }
 
-// Live preview: the board streams every frame as it shows it (see /api/frames) and we
-// draw them on a canvas, so the preview runs at the panel's own speed.
-let stream = null;
-async function streamPreview() {
-  if (stream || document.hidden) return;
-  const ctl = stream = new AbortController(), cv = $('#preview'), g = cv.getContext('2d');
-  try {
-    const r = await fetch('/api/frames', {signal: ctl.signal, cache: 'no-store'});
-    if (!r.ok || !r.body) throw new Error('no stream');
-    const reader = r.body.getReader();
-    let buf = new Uint8Array(0);
-    for (;;) {
-      const {value, done} = await reader.read();
-      if (done) break;
-      const joined = new Uint8Array(buf.length + value.length); joined.set(buf); joined.set(value, buf.length); buf = joined;
-      let latest = null;   // a slow tab skips straight to the newest whole frame
-      while (buf.length >= 4) {
-        const cols = buf[0] << 8 | buf[1], rows = buf[2] << 8 | buf[3], end = 4 + cols * rows * 3;
-        if (buf.length < end) break;
-        latest = [cols, rows, buf.subarray(4, end)]; buf = buf.slice(end);
-      }
-      if (latest) drawFrame(cv, g, ...latest);
-    }
-  } catch (e) { if (ctl.signal.aborted) return; }
-  if (stream === ctl) stream = null;
-  if (!document.hidden) setTimeout(streamPreview, 2000);   // the board restarted or the stream timed out
-}
-function drawFrame(cv, g, cols, rows, rgb) {
-  if (cv.width !== cols || cv.height !== rows) { cv.width = cols; cv.height = rows; }
-  const img = g.createImageData(cols, rows);
-  for (let i = 0, j = 0; i < rgb.length; i += 3, j += 4) {
-    img.data[j] = rgb[i]; img.data[j + 1] = rgb[i + 1]; img.data[j + 2] = rgb[i + 2]; img.data[j + 3] = 255;
-  }
-  g.putImageData(img, 0, 0);
-}
-
 // Everything else updates on a timer, paused while the tab is in the background.
 const live = fn => () => { if (!document.hidden) fn(); };
 setInterval(live(() => pollNow().catch(() => {})), 2000);
 setInterval(live(refresh), 10000);
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { stream?.abort(); stream = null; }
-  else { refresh(); pollNow().catch(() => {}); streamPreview(); }
+  if (!document.hidden) { refresh(); pollNow().catch(() => {}); }
 });
-streamPreview();
+startPreview('#preview');
 init().catch(e => $('#stat').textContent = 'error: ' + e.message);
