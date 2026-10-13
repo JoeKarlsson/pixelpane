@@ -8,7 +8,8 @@ from PIL import Image, ImageFilter
 from .. import gfx
 from ..plugin import Plugin
 
-TRANSITIONS = ["none", "fade", "wipe", "slide", "dissolve"]
+STYLES = ["fade", "wipe", "slide", "dissolve"]
+TRANSITIONS = ["none", *STYLES, "random"]
 OVERLAYS = ["off", "time", "date", "time_date", "temp", "meeting"]
 CORNERS = ["auto", "top_left", "top_right", "bottom_left", "bottom_right"]
 OVER_KINDS = ["gif", "generative", "seasonal"]
@@ -21,7 +22,7 @@ READINGS = ["temp", "aqi", "humidity", "co2", "battery"]
 plugin = Plugin(
     "effects", "Transitions, overlays and status dots",
     data={"status": 120},
-    defaults={"transition": "fade", "transition_seconds": 0.5, "status_dots": True, "overlays": None,
+    defaults={"transition": "fade", "transition_seconds": 0.5, "transition_mix": list(STYLES), "status_dots": True, "overlays": None,
               # the single overlay from before "overlays"; used while overlays is unset
               "overlay": "off", "overlay_corner": "auto", "overlay_mode": "always",
               "overlay_on": ["gif"], "overlay_color": "#ffffff"},
@@ -36,6 +37,9 @@ plugin = Plugin(
              "options": [{"label": t.capitalize(), "value": t} for t in TRANSITIONS]},
             {"key": "transition_seconds", "label": "Transition length (seconds)", "type": "range",
              "min": 0.2, "max": 1.5, "step": 0.1},
+            {"key": "transition_mix", "label": "Random mixes", "type": "choices", "options": STYLES,
+             "help": "When Transition is Random, each scene change picks one of these, "
+                     "never the same one twice in a row."},
             {"key": "status_dots", "label": "Status dots", "type": "toggle",
              "text": "Show status dots on every scene"},
             {"key": "overlays", "label": "Overlays", "type": "items", "max": 4,
@@ -100,6 +104,8 @@ def effects(ctx, frames, info):
     if over or dots:
         frames = decorate(ctx, frames, over, dots)
     style = cfg.get("transition", "none")
+    if style == "random":
+        style = pick_style(ctx, cfg.get("transition_mix"))
     if style != "none" and info.get("prev") is not None:
         frames = transition(frames, info["prev"], style, float(cfg.get("transition_seconds") or 0.5),
                             seed=ctx.rng.randrange(1 << 30))
@@ -107,6 +113,15 @@ def effects(ctx, frames, info):
 
 
 # --- transitions ---------------------------------------------------------------
+
+def pick_style(ctx, mix):
+    """A random transition from the ticked ones, not the one used last time (if there's a choice)."""
+    styles = [s for s in (mix or STYLES) if s in STYLES] or list(STYLES)
+    store = ctx.store("effects")
+    choices = [s for s in styles if s != store.get("last")] or styles
+    store["last"] = ctx.rng.choice(choices)
+    return store["last"]
+
 
 def transition(frames, prev, style, secs, seed=0):
     """Blend from prev into the scene's first frame, then play the scene as it is.

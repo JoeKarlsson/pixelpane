@@ -74,6 +74,16 @@ class TransitionTest(unittest.TestCase):
             self.assertIn(BLUE, colors[5], style)
             self.assertEqual(colors[0] | colors[-1], {RED, BLUE}, style)
 
+    def test_random_picks_from_the_mix_and_never_repeats(self):
+        c = ctx({"transition_mix": ["wipe", "dissolve", "fade"]})
+        picks = [effects.pick_style(c, ["wipe", "dissolve", "fade"]) for _ in range(40)]
+        self.assertEqual(set(picks), {"wipe", "dissolve", "fade"})
+        self.assertTrue(all(a != b for a, b in zip(picks, picks[1:])))
+        self.assertEqual({effects.pick_style(c, ["slide"]) for _ in range(5)}, {"slide"})   # one ticked: always it
+        self.assertIn(effects.pick_style(c, []), effects.STYLES)                           # none ticked: any
+        out = run({"transition": "random", "transition_mix": ["dissolve"]}, prev=Image.new("RGB", (32, 32), RED))
+        self.assertEqual(colors(out[5][0]), {RED, BLUE})   # it really transitioned (dissolve: only old and new pixels)
+
     def test_no_transition_without_a_frame_before_or_when_off(self):
         self.assertEqual(len(run({"transition": "fade"}, prev=None)), 3)
         self.assertEqual(len(run({"transition": "none"}, prev=Image.new("RGB", (32, 32)))), 3)

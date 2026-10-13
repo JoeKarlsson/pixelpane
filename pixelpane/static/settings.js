@@ -27,9 +27,10 @@ const SECTIONS = {onscreen: ['effects'], notifications: ['alerts', 'triggers']};
 const EXTRAS = {
   effects: () => [btn('Show a GIF now', () => api('/api/play', 'POST', {scene: 'gif'}).then(() => toast('Playing a GIF: watch the preview')), '', 'effects-try')],
   // Try the look you're editing before saving it.
-  alerts: (p, read) => [btn('Send a test', () => {
+  alerts: (p, read) => [btn('Preview this look', () => {
     const s = read();
-    return api('/api/notify', 'POST', {text: 'Test notification', icon: 'bell', style: s.style, color: s.color,
+    const text = $('#nc-text')?.value.trim() || 'This is how it looks';   // the message you're writing, if any
+    return api('/api/notify', 'POST', {text, icon: $('#nc-icon')?.value || 'bell', style: s.style, color: s.color,
       flash: s.flash, seconds: s.seconds}).then(() => toast('Sent: watch the board'));
   }, '', 'test-notification')],
   // Show each reminder now, as it will look when it goes off.
@@ -41,7 +42,37 @@ const EXTRAS = {
   }, '', 'test-reminders')],
 };
 
+// Write a notification and send it now, or keep it on screen as a message until cleared.
+function drawComposer() {
+  const box = $('#composer');
+  const alerts = S.plugins.find(p => p.name === 'alerts');
+  if (!alerts || !alerts.enabled) { box.hidden = true; return; }
+  box.hidden = false;
+  const d = alerts.settings || {};
+  const fields = [
+    {key: 'text', label: 'Message', type: 'text', placeholder: 'Dinner is ready', maxlength: 200},
+    {key: 'sub', label: 'Second line', type: 'text', placeholder: 'optional, smaller', maxlength: 80},
+    {key: 'icon', label: 'Icon', type: 'select', options: (S.icons || ['bell']).map(i => ({label: i, value: i}))},
+    {key: 'style', label: 'Style', type: 'select', options: [{label: `Default (${d.style || 'classic'})`, value: 'default'},
+      ...['classic', 'banner', 'burst', 'ticker'].map(s => ({label: s[0].toUpperCase() + s.slice(1), value: s}))]},
+    {key: 'color', label: 'Color', type: 'color'},
+    {key: 'seconds', label: 'Seconds on screen', type: 'number', step: 1, help: `Empty: ${d.seconds || 10}`},
+    {key: 'flash', label: 'Flash', type: 'toggle', text: 'Flash the edge at the start'},
+  ];
+  const [form, read] = pluginForm({fields, settings: {icon: 'bell', style: 'default', color: d.color || '#ffffff', flash: !!d.flash}}, 'nc-');
+  const msg = () => Object.fromEntries(Object.entries(read).map(([k, r]) => [k, r()]));
+  const need = m => { if (!m.text.trim()) { toast('Write a message first'); $('#nc-text').focus(); return false; } return true; };
+  box.replaceChildren(el('div', {className: 'ptitle', textContent: 'Send a notification'}), form, el('div', {className: 'foot'},
+    btn('Send', () => { const m = msg(); if (!need(m)) return;
+      return api('/api/notify', 'POST', m).then(() => toast('Sent: watch the board')); }, 'on', 'compose-send'),
+    btn('Keep it on screen', () => { const m = msg(); if (!need(m)) return;
+      return api('/api/pin', 'POST', {scene: 'message', params: {text: m.text, color: m.color}})
+        .then(() => toast('On screen until you clear it')); }, '', 'compose-pin'),
+    btn('Clear', () => api('/api/pin', 'DELETE').then(() => toast('Cleared')), '', 'compose-clear')));
+}
+
 function drawPluginSections() {
+  drawComposer();
   const placed = new Set(Object.values(SECTIONS).flat());
   const groups = {...SECTIONS, pluginsettings: S.plugins.map(p => p.name).filter(n => !placed.has(n))};
   for (const [id, names] of Object.entries(groups)) {

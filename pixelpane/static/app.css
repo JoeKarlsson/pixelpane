@@ -306,3 +306,5 @@ button.scenebtn { display: inline-flex; align-items: center; gap: 7px; }
 button.scenebtn .thumb { width: 22px; height: 22px; image-rendering: pixelated; border-radius: 3px; background: #000; flex: none;
   margin: -3px 0 -3px -4px; }
 .pform .field select, .pform .field input:not([type=checkbox]):not([type=color]):not([type=range]) { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.composer { margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.composer .ptitle, .psection .ptitle { font: 600 14px var(--mono); color: var(--bright); margin-bottom: 10px; }

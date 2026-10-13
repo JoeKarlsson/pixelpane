@@ -24,6 +24,11 @@ and the project uses [semantic versioning](https://semver.org/).
 - With a token set, logs and backups need it too.
 
 ### Added
+- Random transitions: each scene change picks one of the styles you tick, never the
+  same one twice in a row.
+- Settings, Notifications: write a message (with a second line, icon, style, color and
+  length) and send it now, or keep it on screen until you clear it. Previewing the
+  notification look uses the message you're writing.
 - Play now buttons show a little animated preview of their scene, rendered on the
   board from its real data (`GET /api/scenes/<name>/thumb.gif`).
 - Every plugin's settings are on the Settings page too: On screen (transitions,

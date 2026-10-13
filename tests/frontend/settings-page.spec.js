@@ -244,3 +244,24 @@ test('notifications: a reminder saves, the style saves and test buttons send', a
     await request.put('/api/config', { data: reset });
   }
 });
+
+test('notifications: write a message and send it, keep one on screen, clear it', async ({ page, request }) => {
+  const box = page.getByTestId('composer');
+  await expect(box).toBeVisible();
+  await box.getByTestId('compose-send').click();
+  await expect(page.locator('#toast')).toContainText('Write a message first');
+  await box.getByLabel('Message').fill('Dinner is ready');
+  await box.getByLabel('Second line').fill('come down');
+  await box.getByLabel('Icon').selectOption('heart');
+  await box.getByLabel('Style').selectOption('banner');
+  const sent = page.waitForRequest(r => r.url().endsWith('/api/notify') && r.method() === 'POST');
+  await box.getByTestId('compose-send').click();
+  const body = (await sent).postDataJSON();
+  expect([body.text, body.sub, body.icon, body.style]).toEqual(['Dinner is ready', 'come down', 'heart', 'banner']);
+  await expect.poll(async () => (await health(request)).scene).toBe('notify');
+
+  await box.getByTestId('compose-pin').click();
+  await expect.poll(async () => (await health(request)).pinned?.scene).toBe('message');
+  await box.getByTestId('compose-clear').click();
+  await expect.poll(async () => (await health(request)).pinned).toBeNull();
+});
