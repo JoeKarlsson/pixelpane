@@ -12,7 +12,7 @@ git config core.hooksPath .githooks   # run the tests before every push
 ```
 
 The pre-push hook runs the same checks as CI (lint, backend and browser tests,
-about 2 minutes) and refuses the push if any fail. Pushes that only touch docs
+about a minute) and refuses the push if any fail. Pushes that only touch docs
 skip it, and `git push --no-verify` skips it once.
 
 Run the controller without a panel:

@@ -124,7 +124,7 @@ test('On Air, message and Clear', async ({ page, request }) => {
 });
 
 test('notifications play right away', async ({ page, request }) => {
-  await page.locator('#ntext').fill('Laundry is done');
+  await page.locator('#ntext').fill('Done')   // short texts fit the panel, so they don't scroll and hold up the next test;
   await page.locator('#nicon').selectOption('washer');
   await page.locator('#nflash').check();
   await page.getByRole('button', { name: 'Send' }).click();
@@ -217,9 +217,9 @@ test('live view shows what is on, where it came from, and highlights the playlis
   await expect(page.locator('#nownext')).toContainText('Up next in the playlist');
   await expect.poll(() => page.locator('#nowbar').evaluate((el) => parseFloat(el.style.width))).toBeGreaterThan(0);
 
-  await request.post('/api/notify', { data: { text: 'Doorbell', seconds: 3 } });
+  await request.post('/api/notify', { data: { text: 'Door', seconds: 3 } });
   await expect(page.locator('#nowsrc')).toHaveText('Notification');
-  await expect(page.locator('#nowscene')).toHaveText('Notification · Doorbell');
+  await expect(page.locator('#nowscene')).toHaveText('Notification · Door');
   await request.put('/api/config', { data: { rotation: original, dwell: { clock: 10, gif: 20 } } });
 });
 

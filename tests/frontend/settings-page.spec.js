@@ -238,7 +238,10 @@ test('notifications: a reminder saves, the style saves and test buttons send', a
     expect((await config(request)).plugins.triggers.reminders[0].time).toBe('19:30');
     page.errors = [];   // that refused save logged its 400 on purpose
 
+    await page.getByTestId('composer').getByLabel('Message').fill('Hi');   // the preview shows what you're writing
+    const preview = page.waitForRequest((r) => r.url().endsWith('/api/notify') && r.method() === 'POST');
     await page.getByTestId('test-notification').click();
+    expect((await preview).postDataJSON()).toMatchObject({ text: 'Hi', style: 'banner' });
     await expect(page.locator('#toast')).toContainText('Sent');
   } finally {
     await request.put('/api/config', { data: reset });
@@ -250,14 +253,14 @@ test('notifications: write a message and send it, keep one on screen, clear it',
   await expect(box).toBeVisible();
   await box.getByTestId('compose-send').click();
   await expect(page.locator('#toast')).toContainText('Write a message first');
-  await box.getByLabel('Message').fill('Dinner is ready');
+  await box.getByLabel('Message').fill('Food')   // short enough not to scroll;
   await box.getByLabel('Second line').fill('come down');
   await box.getByLabel('Icon').selectOption('heart');
   await box.getByLabel('Style').selectOption('banner');
   const sent = page.waitForRequest(r => r.url().endsWith('/api/notify') && r.method() === 'POST');
   await box.getByTestId('compose-send').click();
   const body = (await sent).postDataJSON();
-  expect([body.text, body.sub, body.icon, body.style]).toEqual(['Dinner is ready', 'come down', 'heart', 'banner']);
+  expect([body.text, body.sub, body.icon, body.style]).toEqual(['Food', 'come down', 'heart', 'banner']);
   await expect.poll(async () => (await health(request)).scene).toBe('notify');
 
   await box.getByTestId('compose-pin').click();
@@ -351,10 +354,10 @@ test('Show a GIF now and Try the reminders send to the board', async ({ page, re
     await page.getByTestId('test-reminders').click();
     await expect(page.locator('#toast')).toContainText('Add a reminder with some text first');
     await page.getByTestId('sf-triggers-reminders-add').click();
-    await page.locator('#sf-triggers-reminders .item').first().getByLabel('Text').fill('Water plants');
+    await page.locator('#sf-triggers-reminders .item').first().getByLabel('Text').fill('Water');
     const sent = page.waitForRequest((r) => r.url().endsWith('/api/notify') && r.method() === 'POST');
     await page.getByTestId('test-reminders').click();
-    expect((await sent).postDataJSON().text).toBe('Water plants');
+    expect((await sent).postDataJSON().text).toBe('Water');
     await expect(page.locator('#toast')).toHaveText('Sent');
   } finally {
     await request.put('/api/config', { data: reset });

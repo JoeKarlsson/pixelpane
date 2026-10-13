@@ -67,6 +67,7 @@ class Player:
         self.played = 0
         self.slot = None
         self.shown_at = 0.0   # when the last frame shown stops being current
+        self.stop = threading.Event()   # run()'s, so a scene ends as soon as we're told to stop
 
     # -- choosing what to play --
     def resolve(self, name, params=None):
@@ -138,7 +139,7 @@ class Player:
                 while (left := deadline - time.monotonic()) > 0:
                     if st.wake.wait(left):
                         st.wake.clear()
-                        if not st.effective_power() or (interruptible and (
+                        if self.stop.is_set() or not st.effective_power() or (interruptible and (
                                 st.skip or st.notifications or st.play_next or st.active_pin() != self.pin_seen)):
                             return shown
         except Exception:  # a broken scene must never take the board down
@@ -160,6 +161,7 @@ class Player:
 
     def run(self, stop):
         st = self.state
+        self.stop = stop
         self.pin_seen = None
         empty = 0
         while not stop.is_set():

@@ -22,7 +22,7 @@ PY="${PYTHON:-}"
 [ -z "$PY" ] && [ -x .venv/bin/python ] && PY="$PWD/.venv/bin/python"
 PY="${PY:-python3}"
 
-echo "pre-push: lint, backend and browser tests (about 2 minutes; git push --no-verify skips)"
+echo "pre-push: lint, backend and browser tests (about a minute; git push --no-verify skips)"
 "$PY" -m pyflakes pixelpane tests/*.py || exit 1
 bash -n install.sh tools/deploy.sh tools/test.sh tools/ingest-gif.sh || exit 1
 
