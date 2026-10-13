@@ -327,7 +327,7 @@ button.swatch, button.swatch:hover, button.swatch.on { width: 26px; height: 26px
 .easel .side { display: grid; gap: 10px; justify-items: start; width: 178px; }
 #livestat.live { color: var(--green); }
 .frames { margin-top: 18px; }
-.strip { display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px 10px; }
+.strip { position: relative; display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px 10px; }
 .frame { display: grid; justify-items: center; gap: 2px; padding: 4px; font: 11px var(--mono); flex: none; }
 .frame.on { background: var(--accent); color: var(--on-accent); }
 .fthumb { width: 48px; height: 48px; image-rendering: pixelated; display: block; background: #000; }

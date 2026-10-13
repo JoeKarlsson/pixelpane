@@ -24,20 +24,22 @@
     <div class="titlebar" id="drawtitle">pixelpane@board: draw</div>
     <div class="tools" role="toolbar" aria-label="Drawing tools">
       <div class="row" id="toolrow">
-        <button data-tool="pen" class="on" title="Pen (B)">✎ Pen</button>
-        <button data-tool="eraser" title="Eraser (E)">⌫ Eraser</button>
-        <button data-tool="fill" title="Fill (F)">▧ Fill</button>
-        <button data-tool="picker" title="Pick a color (I)">⊙ Pick</button>
+        <button data-tool="pen" data-testid="tool-pen" class="on" title="Pen (B)">✎ Pen</button>
+        <button data-tool="eraser" data-testid="tool-eraser" title="Eraser (E)">⌫ Eraser</button>
+        <button data-tool="fill" data-testid="tool-fill" title="Fill (F)">▧ Fill</button>
+        <button data-tool="picker" data-testid="tool-picker" title="Pick a color (I)">⊙ Pick</button>
       </div>
       <div class="row">
-        <label>Size <select id="size" aria-label="Brush size"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="5">5</option></select></label>
-        <label><input type="checkbox" id="mirror"> mirror</label>
-        <label><input type="checkbox" id="grid" checked> grid</label>
+        <label>Size <select id="size" aria-label="Brush size" data-testid="size"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="5">5</option></select></label>
+        <label for="alpha">Opacity <span id="alphav">100%</span></label>
+        <input type="range" id="alpha" min="10" max="100" step="10" value="100" style="width:110px" aria-label="Opacity" data-testid="opacity">
+        <label><input type="checkbox" id="mirror" data-testid="mirror"> mirror</label>
+        <label><input type="checkbox" id="grid" checked data-testid="grid"> grid</label>
       </div>
       <div class="row palette" id="palette" aria-label="Colors"></div>
       <div class="row"><input type="color" id="color" value="#ff004d" aria-label="Color" data-testid="draw-color">
-        <button id="undo" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
-        <button id="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">↷</button>
+        <button id="undo" data-testid="undo" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
+        <button id="redo" data-testid="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">↷</button>
         <button id="clear" data-testid="draw-clear">Clear</button></div>
     </div>
     <div class="row examples" id="examples" hidden data-testid="examples"><span class="stat">Start from an example:</span></div>
@@ -56,14 +58,19 @@
       <h2>Frames</h2>
       <div class="strip" id="strip"></div>
       <div class="row">
-        <button id="fadd" title="New blank frame (N)">+ New</button>
-        <button id="fdup" title="Copy this frame (D)">Duplicate</button>
-        <button id="fdel">Delete</button>
-        <button id="fleft" aria-label="Move frame earlier" title="Move frame earlier">◀</button>
-        <button id="fright" aria-label="Move frame later" title="Move frame later">▶</button>
-        <label><input type="checkbox" id="onion" checked> onion skin</label>
+        <button id="fprev" aria-label="Previous frame" title="Previous frame (←)" data-testid="frame-prev">◀</button>
+        <span class="stat" id="fpos" data-testid="frame-pos"></span>
+        <button id="fnext" aria-label="Next frame" title="Next frame (→)" data-testid="frame-next">▶</button>
+        <button id="fadd" title="New blank frame after this one (N)" data-testid="frame-add">+ New</button>
+        <button id="fdup" title="Copy this frame (D)" data-testid="frame-dup">Duplicate</button>
+        <button id="fdel" title="Delete this frame" data-testid="frame-del">Delete</button>
+        <button id="fleft" title="Move this frame earlier (Shift+←)" data-testid="frame-earlier">Move earlier</button>
+        <button id="fright" title="Move this frame later (Shift+→)" data-testid="frame-later">Move later</button>
+      </div>
+      <div class="row">
+        <label><input type="checkbox" id="onion" checked data-testid="onion"> onion skin</label>
         <label for="fps">Speed <span id="fpsv"></span></label>
-        <input type="range" id="fps" min="1" max="24" value="8" style="width:140px" aria-label="Frames per second">
+        <input type="range" id="fps" min="1" max="24" value="8" style="width:140px" aria-label="Frames per second" data-testid="fps">
         <button id="play" data-testid="anim-play" title="Play it here (space)">▶ Play</button>
         <button id="fshow" class="on" data-testid="anim-show" title="Play it on the board">Show on board</button>
       </div>

@@ -50,11 +50,24 @@ function setPx(x, y, c) {
   f[i] = c[0]; f[i + 1] = c[1]; f[i + 2] = c[2];
 }
 
+// Opacity: paint mixes with what's there (over black, a dimmer color; an LED can't be
+// see-through). Each pixel takes paint once per stroke, so going over it doesn't build up.
+const alpha = () => +$('#alpha').value / 100;
+const mix = (under, c, a) => c.map((v, k) => Math.round(under[k] * (1 - a) + v * a));
+let painted = new Set();
+
+function paint(x, y, c) {
+  if (x < 0 || y < 0 || x >= W || y >= H || painted.has(y * W + x)) return;
+  painted.add(y * W + x);
+  const i = (y * W + x) * 3, f = frames[cur];
+  setPx(x, y, mix([f[i], f[i + 1], f[i + 2]], c, alpha()));
+}
+
 function dab(x, y) {
   const s = +$('#size').value, o = Math.floor((s - 1) / 2), c = tool === 'eraser' ? [0, 0, 0] : color;
   for (let dy = 0; dy < s; dy++) for (let dx = 0; dx < s; dx++) {
-    setPx(x - o + dx, y - o + dy, c);
-    if ($('#mirror').checked) setPx(W - 1 - (x - o + dx), y - o + dy, c);
+    paint(x - o + dx, y - o + dy, c);
+    if ($('#mirror').checked) paint(W - 1 - (x - o + dx), y - o + dy, c);
   }
 }
 
@@ -72,15 +85,15 @@ function line(x0, y0, x1, y1) {   // Bresenham, so a fast stroke has no gaps
 
 function fill(x, y) {
   const f = frames[cur], at = (x, y) => (y * W + x) * 3, i0 = at(x, y);
-  const want = [f[i0], f[i0 + 1], f[i0 + 2]];
-  if (want.every((v, k) => v === color[k])) return;
+  const want = [f[i0], f[i0 + 1], f[i0 + 2]], c = mix(want, color, alpha());
+  if (want.every((v, k) => v === c[k])) return;
   const stack = [[x, y]];
   while (stack.length) {
     const [px, py] = stack.pop();
     if (px < 0 || py < 0 || px >= W || py >= H) continue;
     const i = at(px, py);
     if (f[i] !== want[0] || f[i + 1] !== want[1] || f[i + 2] !== want[2]) continue;
-    setPx(px, py, color);
+    setPx(px, py, c);
     stack.push([px + 1, py], [px - 1, py], [px, py + 1], [px, py - 1]);
   }
 }
@@ -104,6 +117,7 @@ cv.addEventListener('pointerdown', e => {
   const [x, y] = cell(e);
   if (tool === 'picker') return pick(x, y);
   snapshot();
+  painted = new Set();
   if (tool === 'fill') { fill(x, y); return changed(); }
   cv.setPointerCapture(e.pointerId);
   last = [x, y]; dab(x, y); changed();
@@ -155,16 +169,21 @@ $('#palette').replaceChildren(...PALETTE.map(h => {
   s.dataset.color = h; s.style.setProperty('--sw', h);
   return s;
 }));
+$('#alpha').oninput = () => { $('#alphav').textContent = $('#alpha').value + '%'; };
 $('#grid').onchange = () => $('#wrap').classList.toggle('grid', $('#grid').checked);
 
 document.addEventListener('keydown', e => {
   if (e.target.matches('input:not([type=checkbox]):not([type=range]), select, textarea')) return;
   const k = e.key.toLowerCase();
+  if (ANIM && (k === 'arrowleft' || k === 'arrowright') && !e.target.matches('[type=range]') && !(e.metaKey || e.ctrlKey || e.altKey)) {
+    e.preventDefault();
+    return (e.shiftKey ? (k === 'arrowleft' ? $('#fleft') : $('#fright')) : (k === 'arrowleft' ? $('#fprev') : $('#fnext'))).click();
+  }
   if ((e.metaKey || e.ctrlKey) && k === 'z') { e.preventDefault(); return (e.shiftKey ? $('#redo') : $('#undo')).click(); }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const keys = {b: () => setTool('pen'), e: () => setTool('eraser'), f: () => setTool('fill'), i: () => setTool('picker')};
   if (ANIM) Object.assign(keys, {n: () => $('#fadd').click(), d: () => $('#fdup').click(),
-    ',': () => select(cur - 1), '.': () => select(cur + 1), ' ': () => $('#play').click()});
+    ',': () => $('#fprev').click(), '.': () => $('#fnext').click(), ' ': () => $('#play').click()});
   if (keys[k]) { e.preventDefault(); keys[k](); }
 });
 
@@ -187,6 +206,12 @@ function drawStrip() {
     return b;
   }));
   $('#fdel').disabled = frames.length < 2;
+  $('#fleft').disabled = cur === 0;
+  $('#fright').disabled = cur === frames.length - 1;
+  $('#fpos').textContent = `${cur + 1} / ${frames.length}`;
+  const strip = $('#strip'), b = strip.children[cur];   // keep this frame in view (sideways only)
+  if (b && b.offsetLeft < strip.scrollLeft) strip.scrollLeft = b.offsetLeft;
+  else if (b && b.offsetLeft + b.offsetWidth > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = b.offsetLeft + b.offsetWidth - strip.clientWidth;
 }
 function select(i) {
   if (i < 0 || i >= frames.length) return;
@@ -268,6 +293,9 @@ function useExample(name, quiet) {
 $('#fadd').onclick = () => frames.length < 64 ? structural(() => frames.splice(++cur, 0, blank())) : toast('64 frames at most');
 $('#fdup').onclick = () => frames.length < 64 ? structural(() => frames.splice(cur + 1, 0, frames[cur++].slice())) : toast('64 frames at most');
 $('#fdel').onclick = () => frames.length > 1 && structural(() => { frames.splice(cur, 1); cur = Math.min(cur, frames.length - 1); });
+// ◀ ▶ step through the frames, round and round like the loop
+$('#fprev').onclick = () => select((cur - 1 + frames.length) % frames.length);
+$('#fnext').onclick = () => select((cur + 1) % frames.length);
 const swap = d => cur + d >= 0 && cur + d < frames.length && structural(() => {
   [frames[cur], frames[cur + d]] = [frames[cur + d], frames[cur]]; cur += d;
 });
@@ -278,7 +306,10 @@ $('#onion').onchange = () => {
   if ($('#onion').checked && frames.length < 2) toast('Onion skin shows the frame before this one. Add a frame (+ New) to see it');
 };
 const showFps = () => { $('#fpsv').textContent = $('#fps').value + ' fps'; ms = Math.round(1000 / +$('#fps').value); };
-$('#fps').oninput = () => { showFps(); changed(true); };
+$('#fps').oninput = () => {
+  showFps(); changed(true);
+  if (player) { stopPlaying(); $('#play').click(); }   // keep playing, at the new speed
+};
 
 let player = null;
 function stopPlaying() {
@@ -366,7 +397,7 @@ async function init() {
       btn(name, () => useExample(name), '', 'example-' + name.toLowerCase().replace(/ /g, '-'))));
     $('#hint').textContent = 'Each frame is one step of the loop; the faint picture is the frame before. ' +
       'The examples above are good to pull apart: step through their frames to see what changes. ' +
-      'N adds a frame, D copies this one, , and . step through them, space plays. With Live on, the board plays your loop as you edit it.';
+      '← and → step through them (Shift moves this one), N adds a frame, D copies this one, space plays. With Live on, the board plays your loop as you edit it.';
   } else {
     $('#hint').textContent = 'With Live on, the board shows your drawing while you draw it, and stays on it until you press Stop showing. ' +
       'B pen, E eraser, F fill, I picks a color, Ctrl+Z undoes.';
