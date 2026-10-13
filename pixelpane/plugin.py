@@ -39,11 +39,12 @@ API_VERSION = 1
 
 SCENES = {}    # scene name -> generator function (with .kind, .plugin, .pinnable, .params, .empty_text)
 PICKERS = {}   # playlist entry -> fn(ctx) returning the scene to play (seasonal, generative)
+WRAPPERS = []  # fn(ctx, frames, info) that rework every scene's frames (overlays, transitions)
 PLUGINS = {}   # plugin name -> Plugin
 ERRORS = []    # plugins that failed to load: [{"source", "error"}], shown on the page
 
 BUILTIN = ["alerts", "clock", "weather", "now_playing", "calendar", "homelab", "tiles",
-           "gifs", "seasonal", "generative", "sky", "generator"]
+           "gifs", "seasonal", "generative", "sky", "generator", "effects"]
 # Root-owned on the Pi, so the service (which can write /var/lib/pixelpane) can't
 # plant code that it would then load.
 USER_DIR = Path(os.environ.get("PIXELPANE_PLUGINS", "/etc/pixelpane/plugins"))
@@ -117,6 +118,15 @@ class Plugin:
             return fn
         return deco
 
+    def frames(self, fn):
+        """Register a frame wrapper, fn(ctx, frames, info), run around every scene while
+        the plugin is on. frames yields the scene's (image, seconds) pairs; the wrapper
+        yields its own. info is {"scene", "kind", "prev"}: prev is the last frame of the
+        scene before, or None. Images may be cached (GIF frames): copy before drawing."""
+        fn.plugin = self.name
+        WRAPPERS.append(fn)
+        return fn
+
     def task(self, fn):
         """Register a background task, run as fn(ctx, stop_event) in its own thread while
         the plugin is on. stop_event is set when the plugin is turned off or the board
@@ -138,11 +148,13 @@ def _forget(before):
         SCENES.pop(name)
     for name in set(PICKERS) - before["pickers"]:
         PICKERS.pop(name)
+    del WRAPPERS[before["wrappers"]:]
 
 
 def _guarded(source, load_one):
     """Run one plugin load; a broken plugin is logged and recorded, never fatal."""
-    before = {"plugins": set(PLUGINS), "scenes": set(SCENES), "pickers": set(PICKERS)}
+    before = {"plugins": set(PLUGINS), "scenes": set(SCENES), "pickers": set(PICKERS),
+              "wrappers": len(WRAPPERS)}
     try:
         load_one()
     except Exception as e:  # one broken plugin must not stop the board
@@ -190,6 +202,14 @@ def enabled(config, name):
 def scene_enabled(config, scene):
     fn = SCENES.get(scene) or PICKERS.get(scene)
     return bool(fn) and enabled(config, fn.plugin)
+
+
+def wrap(config, ctx, frames, info):
+    """frames run through the frame wrappers of every enabled plugin."""
+    for fn in WRAPPERS:
+        if enabled(config, fn.plugin):
+            frames = fn(ctx, frames, info)
+    return frames
 
 
 def pinnable(scene):

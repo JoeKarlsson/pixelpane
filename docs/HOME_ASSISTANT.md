@@ -186,6 +186,33 @@ last five hours. When a reading turns bad (unhealthy air, too hot or cold, stuff
 low battery) the board shows that tile right away, once an hour at most. The
 comfortable range, colors and alerts are in the tiles plugin's settings.
 
+## Status dots
+
+Status dots are single lights along the top edge that stay on (or blink) while
+something is true, on every scene except notifications. They need the effects
+plugin. Push the whole list each time; an empty list clears them. This one shows a
+cyan dot while the laundry is done and a blinking red one while the garage is open:
+
+```yaml
+automation:
+  - alias: PixelPane status dots
+    triggers:
+      - trigger: state
+        entity_id: [input_boolean.laundry_done, cover.garage_door]
+    actions:
+      - action: rest_command.pixelpane
+        data:
+          path: data/status
+          body:
+            dots: >-
+              {% set d = [] %}
+              {% if is_state('input_boolean.laundry_done', 'on') %}{% set d = d + [{'color': '#00ffff'}] %}{% endif %}
+              {% if is_state('cover.garage_door', 'open') %}{% set d = d + [{'color': '#ff3030', 'blink': true}] %}{% endif %}
+              {{ d }}
+```
+
+Dots go stale after 120 minutes unless pushed again (`data_ttl_minutes` changes that).
+
 For album art, let the board fetch from Home Assistant:
 `{"plugins": {"now_playing": {"art_hosts": ["http://homeassistant.local:8123/"]}}}`.
 
@@ -198,3 +225,4 @@ For album art, let the board fetch from Home Assistant:
 | `next_event` | `title`, `start` (ISO time; shown if within 12 hours) |
 | `homelab` | `alerts`, `names`, `warnings`, `checks_total`, `checks_passing`, `hosts: [{name, cpu, temp}]`, `nas: {used_pct, used_tb, up_mbs, down_mbs}`, `net: {wan_ms, dns_queries, blocked_pct}`, `ups: [{battery, load, status}]`, `plex: {watching}`. Every page is optional |
 | `tiles` | `items`, a list of readings `{kind, value, label, unit, history, alert}` and cards `{icon, text, color, level (0-1, draws a gauge), sub}`. `kind` is `temp`, `aqi` (US EPA), `humidity` (%), `co2` (ppm) or `battery` (%). `unit` (`F`/`C`) overrides the plugin's for one temp tile; `history` (a list of earlier values) replaces the board's own samples; `"alert": false` stops that tile jumping the queue |
+| `status` | `dots: [{color, blink}]`, up to four lights along the top edge |

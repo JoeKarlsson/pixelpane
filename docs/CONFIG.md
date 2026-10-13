@@ -100,6 +100,7 @@ and its data keys are refused). Secret settings come back from the API as
 | seasonal | `holiday_share`: 0 to 1, how often a holiday wins over the season; `birthday`: `{"month", "day", "name"}` or `null` | |
 | generative | `scenes`: which of fire, plasma, life, matrix_rain, starfield the `generative` slot picks from | |
 | generator | `provider` (`openai` or `anthropic`), `base_url`, `model`, `api_key` (secret), `review` | |
+| effects | `transition` (`none`, `fade`, `wipe`, `slide`, `dissolve`), `transition_seconds` (0.2 to 1.5), `overlay` (`off`, `time`, `date`, `time_date`, `temp`, `meeting`), `overlay_corner` (`auto` or `top_left`, `top_right`, `bottom_left`, `bottom_right`), `overlay_mode` (`always` or `peek`: 3 seconds every 20), `overlay_on` (any of gif, generative, seasonal), `overlay_color`, `status_dots` (`true`/`false`) | `status` (120 min) |
 | alerts, sky | | |
 
 What each data key expects is in [HOME_ASSISTANT.md](HOME_ASSISTANT.md). Your own

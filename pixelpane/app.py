@@ -66,6 +66,7 @@ class Player:
         self.position = 0
         self.played = 0
         self.slot = None
+        self.shown_at = 0.0   # when the last frame shown stops being current
 
     # -- choosing what to play --
     def resolve(self, name, params=None):
@@ -111,13 +112,19 @@ class Player:
                               seconds=secs, next=rot[self.position % len(rot)], length=len(rot))
 
     # -- playing --
-    def play(self, label, gen, interruptible=True):
+    def play(self, label, gen, interruptible=True, scene=None):
         """Show frames until the scene ends; returns early when something wakes us."""
         st = self.state
         self.ctx.label = label
         shown = False
+        scene = scene or label
+        fn = SCENES.get(scene)
+        # the frame before, for transitions: only if it is still on screen
+        prev = st.last_frame if time.monotonic() - self.shown_at < 2 else None
+        info = {"scene": scene, "kind": getattr(fn, "kind", None), "prev": prev}
+        frames = plugin.wrap(st.config, self.ctx, gen, info)
         try:
-            for img, hold in gen:
+            for img, hold in frames:
                 if not shown:
                     st.label = self.ctx.label or label
                     shown = True
@@ -127,6 +134,7 @@ class Player:
                 self.display.show(img)
                 st.last_frame = img
                 deadline = time.monotonic() + hold
+                self.shown_at = deadline
                 while (left := deadline - time.monotonic()) > 0:
                     if st.wake.wait(left):
                         st.wake.clear()
@@ -137,6 +145,7 @@ class Player:
             log.exception("scene %s failed", label)
             time.sleep(1)
         finally:
+            frames.close()
             gen.close()
         return shown
 
@@ -146,7 +155,8 @@ class Player:
         text = getattr(fn, "empty_text", None)
         if not text:
             return False
-        return self.play(f"empty: {name}", SCENES["message"](self.ctx, secs, text=text, color="#8b8fa3"))
+        return self.play(f"empty: {name}", SCENES["message"](self.ctx, secs, text=text, color="#8b8fa3"),
+                         scene="message")
 
     def run(self, stop):
         st = self.state

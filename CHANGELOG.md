@@ -36,6 +36,12 @@ and the project uses [semantic versioning](https://semver.org/).
   field (mph), which the Open-Meteo fallback now fills in.
 - `kit.Mood` and friends (`temp_color`, `outlined_text`, `sparkline`, `arrow`) for
   plugins that want the same full-panel moods.
+- An effects plugin: scenes blend into each other (fade, wipe, slide or dissolve);
+  GIFs, and optionally generative and seasonal scenes, can show the time, date,
+  outside temperature or minutes to the next meeting in a corner, all the time or
+  for 3 seconds every 20, with auto picking the calmest corner; and status dots,
+  up to four lights along the top edge pushed to `POST /api/data/status`.
+- `@plugin.frames`: plugins can wrap every scene's frames (docs/PLUGINS.md).
 - A `color` field type for plugin settings forms, and a table of every field type
   in docs/PLUGINS.md.
 - Your own holidays (Settings, Holidays): a name and date ranges, every year
