@@ -32,9 +32,13 @@ and the project uses [semantic versioning](https://semver.org/).
 - Settings, Notifications: write a message (with a second line, icon, style, color and
   length) and send it now, or keep it on screen until you clear it. Previewing the
   notification look uses the message you're writing.
-- Draw and Animate pages. Draw puts what you scribble on the board as you draw it.
-  Animate makes frame-by-frame loops (onion skin, speed, play) that the board plays
-  while you edit and that save to the GIF library (`/api/sketch`).
+- Draw and Animate pages. Draw puts what you scribble on the board as you draw it:
+  pen, eraser, fill, color picker, brush sizes, mirror, opacity, undo. Animate makes
+  frame-by-frame loops: step through frames with the arrows or ← →, add, copy,
+  delete and move them, an onion-skin ghost of the frame before, speed and Play.
+  It starts from an example (bouncing ball, heartbeat, blinking face, spinner,
+  rainbow wave). The board plays your loop as you edit it, or when you press Show on
+  board, and both pages save to the GIF library (`/api/sketch`).
 - Play now buttons show a little animated preview of their scene, rendered on the
   board from its real data (`GET /api/scenes/<name>/thumb.gif`).
 - Every plugin's settings are on the Settings page too: On screen (transitions,

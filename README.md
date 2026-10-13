@@ -56,6 +56,17 @@ What it shows, panel's-eye view:
   OpenRouter or Ollama, or Anthropic's API) designs a looping animation. Preview
   it, refine it, then save it to your library or throw it out. See
   [which models draw best](docs/GIFS.md#choosing-a-model).
+- **Draw on the board, live.** The Draw page is a pixel canvas the size of the
+  board: what you scribble shows on the panel as you draw it, until you press Stop
+  showing. Pen, eraser, fill and a color picker, brush sizes, a mirror for
+  symmetric drawings, an opacity slider for softer shades, undo, and a palette that
+  reads well on LEDs.
+- **Animate it.** The Animate page makes frame-by-frame loops: step through frames
+  with the arrows (or ← →), add, copy, delete and reorder them, and see the frame
+  before as a teal onion-skin ghost. Start from an example (a bouncing ball, a
+  heartbeat, a blinking face, a spinner, a rainbow wave) and pull it apart. With Live
+  on, the board plays your loop while you edit it; with it off, Show on board sends
+  it when you're ready. Either page saves to the GIF library.
 - **Transitions and overlays.** Scenes fade (or wipe, slide, dissolve, iris, melt, switch off like an old TV, and more) into each
   other, GIFs can carry a small clock, date, temperature or meeting countdown in
   their calmest corner, and Home Assistant can light status dots along the top edge
@@ -133,8 +144,8 @@ pixelpane-library/
 | generative | fire, plasma, life, matrix_rain, starfield, lava, ripples, reaction, sand, aurora, fireflies, aquarium, snake, hourglass, smog; an `ambient` slot that picks one to suit the weather and air | |
 | sky | moon (phase, named full moons, supermoons, blue moons), zodiac | |
 | effects | no scenes: transitions, up to four overlays (time, date, temperature, a tile reading, your next meeting, your own text), status dots | `status` |
-| effects | no scenes: transitions, an overlay on GIFs, status dots | `status` |
 | triggers | no scenes: reminders and watches that raise notifications | |
+| draw | sketch: whatever the Draw and Animate pages send, held on screen until you stop it | |
 | generator | no scenes: settings for making GIFs from a prompt ([docs/GIFS.md](docs/GIFS.md#make-one-from-a-prompt)) | |
 
 Switch plugins on or off on the control page (a card opens that plugin on the Settings
