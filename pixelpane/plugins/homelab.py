@@ -7,12 +7,22 @@ from .. import gfx
 from ..kit import scroll_text, ticks
 from ..plugin import Plugin
 
+PAGE_NAMES = ["hosts", "nas", "net", "ups", "plex"]
+
 plugin = Plugin(
     "homelab", "Animated homelab dashboard", data={"homelab": 60},
+    defaults={"pages": ["hosts", "nas", "net", "ups", "plex"], "cpu_warn": 75, "cpu_crit": 90,
+              "disk_warn": 80, "disk_crit": 90},
     about="Up to six animated pages: alerts (always first), health checks with a "
           "blinking server rack, Proxmox host CPU, NAS space and transfer, network "
           "latency and DNS, UPS batteries and Plex. Each page appears only when its data "
-          "is pushed to POST /api/data/homelab (Plex only while someone is streaming); see docs/HOME_ASSISTANT.md for the fields.")
+          "is pushed to POST /api/data/homelab (Plex only while someone is streaming); see docs/HOME_ASSISTANT.md for the fields.",
+    fields=[{"key": "pages", "label": "Pages to show", "type": "choices", "options": PAGE_NAMES,
+             "help": "Alerts and the status page always show."},
+            {"key": "cpu_warn", "label": "CPU: amber from (%)", "type": "number", "min": 1, "max": 100, "step": 1},
+            {"key": "cpu_crit", "label": "CPU: red from (%)", "type": "number", "min": 1, "max": 100, "step": 1},
+            {"key": "disk_warn", "label": "NAS space: amber from (%)", "type": "number", "min": 1, "max": 100, "step": 1},
+            {"key": "disk_crit", "label": "NAS space: red from (%)", "type": "number", "min": 1, "max": 100, "step": 1}])
 
 
 @plugin.scene("homelab", empty_text="NO LAB DATA YET")
@@ -25,22 +35,25 @@ def homelab(ctx, secs):
     lab = ctx.data("homelab")
     if not lab:
         return
-    pages = lab_pages(lab)
+    cfg = ctx.settings("homelab")
+    pages = lab_pages(lab, cfg.get("pages"))
     each = max(3.5, secs / len(pages))
     for page in pages:
         dur = max(each, 6) if page is _lab_alerts else each
         for i, t in ticks(dur, 10):
             img = gfx.blank()
-            page(img, ImageDraw.Draw(img), lab, i, t)
+            page(img, ImageDraw.Draw(img), dict(lab, _cfg=cfg), i, t)
             yield img, 0.1
 
 
-def lab_pages(lab):
+def lab_pages(lab, allowed=None):
+    """The pages to show, in order: alerts (when any), status, then the optional pages
+    that have data and are in `allowed` (all of them when None)."""
     pages = [_lab_alerts] if int(lab.get("alerts") or 0) else []
     pages.append(_lab_status)
     for key, page in (("hosts", _lab_hosts), ("nas", _lab_nas), ("net", _lab_net),
                       ("ups", _lab_ups), ("plex", _lab_plex)):
-        if lab.get(key):
+        if lab.get(key) and (allowed is None or key in allowed):
             pages.append(page)
     if _lab_plex in pages and not int(lab["plex"].get("watching") or 0):
         pages.remove(_lab_plex)   # only worth a page while someone is streaming
@@ -50,6 +63,13 @@ def lab_pages(lab):
 def _ease(t, span=0.8):
     """0 -> 1 over the first `span` seconds, for bars that fill in."""
     return min(1.0, t / span) ** 0.5
+
+
+def _limits(lab, kind, warn, crit):
+    """The warn and crit levels for "cpu" or "disk" from the plugin settings."""
+    cfg = lab.get("_cfg") or {}
+    w, c = cfg.get(f"{kind}_warn"), cfg.get(f"{kind}_crit")
+    return (warn if w is None else float(w)), (crit if c is None else float(c))
 
 
 def _level_color(pct, warn=75, crit=90):
@@ -113,7 +133,7 @@ def _lab_hosts(img, d, lab, i, t):
         w = int(18 * min(cpu, 100) / 100 * _ease(t))
         d.rectangle((10, y, 28, y + 3), outline=(50, 55, 70))
         if w:
-            d.rectangle((10, y, 10 + w, y + 3), fill=_level_color(cpu))
+            d.rectangle((10, y, 10 + w, y + 3), fill=_level_color(cpu, *_limits(lab, "cpu", 75, 90)))
         if i % 6 < 3:
             img.putpixel((30, y + 1), (60, 255, 90))  # activity light
         gfx.text(img, (1, y + 5), f"{cpu:.0f}%", (150, 160, 190), "tom-thumb")
@@ -129,7 +149,7 @@ def _lab_nas(img, d, lab, i, t):
     w = int(29 * used / 100 * _ease(t, 1.2))
     d.rectangle((1, 8, 30, 14), outline=(60, 65, 85))
     for x in range(w):
-        d.line((2 + x, 9, 2 + x, 13), fill=gfx.scale(_level_color(used, 80, 90), 0.6 + 0.4 * x / 29))
+        d.line((2 + x, 9, 2 + x, 13), fill=gfx.scale(_level_color(used, *_limits(lab, "disk", 80, 90)), 0.6 + 0.4 * x / 29))
     gfx.text(img, (1, 17), f"{used:.0f}%", (230, 230, 240), "tom-thumb")
     if nas.get("used_tb") is not None:
         s = f"{float(nas['used_tb']):.0f}TB"

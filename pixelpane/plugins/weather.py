@@ -16,7 +16,9 @@ log = logging.getLogger("pixelpane.weather")
 
 plugin = Plugin(
     "weather", "Current conditions and today's high/low",
-    data={"weather": 180}, defaults={"latitude": None, "longitude": None},
+    data={"weather": 180},
+    defaults={"latitude": None, "longitude": None, "mood": "full", "temp_colors": True,
+              "show_high_low": True, "show_line": True},
     about="The weather fills the panel: rain slanting in the wind, drifting snow, fog, "
           "stars at night, a warm glow on sunny days, heat shimmer when it's hot and frost "
           "when it's bitter. The temperature is colored from cold blue to hot red, with "
@@ -25,7 +27,16 @@ plugin = Plugin(
           "for the location below.",
     fields=[{"key": "latitude", "label": "Latitude", "type": "number", "step": 0.01,
              "help": "Only used when nothing pushes weather."},
-            {"key": "longitude", "label": "Longitude", "type": "number", "step": 0.01}])
+            {"key": "longitude", "label": "Longitude", "type": "number", "step": 0.01},
+            {"key": "mood", "label": "Background", "type": "select",
+             "options": [{"label": "Full: the weather fills the panel", "value": "full"},
+                         {"label": "Subtle: the same, at half brightness", "value": "subtle"},
+                         {"label": "Off: plain black", "value": "off"}]},
+            {"key": "temp_colors", "label": "Temperature color", "type": "toggle",
+             "text": "Color the temperature from cold blue to hot red (else white)"},
+            {"key": "show_high_low", "label": "High and low", "type": "toggle", "text": "Show today's high and low"},
+            {"key": "show_line", "label": "Conditions line", "type": "toggle",
+             "text": "Scroll the conditions, chance of rain and wind"}])
 
 
 WEATHER_ICON = {
@@ -74,6 +85,10 @@ def weather(ctx, secs):
     wind = float(wx.get("wind") or 0)   # mph
     if wind >= 15:
         line += f"  WIND {wind:.0f}"
+    cfg = ctx.settings("weather")
+    mood = cfg.get("mood", "full")
+    if not cfg.get("show_high_low", True):
+        hl = []
     rng = ctx.rng
     name, amount = WEATHER_MOOD.get(cond, ("fog", 0.1))
     if name == "wind":
@@ -87,13 +102,18 @@ def weather(ctx, secs):
         layers.append(Mood(rng, "heat", min(1.0, (temp_f - 80) / 20)))
     elif temp_f <= 25:
         layers.append(Mood(rng, "frost", min(1.0, (32 - temp_f) / 30)))
-    color = temp_color(temp_f)
+    color = temp_color(temp_f) if cfg.get("temp_colors", True) else (255, 255, 255)
     for i, t in ticks(secs, 10):
-        img = layers[0].frame(t)
-        for layer in layers[1:]:
-            img = ImageChops.lighter(img, layer.frame(t))
-        if cond.startswith("lightning") and i % 37 in (0, 2):   # the sky lights up
-            img = Image.blend(img, gfx.blank((200, 200, 255)), 0.5)
+        if mood == "off":
+            img = gfx.blank()
+        else:
+            img = layers[0].frame(t)
+            for layer in layers[1:]:
+                img = ImageChops.lighter(img, layer.frame(t))
+            if mood == "subtle":
+                img = Image.blend(gfx.blank(), img, 0.5)
+            if cond.startswith("lightning") and i % 37 in (0, 2):   # the sky lights up
+                img = Image.blend(img, gfx.blank((200, 200, 255)), 0.5 if mood == "full" else 0.25)
         drift = round(math.sin(t * 1.2)) if icon in ("cloud", "partly", "fog") else 0
         gfx.paste(img, icon, (1 + drift, 1))
         d = ImageDraw.Draw(img)
@@ -107,7 +127,8 @@ def weather(ctx, secs):
         d.rectangle((W - 3, 2, W - 2, 3), outline=color)  # degree mark
         if hl:
             outlined_center(img, 18, " ".join(hl), (170, 190, 255), "tom-thumb")
-        scroll_text(img, 25, line, (255, 200, 80), "tom-thumb", t, 16)
+        if cfg.get("show_line", True):
+            scroll_text(img, 25, line, (255, 200, 80), "tom-thumb", t, 16)
         yield img, 0.1
 
 

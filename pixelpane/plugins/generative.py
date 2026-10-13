@@ -1,4 +1,5 @@
 """Generative art: fire, plasma, life, lava, ripples, aquarium and more, computed live."""
+import functools
 import math
 from collections import deque
 from datetime import datetime
@@ -9,7 +10,7 @@ from PIL import Image, ImageDraw
 from .. import gfx
 from ..gfx import H, W
 from ..kit import palette, ticks
-from ..plugin import Plugin
+from ..plugin import SCENES, Plugin
 
 SCENE_NAMES = ["fire", "plasma", "life", "matrix_rain", "starfield", "lava", "ripples", "reaction",
           "sand", "aurora", "fireflies", "aquarium", "snake", "hourglass", "smog"]
@@ -17,7 +18,7 @@ SCENE_NAMES = ["fire", "plasma", "life", "matrix_rain", "starfield", "lava", "ri
 plugin = Plugin(
     "generative", "Endless generative art",
     defaults={"scenes": ["fire", "plasma", "life", "matrix_rain", "starfield", "lava", "ripples",
-                         "aurora", "fireflies", "aquarium"]},
+                         "aurora", "fireflies", "aquarium"], "speed": "normal"},
     about="Art that's computed, not stored: a fire, a plasma of drifting color, "
           "Conway's Game of Life, matrix rain, a starfield, a lava lamp, rain ripples, "
           "reaction-diffusion, falling sand, an aurora, fireflies, an aquarium, a snake "
@@ -27,7 +28,11 @@ plugin = Plugin(
           "when it's hot, an aurora or fireflies on a clear night, and smog whenever an "
           "air quality tile (kind aqi) is over 150.",
     fields=[{"key": "scenes", "label": "Scenes to pick from", "type": "choices",
-             "options": SCENE_NAMES}])
+             "options": SCENE_NAMES},
+            {"key": "speed", "label": "Speed", "type": "select",
+             "options": [{"label": "Slow and calm", "value": "slow"}, {"label": "Normal", "value": "normal"},
+                         {"label": "Fast", "value": "fast"}]}])
+SPEEDS = {"slow": 1.7, "normal": 1.0, "fast": 0.65}   # how long each frame is held, relative
 
 
 @plugin.picker("generative")
@@ -588,3 +593,18 @@ def hourglass(ctx, secs):
         if mins is not None:
             gfx.text_center(img, 26, f"{int(mins)}M", sand_col, "tom-thumb")
         yield img, 0.1
+
+
+# --- speed: every scene above plays slower or faster by holding its frames longer or shorter
+
+def _paced(fn):
+    @functools.wraps(fn)   # keeps .kind, .plugin and the rest that plugin.scene set
+    def run(ctx, secs, **params):
+        f = SPEEDS.get(ctx.settings("generative").get("speed"), 1.0)
+        for img, hold in fn(ctx, secs / f, **params):
+            yield img, hold * f
+    return run
+
+
+for _name in plugin.scenes:
+    SCENES[_name] = _paced(SCENES[_name])

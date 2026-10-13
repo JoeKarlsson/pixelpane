@@ -13,7 +13,8 @@ FACES = ["classic", "frame", "arcade", "sky"]
 
 plugin = Plugin(
     "clock", "Time, date and temperature",
-    defaults={"faces": list(FACES), "color_mode": "day", "color": "#ffffff"},
+    defaults={"faces": list(FACES), "color_mode": "day", "color": "#ffffff", "hours": "12",
+              "leading_zero": False, "blink": True, "show_date": True, "show_temp": True},
     about="Big digits with a blinking colon, the date and the outside temperature (from the "
           "weather plugin), on a face picked from the ones you tick below each time the clock "
           "comes up. Classic has a seconds bar; frame sends a comet around a glowing border "
@@ -27,7 +28,14 @@ plugin = Plugin(
              "options": [{"label": "Follows the time of day", "value": "day"},
                          {"label": "The color below", "value": "fixed"}]},
             {"key": "color", "label": "Color", "type": "color",
-             "help": "Used when Digit color is set to it. Dimmed at night."}])
+             "help": "Used when Digit color is set to it. Dimmed at night."},
+            {"key": "hours", "label": "Hours", "type": "select",
+             "options": [{"label": "12-hour (3:05)", "value": "12"}, {"label": "24-hour (15:05)", "value": "24"}]},
+            {"key": "leading_zero", "label": "Leading zero", "type": "toggle", "text": "09:05, not 9:05"},
+            {"key": "blink", "label": "Colon", "type": "toggle", "text": "Blink once a second"},
+            {"key": "show_date", "label": "Date", "type": "toggle", "text": "Show the date under the time"},
+            {"key": "show_temp", "label": "Temperature", "type": "toggle",
+             "text": "Show the outside temperature (classic and frame faces)"}])
 
 
 def is_night(now):
@@ -43,13 +51,21 @@ def face_color(ctx, now):
     return gfx.scale(col, 0.4) if is_night(now) else col
 
 
-def draw_time(img, now, col, y, t, shadow=None):
-    """HH:MM in the big font, centered, with a colon that blinks once a second."""
-    hh, mm, f = str(now.hour % 12 or 12), f"{now.minute:02d}", "6x10"
+def hour_text(now, cfg=None):
+    cfg = cfg or {}
+    h = now.hour if str(cfg.get("hours", "12")) == "24" else now.hour % 12 or 12
+    return f"{h:02d}" if cfg.get("leading_zero") else str(h)
+
+
+def draw_time(img, now, col, y, t, shadow=None, cfg=None):
+    """HH:MM in the big font, centered, with a colon that blinks once a second
+    (12 or 24 hours, a leading zero and a steady colon come from the settings)."""
+    cfg = cfg or {}
+    hh, mm, f = hour_text(now, cfg), f"{now.minute:02d}", "6x10"
     w = gfx.text_width(hh, f) + 3 + gfx.text_width(mm, f)
     x = (W - w) // 2
     parts = [(x, hh), (x + gfx.text_width(hh, f) + 3, mm)]
-    colon = t % 1 < 0.5
+    colon = t % 1 < 0.5 or cfg.get("blink") is False
     cx = x + gfx.text_width(hh, f) + 1
     for c, dx in ((shadow, 1), (col, 0)) if shadow else ((col, 0),):
         for px, s in parts:
@@ -64,6 +80,8 @@ def date_text(now):
 
 
 def temp_text(ctx):
+    if ctx.settings("clock").get("show_temp") is False:
+        return None
     wx = ctx.data("weather")
     if wx and wx.get("temp") is not None:
         return f"{round(float(wx['temp']))}{wx.get('unit', 'F')}"
@@ -84,8 +102,10 @@ def classic(ctx, secs):
         now = ctx.now()
         img = gfx.blank()
         col = face_color(ctx, now)
-        draw_time(img, now, col, 2, t)
-        gfx.text_center(img, 15, date_text(now), gfx.scale(col, 0.7), "4x6")
+        cfg = ctx.settings("clock")
+        draw_time(img, now, col, 2, t, cfg=cfg)
+        if cfg.get("show_date", True):
+            gfx.text_center(img, 15, date_text(now), gfx.scale(col, 0.7), "4x6")
         temp = temp_text(ctx)
         if temp:
             gfx.text_center(img, 23, temp, gfx.scale(col, 0.55), "tom-thumb")
@@ -120,8 +140,10 @@ def frame(ctx, secs):
         for k in range(10):  # the comet: a bright head and a fading tail
             xy = PERIMETER[int(head - k) % n]
             px[xy] = gfx.scale(gfx.hsv(head / n - t / 20, 0.5 if k else 0.1, 1), 1 - k / 10)
-        draw_time(img, now, col, 4, t)
-        gfx.text_center(img, 17, date_text(now), gfx.scale(col, 0.7), "4x6")
+        cfg = ctx.settings("clock")
+        draw_time(img, now, col, 4, t, cfg=cfg)
+        if cfg.get("show_date", True):
+            gfx.text_center(img, 17, date_text(now), gfx.scale(col, 0.7), "4x6")
         temp = temp_text(ctx)
         if temp:
             gfx.text_center(img, 24, temp, gfx.scale(col, 0.5), "tom-thumb")
@@ -239,7 +261,7 @@ def arcade(ctx, secs):
                 continue
             put(img, COIN[int(t * 8) % 4], c[0], c[1])
         put(img, HERO_JUMP if air < JUMP else HERO_RUN[int(t * 8) % 2], HERO_X, hy)
-        draw_time(img, now, col, 1, t, shadow=gfx.scale(col, 0.25))
+        draw_time(img, now, col, 1, t, shadow=gfx.scale(col, 0.25), cfg=ctx.settings("clock"))
         yield img, 1 / 12
 
 
@@ -299,8 +321,10 @@ def sky(ctx, secs):
             for y in range(hills(x + t * 0.5), H):
                 px[x, y] = ground
         col = face_color(ctx, now)
-        draw_time(img, now, col, 2, t, shadow=(0, 0, 0))
-        gfx.text_center(img, 13, date_text(now), gfx.scale(col, 0.75), "4x6")
+        cfg = ctx.settings("clock")
+        draw_time(img, now, col, 2, t, shadow=(0, 0, 0), cfg=cfg)
+        if cfg.get("show_date", True):
+            gfx.text_center(img, 13, date_text(now), gfx.scale(col, 0.75), "4x6")
         yield img, 1 / 6
 
 

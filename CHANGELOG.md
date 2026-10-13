@@ -34,6 +34,15 @@ and the project uses [semantic versioning](https://semver.org/).
   Auto corners never overlap.
 - An `items` field type for plugin settings: a list of small records with Add and
   Remove, each sub-field validated.
+- Options for each plugin, on the Settings page under Plugins. Clock: 12 or 24 hours,
+  a leading zero, a steady colon, and the date and temperature lines on or off.
+  Weather: the background full, subtle or off, white or temperature-colored digits,
+  and the high/low and conditions lines on or off. Tiles: the background full, subtle
+  or off, and the sparkline, trend arrow and count-up on or off. Calendar: how far
+  ahead to look, when the bell starts ringing, the title color. Now playing: how long
+  the album art fills the panel, the equalizer, the room, text colors. Homelab: which
+  pages show, and the CPU and NAS levels that turn amber and red. Generative: slow,
+  normal or fast. Sky: how many stars. The defaults look exactly as before.
 - Tiles that are readings: send `{kind, value}` for `temp`, `aqi`, `humidity`, `co2`
   or `battery` and the whole panel takes on a mood that shows how it feels (frost,
   heat shimmer, clear or smoggy air, condensation, murky bubbles). The number counts

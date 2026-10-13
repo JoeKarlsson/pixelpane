@@ -14,7 +14,16 @@ plugin = Plugin(
           "Corn, Harvest, Hunter's, Beaver, Cold) and calls out a supermoon or a blue moon. "
           "The zodiac scene shows the sun sign's symbol, its dates and element, and the sign "
           "the moon is in. Everything is calculated on the board; the weather plugin's "
-          "latitude, when set, flips the moon for the southern hemisphere.")
+          "latitude, when set, flips the moon for the southern hemisphere.",
+    defaults={"stars": "some"},
+    fields=[{"key": "stars", "label": "Stars", "type": "select",
+             "options": [{"label": "None", "value": "none"}, {"label": "A few", "value": "few"},
+                         {"label": "Some", "value": "some"}, {"label": "Lots", "value": "lots"}]}])
+STARS = {"none": 0, "few": 0.5, "some": 1.0, "lots": 2.5}   # times the usual number
+
+
+def _stars(ctx, n, avoid):
+    return stars(ctx.rng, round(n * STARS.get(ctx.settings("sky").get("stars"), 1.0)), avoid)
 
 LIT = (235, 228, 200)
 EARTHSHINE = (22, 22, 34)
@@ -116,7 +125,7 @@ def moon(ctx, secs):
         to_full = _days(info["next_full"] - now)
         pages = [(first, second), (f"{round(info['illumination'] * 100)}%", "LIT"),
                  ("FULL", "TONIGHT" if to_full < 1 else f"IN {math.ceil(to_full)}D")]
-    sky = stars(ctx.rng, 9, (cx, cy, r))
+    sky = _stars(ctx, 9, (cx, cy, r))
     per = _page_times(pages)
     secs = max(secs, min(sum(per), 30))
     southern = _southern(ctx)
@@ -179,7 +188,7 @@ def zodiac(ctx, secs):
     element = astro.ELEMENTS[sign]
     col = ELEMENT_COLORS[element]
     moon_sign = astro.moon_sign(now)
-    sparks = stars(ctx.rng, 12, (16, 5, 6))
+    sparks = _stars(ctx, 12, (16, 5, 6))
     start, end = sign_dates(sign)
     pages = [(start + " -", end), (element.upper(), "SIGN"), ("MOON IN", moon_sign.upper())]
     per = _page_times(pages)

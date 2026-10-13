@@ -90,18 +90,19 @@ and its data keys are refused). Secret settings come back from the API as
 
 | Plugin | Settings | Takes data (fresh for) |
 |--------|----------|------------------------|
-| clock | `faces` (any of classic, frame, arcade, sky), `color_mode` (`day` follows the time of day, `fixed` uses `color`), `color` (`#rrggbb`, dimmed at night) | |
-| weather | `latitude`, `longitude` (for the Open-Meteo fallback when nothing is pushed) | `weather` (180 min) |
-| now_playing | `art_hosts`: base URLs album art may be fetched from | `now_playing` (360 min) |
-| calendar | | `next_event` (720 min) |
-| homelab | | `homelab` (60 min) |
-| tiles | `temp_unit` (`F` or `C`), `comfy_low` and `comfy_high` (the comfortable range, `null` for 68 to 76F / 20 to 24C), `humidity_low`, `humidity_high` (%), `co2_high` (ppm), `cold_color`, `comfy_color`, `hot_color` (`#rrggbb`), `alert` (a reading that turns bad jumps the queue) | `tiles` (240 min) |
+| clock | `faces` (any of classic, frame, arcade, sky), `color_mode` (`day` follows the time of day, `fixed` uses `color`), `color` (`#rrggbb`, dimmed at night), `hours` (`"12"` or `"24"`, also used by the calendar), `leading_zero`, `blink` (the colon), `show_date`, `show_temp` | |
+| weather | `latitude`, `longitude` (for the Open-Meteo fallback when nothing is pushed), `mood` (the background: `full`, `subtle` or `off`), `temp_colors` (cold-to-hot digits, else white), `show_high_low`, `show_line` (conditions, rain chance, wind) | `weather` (180 min) |
+| now_playing | `art_hosts`: base URLs album art may be fetched from; `art_seconds` (full-screen cover first, 0 for none), `equalizer`, `show_room`, `title_color`, `artist_color` | `now_playing` (360 min) |
+| calendar | `lookahead_hours` (show events starting within, default 12), `bell_minutes` (bell and red countdown, default 10), `title_color` | `next_event` (720 min) |
+| homelab | `pages` (any of hosts, nas, net, ups, plex; alerts and status always show), `cpu_warn`, `cpu_crit`, `disk_warn`, `disk_crit` (%, amber and red) | `homelab` (60 min) |
+| tiles | `temp_unit` (`F` or `C`), `comfy_low` and `comfy_high` (the comfortable range, `null` for 68 to 76F / 20 to 24C), `humidity_low`, `humidity_high` (%), `co2_high` (ppm), `cold_color`, `comfy_color`, `hot_color` (`#rrggbb`), `alert` (a reading that turns bad jumps the queue), `moods` (`full`, `subtle` or `off`), `sparkline`, `trend`, `count_up` | `tiles` (240 min) |
 | gifs | `theme_share`: 0 to 1, how often a GIF slot picks from an active theme | |
 | seasonal | `holiday_share`: 0 to 1, how often a holiday wins over the season; `birthday`: `{"month", "day", "name"}` or `null` | |
-| generative | `scenes`: which of fire, plasma, life, matrix_rain, starfield, lava, ripples, reaction, sand, aurora, fireflies, aquarium, snake, hourglass and smog the `generative` and `ambient` slots pick from | |
+| generative | `scenes`: which of fire, plasma, life, matrix_rain, starfield, lava, ripples, reaction, sand, aurora, fireflies, aquarium, snake, hourglass and smog the `generative` and `ambient` slots pick from; `speed` (`slow`, `normal`, `fast`) | |
 | generator | `provider` (`openai` or `anthropic`), `base_url`, `model`, `api_key` (secret), `review` | |
 | effects | `transition` (`none`, `fade`, `wipe`, `slide`, `dissolve`), `transition_seconds` (0.2 to 1.5), `status_dots` (`true`/`false`), `overlays`: up to four of `{show, reading, label, text, corner, mode, size, style, color, color_by_value, on}`. `show` is `time`, `date`, `time_date`, `temp` (outside), `reading` (a tile reading: `reading` is its kind, `label` picks one tile), `meeting` or `text` (your own, up to 8 characters); `corner` is `auto` or `top_left`, `top_right`, `bottom_left`, `bottom_right`; `mode` `always` or `peek` (3 seconds every 20); `size` `small` or `large`; `style` `outline`, `box` or `plain`; `on` any of gif, generative, seasonal. Until `overlays` is saved, the older single `overlay`, `overlay_corner`, `overlay_mode`, `overlay_on` and `overlay_color` still work | `status` (120 min) |
-| alerts, sky | | |
+| sky | `stars` (`none`, `few`, `some`, `lots`) | |
+| alerts | | |
 
 What each data key expects is in [HOME_ASSISTANT.md](HOME_ASSISTANT.md). Your own
 plugins add their own settings; see [PLUGINS.md](PLUGINS.md).

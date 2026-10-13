@@ -3,6 +3,8 @@ full-panel mood that shows how they feel; anything else gets an animated icon an
 import time
 from collections import deque
 
+from PIL import Image
+
 from .. import gfx
 from ..gfx import W
 from ..kit import (SEVERITY, Mood, animated_icon, arrow, gauge, outlined_center, outlined_text,
@@ -14,7 +16,8 @@ plugin = Plugin(
     data={"tiles": 240},
     defaults={"temp_unit": "F", "comfy_low": None, "comfy_high": None, "humidity_low": 30,
               "humidity_high": 60, "co2_high": 1200, "alert": True,
-              "cold_color": "#5aa0ff", "comfy_color": "#3cdcaa", "hot_color": "#ff3c28"},
+              "cold_color": "#5aa0ff", "comfy_color": "#3cdcaa", "hot_color": "#ff3c28",
+              "moods": "full", "sparkline": True, "trend": True, "count_up": True},
     about="Cards pushed from anywhere. Send a reading as {kind, value, label} and the whole "
           "panel shows how it feels: frost creeping in when it's cold, heat shimmer when it's "
           "hot, clear sparkling air or thick smog for air quality, condensation when it's humid, "
@@ -37,7 +40,15 @@ plugin = Plugin(
             {"key": "hot_color", "label": "Hot color", "type": "color"},
             {"key": "alert", "label": "Jump the queue when a reading turns bad", "type": "toggle",
              "help": "Unhealthy air, too hot or cold, stuffy, low battery. Once per reading per hour; "
-                     "a tile with \"alert\": false never does."}])
+                     "a tile with \"alert\": false never does."},
+            {"key": "moods", "label": "Background", "type": "select",
+             "options": [{"label": "Full: the reading fills the panel", "value": "full"},
+                         {"label": "Subtle: the same, at half brightness", "value": "subtle"},
+                         {"label": "Off: plain black", "value": "off"}]},
+            {"key": "sparkline", "label": "Sparkline", "type": "toggle", "text": "The last five hours along the bottom"},
+            {"key": "trend", "label": "Trend arrow", "type": "toggle", "text": "Up or down over the last half hour"},
+            {"key": "count_up", "label": "Count up", "type": "toggle",
+             "text": "Numbers count up to the reading as the tile appears"}])
 
 KINDS = ("temp", "aqi", "humidity", "co2", "battery")
 LABELS = {"temp": "TEMP", "aqi": "AIR", "humidity": "HUMIDITY", "co2": "CO2", "battery": "BATTERY"}
@@ -171,15 +182,20 @@ def _reading(ctx, item, feel, dur):
         start = (value + 72) / 2 if feel["unit"] == "F" else (value + 22) / 2  # warms up or cools down
     else:
         start = 0.0
+    if not s.get("count_up", True):
+        start = value
     trend = None
-    if len(past) >= 3 and abs(value - past[-3]) >= TREND_STEP[kind]:
+    if s.get("trend", True) and len(past) >= 3 and abs(value - past[-3]) >= TREND_STEP[kind]:
         trend = value > past[-3]
-    spark = past + [value] if len(past) >= 2 else []
+    spark = past + [value] if len(past) >= 2 and s.get("sparkline", True) else []
+    moods = s.get("moods", "full")
     spark_cols = [(read(dict(item, value=v), s) or feel)["color"] for v in spark]
     word = feel["word"]
     dur = max(dur, scroll_seconds(word, "tom-thumb", 14) + 1)
     for i, t in ticks(dur, 10):
-        img = mood.frame(t)
+        img = gfx.blank() if moods == "off" else mood.frame(t)
+        if moods == "subtle":
+            img = Image.blend(gfx.blank(), img, 0.5)
         # the number counts up (or across from the last reading) and its color follows it
         e = 1 - (1 - min(1.0, t / 0.8)) ** 3
         shown = start + (value - start) * e

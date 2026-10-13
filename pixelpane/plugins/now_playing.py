@@ -16,14 +16,23 @@ log = logging.getLogger("pixelpane.now_playing")
 
 plugin = Plugin(
     "now_playing", "What's playing, with album art",
-    data={"now_playing": 360}, defaults={"art_hosts": []},
+    data={"now_playing": 360},
+    defaults={"art_hosts": [], "art_seconds": 6, "equalizer": True, "show_room": True,
+              "title_color": "#50dcff", "artist_color": "#dcdcdc"},
     about="Shows the album art full screen for a few seconds, then the title and artist "
           "beside dancing equalizer bars. It skips itself when nothing is playing. For "
           "art, the board downloads the image itself, so list the hosts it may fetch "
           "from (usually your Home Assistant).",
     fields=[{"key": "art_hosts", "label": "Album art may come from", "type": "list",
              "placeholder": "http://homeassistant.local:8123/",
-             "help": "One URL prefix per line. Anything else is never fetched."}])
+             "help": "One URL prefix per line. Anything else is never fetched."},
+            {"key": "art_seconds", "label": "Full-screen album art (seconds)", "type": "number",
+             "min": 0, "max": 60, "step": 1,
+             "help": "How long the cover fills the panel first, up to 40% of the scene. 0: never."},
+            {"key": "equalizer", "label": "Equalizer", "type": "toggle", "text": "Dancing bars"},
+            {"key": "show_room", "label": "Room", "type": "toggle", "text": "Show which player it's on"},
+            {"key": "title_color", "label": "Title color", "type": "color"},
+            {"key": "artist_color", "label": "Artist color", "type": "color"}])
 
 
 class ArtCache:
@@ -112,22 +121,28 @@ def now_playing(ctx, secs):
         return
     title = str(np_["title"]).upper()
     artist = str(np_.get("artist") or "").upper()
-    room = str(np_.get("player") or "").upper()
+    cfg = ctx.settings("now_playing")
+    room = str(np_.get("player") or "").upper() if cfg.get("show_room", True) else ""
+    eq = cfg.get("equalizer", True)
+    title_col = gfx.hex_color(cfg.get("title_color"), (80, 220, 255))
+    artist_col = gfx.hex_color(cfg.get("artist_color"), (220, 220, 220))
     secs = max(secs, scroll_seconds(title, "5x7", 16) + 1)
     levels = [3.0] * 5
     rng = ctx.rng
-    art_secs = min(6.0, secs * 0.4)  # with album art: show it full size first
+    full = cfg.get("art_seconds")
+    art_secs = min(6.0 if full is None else float(full), secs * 0.4)  # with album art: show it full size first
     for i, t in ticks(secs + art_secs, 10):
         art = album_art(ctx, np_.get("art"))
         for b in range(5):
             levels[b] = max(1, min(8, levels[b] + rng.uniform(-2, 2)))
         if art is not None and t < art_secs:
             img = art.copy()
-            d = ImageDraw.Draw(img)
-            d.rectangle((19, 23, 31, 31), fill=(0, 0, 0))  # mini equalizer over the art
-            for b in range(4):
-                h = int(levels[b] * 0.8)
-                d.rectangle((20 + b * 3, 30 - h, 21 + b * 3, 30), fill=gfx.hsv(0.45 + b * 0.05, 0.8, 1))
+            if eq:
+                d = ImageDraw.Draw(img)
+                d.rectangle((19, 23, 31, 31), fill=(0, 0, 0))  # mini equalizer over the art
+                for b in range(4):
+                    h = int(levels[b] * 0.8)
+                    d.rectangle((20 + b * 3, 30 - h, 21 + b * 3, 30), fill=gfx.hsv(0.45 + b * 0.05, 0.8, 1))
             yield img, 0.1
             continue
         t -= art_secs if art is not None else 0
@@ -137,11 +152,12 @@ def now_playing(ctx, secs):
             img.paste(art.resize((10, 10), Image.LANCZOS), (0, 0))
         else:
             animated_icon(img, "music", (1, 1), t)
-        for b in range(5):
-            x = 12 + b * 4
-            d.rectangle((x, 9 - int(levels[b]), x + 2, 8), fill=gfx.hsv(0.45 + b * 0.05, 0.8, 1))
-        scroll_text(img, 12, title, (80, 220, 255), "5x7", t, 16)
-        scroll_text(img, 21, artist, (220, 220, 220), "tom-thumb", t, 14)
+        if eq:
+            for b in range(5):
+                x = 12 + b * 4
+                d.rectangle((x, 9 - int(levels[b]), x + 2, 8), fill=gfx.hsv(0.45 + b * 0.05, 0.8, 1))
+        scroll_text(img, 12, title, title_col, "5x7", t, 16)
+        scroll_text(img, 21, artist, artist_col, "tom-thumb", t, 14)
         if room:
             gfx.text_center(img, 27, room[:8], (90, 90, 110), "tom-thumb")
         yield img, 0.1
