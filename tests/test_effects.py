@@ -58,12 +58,29 @@ class RegistryTest(unittest.TestCase):
 class TransitionTest(unittest.TestCase):
     def test_fade_blends_from_the_scene_before(self):
         prev = Image.new("RGB", (32, 32), RED)
-        out = run({"transition": "fade", "transition_seconds": 0.5}, prev=prev)
-        self.assertEqual(len(out), 10 + 2)        # 9 in-betweens, then the 3 frames
+        out = run({"transition": "fade", "transition_seconds": 0.5}, prev=prev,
+                  frames=solid(BLUE, n=10, hold=0.1))
+        self.assertEqual(len(out), 9 + 1 + 5)     # 9 in-betweens, the frame then due, the rest
         mid = out[4][0].getpixel((5, 5))
         self.assertTrue(0 < mid[0] < 255 and 0 < mid[2] < 255, mid)
         self.assertEqual(out[9][0].getpixel((5, 5)), BLUE)
-        self.assertAlmostEqual(sum(h for _, h in out), 0.45 + 0.05 + 0.2)
+        self.assertAlmostEqual(sum(h for _, h in out), 1.0)   # the scene keeps its own length
+
+    def test_the_new_scene_keeps_animating_during_the_transition(self):
+        # a "GIF" whose frames alternate green and blue every 0.1 s
+        frames = [(Image.new("RGB", (32, 32), (0, 255, 0) if k % 2 else BLUE), 0.1) for k in range(20)]
+        out = run({"transition": "wipe", "transition_seconds": 1.0}, prev=Image.new("RGB", (32, 32), RED),
+                  frames=frames)
+        right = [img.getpixel((2, 5)) for img, _ in out[:19]]   # the left edge is the new scene early on
+        self.assertIn((0, 255, 0), right)
+        self.assertIn(BLUE, right)                               # it changed while the wipe ran
+        self.assertAlmostEqual(sum(h for _, h in out), 2.0)
+
+    def test_a_scene_shorter_than_the_transition_finishes_on_its_last_frame(self):
+        out = run({"transition": "fade", "transition_seconds": 1.0}, prev=Image.new("RGB", (32, 32), RED),
+                  frames=solid(BLUE, n=2, hold=0.1))
+        self.assertEqual(out[-1][0].getpixel((5, 5)), BLUE)
+        self.assertEqual(len(out), 19 + 1)
 
     def test_every_style_moves_from_old_to_new(self):
         prev = Image.new("RGB", (32, 32), RED)

@@ -126,20 +126,32 @@ def pick_style(ctx, mix):
 
 
 def transition(frames, prev, style, secs, seed=0):
-    """Blend from prev into the scene's first frame, then play the scene as it is.
-    The blend takes its time out of the first frame's hold where it can."""
+    """Blend from prev into the scene while the scene keeps playing: each in-between
+    frame mixes prev with whichever of the scene's frames is due at that moment, so a
+    GIF animates through the transition and the scene keeps its own timing."""
     it = iter(frames)
     try:
-        first, hold = next(it)
+        cur, hold = next(it)
     except StopIteration:
         return
-    if prev.size != first.size:
-        prev = prev.resize(first.size, Image.NEAREST)
+    if prev.size != cur.size:
+        prev = prev.resize(cur.size, Image.NEAREST)
     n = max(1, round(secs / STEP))
-    order = np.random.default_rng(seed).permutation(first.width * first.height)
+    order = np.random.default_rng(seed).permutation(cur.width * cur.height)
+    t, due, ended = 0.0, hold, False   # scene time, when the next scene frame is due
     for k in range(1, n):
-        yield blend(prev, first, k / n, style, order), STEP
-    yield first, max(STEP, hold - (n - 1) * STEP)
+        yield blend(prev, cur, k / n, style, order), STEP
+        t += STEP
+        while not ended and t >= due - 1e-9:
+            try:
+                cur, hold = next(it)
+                due += hold
+            except StopIteration:
+                ended = True   # a scene shorter than the transition: finish on its last frame
+    if ended:
+        yield cur, STEP
+        return
+    yield cur, max(0.01, due - t)
     yield from it
 
 

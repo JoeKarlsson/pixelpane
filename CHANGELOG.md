@@ -143,6 +143,8 @@ and the project uses [semantic versioning](https://semver.org/).
   your uploads and saved GIFs, a Hidden filter, and three thumbnail sizes.
 
 ### Changed
+- During a transition the new scene keeps playing (a GIF animates through it)
+  instead of freezing on its first frame, and it keeps its full length.
 - A plugin's card on the control page now opens its section on the Settings page,
   which has its options, Play now buttons, the data it has received and its on/off
   switch. The control page's plugin dialog is gone; old `/#plugin=<name>` links
