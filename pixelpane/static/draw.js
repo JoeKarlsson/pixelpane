@@ -28,13 +28,18 @@ const unb64 = s => Uint8ClampedArray.from(atob(s), ch => ch.charCodeAt(0));
 // --- drawing ---------------------------------------------------------------------
 
 function render(i = cur, onion = ANIM && $('#onion').checked) {
-  const img = g.createImageData(W, H), f = frames[i];
-  const under = onion && i > 0 ? frames[i - 1] : null;
-  for (let i = 0, j = 0; i < f.length; i += 3, j += 4) {
-    const lit = f[i] || f[i + 1] || f[i + 2];
-    const src = lit ? f : under, k = lit ? 1 : .3;   // the frame before shows faintly through black
-    img.data[j] = src ? src[i] * k : 0; img.data[j + 1] = src ? src[i + 1] * k : 0;
-    img.data[j + 2] = src ? src[i + 2] * k : 0; img.data[j + 3] = 255;
+  const img = g.createImageData(W, H), f = frames[i], n = frames.length;
+  // onion skin: the frame before (the last one, before the first: it's a loop) shows
+  // through black as a teal ghost, so it never looks like part of your drawing
+  const under = onion && n > 1 ? frames[(i - 1 + n) % n] : null;
+  for (let p = 0, j = 0; p < f.length; p += 3, j += 4) {
+    if (f[p] || f[p + 1] || f[p + 2]) {
+      img.data[j] = f[p]; img.data[j + 1] = f[p + 1]; img.data[j + 2] = f[p + 2];
+    } else if (under && (under[p] || under[p + 1] || under[p + 2])) {
+      const l = Math.max(140, (under[p] + under[p + 1] + under[p + 2]) / 3);
+      img.data[j] = l * .15; img.data[j + 1] = l * .45; img.data[j + 2] = l * .5;
+    }
+    img.data[j + 3] = 255;
   }
   g.putImageData(img, 0, 0);
 }
@@ -268,7 +273,10 @@ const swap = d => cur + d >= 0 && cur + d < frames.length && structural(() => {
 });
 $('#fleft').onclick = () => swap(-1);
 $('#fright').onclick = () => swap(1);
-$('#onion').onchange = render;
+$('#onion').onchange = () => {
+  render();
+  if ($('#onion').checked && frames.length < 2) toast('Onion skin shows the frame before this one. Add a frame (+ New) to see it');
+};
 const showFps = () => { $('#fpsv').textContent = $('#fps').value + ' fps'; ms = Math.round(1000 / +$('#fps').value); };
 $('#fps').oninput = () => { showFps(); changed(true); };
 
@@ -311,6 +319,12 @@ async function pump() {
     inflight = false; setTimeout(pump, 40);
   }
 }
+// Put the animation on the board once, whether or not Live is on.
+$('#fshow').onclick = async () => {
+  stopPlaying();
+  await send('/api/sketch', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload())});
+  showing(true); toast($('#live').checked ? 'Playing on the board' : 'Playing on the board (edits stay here until you show it again)');
+};
 $('#live').onchange = () => { if ($('#live').checked) { dirty = true; pump(); } else status(''); };
 $('#stop').onclick = async () => {
   $('#live').checked = false;

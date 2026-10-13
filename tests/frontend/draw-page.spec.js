@@ -48,6 +48,23 @@ test('Animate starts from an example, and examples load as frames you can undo',
   expect(page.errors).toEqual([]);
 });
 
+test('onion skin shows the frame before (the last one on frame 1), and Show on board works with Live off', async ({ page, request }) => {
+  await page.goto('/animate');
+  await expect(page.getByTestId('frame-9')).toBeVisible();
+  const pixels = () => page.evaluate(() => Array.from($('#canvas').getContext('2d').getImageData(0, 0, W, H).data).join());
+  const withOnion = await pixels();
+  await page.locator('#onion').uncheck();
+  expect(await pixels()).not.toEqual(withOnion);   // frame 1 had frame 10's ghost
+  await page.locator('#onion').check();
+  expect(await pixels()).toEqual(withOnion);
+
+  await page.getByTestId('draw-live').uncheck();
+  await page.getByTestId('anim-show').click();
+  await expect.poll(async () => (await health(request)).pinned?.scene).toBe('sketch');
+  expect((await sketch(request)).frames).toHaveLength(10);
+  expect(page.errors).toEqual([]);
+});
+
 test('animate frames, play them on the board and save a GIF', async ({ page, request }) => {
   await page.goto('/animate');
   await expect(page.getByTestId('frames')).toBeVisible();
