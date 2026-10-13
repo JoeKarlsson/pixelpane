@@ -90,7 +90,12 @@ pixelpane_command:
           continue_on_error: true
 ```
 
-Add steps like these to the routines you already have:
+Add steps like these to the routines you already have. A notification can pick its
+`style` (`classic`, `banner`, `burst` or `ticker`); anything it leaves out (style,
+color, seconds, flash) comes from the alerts settings on the Settings page. For
+things the board can see itself (air quality, the weather, the next meeting, a time
+of day), a reminder or watch on the Settings page needs no automation at all.
+
 
 ```yaml
 # doorbell
@@ -99,7 +104,7 @@ Add steps like these to the routines you already have:
   data:
     variables:
       path: notify
-      body: {text: Doorbell, icon: bell, color: '#ffcc00', flash: true, seconds: 15}
+      body: {text: Doorbell, icon: bell, color: '#ffcc00', flash: true, seconds: 15, style: banner}
 
 # meeting starts / ends
 - action: script.turn_on

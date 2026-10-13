@@ -164,7 +164,7 @@ document.querySelectorAll('[data-pin]').forEach(b => b.onclick = () =>
 $('#pinmsg').onclick = () => api('/api/pin', 'POST', {scene:'message', params:{text: $('#msg').value || 'HELLO'}, minutes: +$('#mins').value || null}).then(refresh);
 $('#unpin').onclick = () => api('/api/pin', 'DELETE').then(refresh);
 $('#nsend').onclick = () => api('/api/notify', 'POST', {text: $('#ntext').value, icon: $('#nicon').value,
-  color: $('#ncolor').value, flash: $('#nflash').checked}).then(() => toast('Sent'));
+  color: $('#ncolor').value, flash: $('#nflash').checked, style: $('#nstyle').value}).then(() => toast('Sent'));
 $('#skip').onclick = () => api('/api/skip', 'POST').then(() => toast('Skipped'));
 $('#add').onclick = () => { rotation.push($('#addsel').value); drawRot(); };
 $('#saverot').onclick = () => api('/api/config', 'PUT', {rotation}).then(c => { C = c; drawRot(); toast('Playlist saved'); });

@@ -56,6 +56,9 @@
     <div class="row">
       <input id="ntext" placeholder="Laundry is done" aria-label="Notification text" style="flex:1;min-width:160px">
       <select id="nicon" aria-label="Icon"></select>
+      <select id="nstyle" aria-label="Style" data-testid="notify-style"><option value="default">default style</option>
+        <option value="classic">classic</option><option value="banner">banner</option>
+        <option value="burst">burst</option><option value="ticker">ticker</option></select>
       <input id="ncolor" type="color" value="#ffffff" aria-label="Color">
       <label><input id="nflash" type="checkbox"> flash</label>
       <button id="nsend">Send</button>

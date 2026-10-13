@@ -197,3 +197,50 @@ test('on screen: add two overlays, fields follow the choice, save, remove', asyn
   expect(o.map(x => x.show)).toEqual(['reading']);
   await request.put('/api/config', { data: { plugins: { effects: { overlays: [] } } } });
 });
+
+test('notifications: a reminder saves, the style saves and test buttons send', async ({ page, request }) => {
+  const reset = { plugins: { triggers: { reminders: [], watches: [] }, alerts: { style: 'classic' } } };
+  await request.put('/api/config', { data: reset });
+  await page.reload();
+  try {
+    const section = page.getByTestId('notifications');
+    await expect(section).toBeVisible();
+    await section.locator('#sf-alerts-style').selectOption('banner');
+    await page.getByTestId('save-plugin-alerts').click();
+    await expect(page.locator('#toast')).toContainText('alerts saved');
+    expect((await config(request)).plugins.alerts.style).toBe('banner');
+
+    await page.getByTestId('sf-triggers-reminders-add').click();
+    const card = section.locator('#sf-triggers-reminders .item').first();
+    await card.getByLabel('Text').fill('Bins out');
+    await card.getByLabel('Time').fill('19:30');
+    await card.getByLabel('sat').uncheck();
+    await card.getByLabel('sun').uncheck();
+    // a watch shows its label box only for readings, and its value only when it compares
+    await page.getByTestId('sf-triggers-watches-add').click();
+    const watch = section.locator('#sf-triggers-watches .item').first();
+    await expect(watch.getByLabel('Reading label')).toBeVisible();
+    await watch.getByLabel('When').selectOption('now_playing.title');
+    await expect(watch.getByLabel('Reading label')).toBeHidden();
+    await watch.getByLabel('Condition').selectOption('changes');
+    await expect(watch.getByLabel('Value')).toBeHidden();
+    await page.getByTestId('save-plugin-triggers').click();
+    await expect(page.locator('#toast')).toContainText('triggers saved');
+    const saved = (await config(request)).plugins.triggers;
+    expect(saved.reminders).toEqual([expect.objectContaining({ text: 'Bins out', time: '19:30',
+      days: ['mon', 'tue', 'wed', 'thu', 'fri'], icon: 'bell' })]);
+    expect(saved.watches[0]).toMatchObject({ when: 'now_playing.title', op: 'changes' });
+
+    // a bad time is refused with a message, and nothing changes
+    await card.getByLabel('Time').fill('7pm');
+    await page.getByTestId('save-plugin-triggers').click();
+    await expect(page.locator('#toast')).toContainText('HH:MM');
+    expect((await config(request)).plugins.triggers.reminders[0].time).toBe('19:30');
+    page.errors = [];   // that refused save logged its 400 on purpose
+
+    await page.getByTestId('test-notification').click();
+    await expect(page.locator('#toast')).toContainText('Sent');
+  } finally {
+    await request.put('/api/config', { data: reset });
+  }
+});

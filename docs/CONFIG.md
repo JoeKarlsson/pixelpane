@@ -102,7 +102,8 @@ and its data keys are refused). Secret settings come back from the API as
 | generator | `provider` (`openai` or `anthropic`), `base_url`, `model`, `api_key` (secret), `review` | |
 | effects | `transition` (`none`, `fade`, `wipe`, `slide`, `dissolve`), `transition_seconds` (0.2 to 1.5), `status_dots` (`true`/`false`), `overlays`: up to four of `{show, reading, label, text, corner, mode, size, style, color, color_by_value, on}`. `show` is `time`, `date`, `time_date`, `temp` (outside), `reading` (a tile reading: `reading` is its kind, `label` picks one tile), `meeting` or `text` (your own, up to 8 characters); `corner` is `auto` or `top_left`, `top_right`, `bottom_left`, `bottom_right`; `mode` `always` or `peek` (3 seconds every 20); `size` `small` or `large`; `style` `outline`, `box` or `plain`; `on` any of gif, generative, seasonal. Until `overlays` is saved, the older single `overlay`, `overlay_corner`, `overlay_mode`, `overlay_on` and `overlay_color` still work | `status` (120 min) |
 | sky | `stars` (`none`, `few`, `some`, `lots`) | |
-| alerts | | |
+| alerts | the look of a notification that doesn't say: `style` (`classic`, `banner`, `burst`, `ticker`), `seconds`, `color`, `flash`, `pulse` (a border the whole time) | |
+| triggers | `reminders`: `[{text, time ("HH:MM"), days (any of mon to sun), icon, color, style}]`; `watches`: `[{when, label, op, value, text, icon, color, cooldown, style}]`. `when` is `weather.temp`, `weather.condition`, `weather.wind`, `weather.precip`, `tile.temp`, `tile.aqi`, `tile.humidity`, `tile.co2`, `tile.battery`, `homelab.alerts`, `homelab.warnings`, `now_playing.title`, `calendar.minutes` or `status.dots`; `op` is `above`, `below`, `is`, `is_not` or `changes`; `cooldown` is minutes. `style` `default` uses the alerts setting. Up to 12 of each | |
 
 What each data key expects is in [HOME_ASSISTANT.md](HOME_ASSISTANT.md). Your own
 plugins add their own settings; see [PLUGINS.md](PLUGINS.md).

@@ -43,6 +43,16 @@ and the project uses [semantic versioning](https://semver.org/).
   the album art fills the panel, the equalizer, the room, text colors. Homelab: which
   pages show, and the CPU and NAS levels that turn amber and red. Generative: slow,
   normal or fast. Sky: how many stars. The defaults look exactly as before.
+- Notification styles: classic, banner (a bar slides down from the top), burst (the
+  icon pops in with ripples) and ticker (big text crawls across). The alerts plugin
+  sets the default style, seconds, color, flash and a pulsing border; a notification
+  can pick its own `style`. Send a test from the Settings page, or pick a style on
+  the control page.
+- Triggers: reminders (text at a time on the days you pick) and watches (a
+  notification when the air quality goes above 150, it starts to snow, a homelab
+  alert fires, the next meeting is close, the song changes...), with a cooldown and
+  `{value}` / `{label}` in the text. They live on the Settings page under
+  Notifications. A reminder goes off once a day, even across a restart.
 - Tiles that are readings: send `{kind, value}` for `temp`, `aqi`, `humidity`, `co2`
   or `battery` and the whole panel takes on a mood that shows how it feels (frost,
   heat shimmer, clear or smoggy air, condensation, murky bubbles). The number counts

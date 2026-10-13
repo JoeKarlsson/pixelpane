@@ -26,6 +26,19 @@ const SECTIONS = {onscreen: ['effects'], notifications: ['alerts', 'triggers']};
 // Buttons a plugin's form gets beside Save: name -> (plugin, readSettings) => [buttons]
 const EXTRAS = {
   effects: () => [btn('Show a GIF now', () => api('/api/play', 'POST', {scene: 'gif'}).then(() => toast('Playing a GIF: watch the preview')), '', 'effects-try')],
+  // Try the look you're editing before saving it.
+  alerts: (p, read) => [btn('Send a test', () => {
+    const s = read();
+    return api('/api/notify', 'POST', {text: 'Test notification', icon: 'bell', style: s.style, color: s.color,
+      flash: s.flash, seconds: s.seconds}).then(() => toast('Sent: watch the board'));
+  }, '', 'test-notification')],
+  // Show each reminder now, as it will look when it goes off.
+  triggers: (p, read) => [btn('Try the reminders', async () => {
+    const rs = (read().reminders || []).filter(r => r.text);
+    if (!rs.length) return toast('Add a reminder with some text first');
+    for (const r of rs) await api('/api/notify', 'POST', {text: r.text, icon: r.icon, color: r.color, style: r.style});
+    toast(rs.length === 1 ? 'Sent' : `Sent ${rs.length}`);
+  }, '', 'test-reminders')],
 };
 
 function drawPluginSections() {

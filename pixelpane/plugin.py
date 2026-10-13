@@ -44,7 +44,7 @@ PLUGINS = {}   # plugin name -> Plugin
 ERRORS = []    # plugins that failed to load: [{"source", "error"}], shown on the page
 
 BUILTIN = ["alerts", "clock", "weather", "now_playing", "calendar", "homelab", "tiles",
-           "gifs", "seasonal", "generative", "sky", "generator", "effects"]
+           "gifs", "seasonal", "generative", "sky", "generator", "effects", "triggers"]
 # Root-owned on the Pi, so the service (which can write /var/lib/pixelpane) can't
 # plant code that it would then load.
 USER_DIR = Path(os.environ.get("PIXELPANE_PLUGINS", "/etc/pixelpane/plugins"))

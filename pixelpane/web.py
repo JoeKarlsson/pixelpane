@@ -21,6 +21,7 @@ from .state import VAR, _read, convert_upload
 from .state import now as local_now
 
 PAGES = {name: Path(__file__).with_name(f"{name}.html") for name in ("index", "library", "settings")}
+NOTIFY_STYLES = ["classic", "banner", "burst", "ticker"]   # pixelpane.plugins.alerts.STYLES
 MAX_STREAMS = 6   # live previews at once; each one costs the Pi a little CPU
 # Reads that give away more than the board's status: when a token is set they need it too.
 PRIVATE_READS = {"/api/logs", "/api/backup"}
@@ -219,13 +220,22 @@ def create_app(state, gifs, health, restart=_exit_soon):
         b = body()
         if not str(b.get("text", "")).strip():
             abort(400, "text required")
-        try:
-            seconds = min(120, max(3, float(b.get("seconds", 10))))
-        except (TypeError, ValueError):
-            abort(400, "seconds must be a number")
-        state.notify({"text": str(b["text"])[:200], "icon": str(b.get("icon", "bell"))[:20],
-                      "color": str(b.get("color", "#ffffff"))[:20], "flash": bool(b.get("flash")),
-                      "sub": str(b.get("sub", ""))[:80], "seconds": seconds})
+        # anything left out (seconds, color, flash, style) comes from the alerts settings
+        n = {"text": str(b["text"])[:200], "icon": str(b.get("icon", "bell"))[:20], "sub": str(b.get("sub", ""))[:80]}
+        if b.get("seconds") is not None:
+            try:
+                n["seconds"] = min(120, max(3, float(b["seconds"])))
+            except (TypeError, ValueError):
+                abort(400, "seconds must be a number")
+        if b.get("color"):
+            n["color"] = str(b["color"])[:20]
+        if b.get("flash") is not None:
+            n["flash"] = bool(b["flash"])
+        if b.get("style") not in (None, "", "default"):
+            if b["style"] not in NOTIFY_STYLES:
+                abort(400, f"style must be one of {NOTIFY_STYLES}")
+            n["style"] = b["style"]
+        state.notify(n)
         return jsonify(ok=True, queued=len(state.notifications))
 
     @app.post("/api/data/<key>")

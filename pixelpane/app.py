@@ -173,7 +173,7 @@ class Player:
                 continue
             if st.notifications:
                 n = dict(st.notifications.popleft())
-                secs = float(n.pop("seconds", 10))
+                secs = float(n.pop("seconds", None) or plugin.settings(st.config, "alerts").get("seconds") or 10)
                 self.mark("notification", "notify", secs, text=n.get("text", ""))
                 self.play("notify", SCENES["notify"](self.ctx, secs, **n), interruptible=False)
                 continue

@@ -59,6 +59,10 @@ What it shows, panel's-eye view:
   other, GIFs can carry a small clock, date, temperature or meeting countdown in
   their calmest corner, and Home Assistant can light status dots along the top edge
   (laundry done, garage open).
+- **Notifications in four styles** (classic, a banner that slides down, a burst
+  of ripples, a big ticker), plus ones the board raises by itself: reminders at a
+  time on the days you pick, and watches that go off when the air turns bad, it
+  starts to snow or a meeting is five minutes away. Set them up on the Settings page.
 - **An HTTP API** for notifications, modes (ON AIR, messages) and data.
 - **Home Assistant ready**: a light entity, a feed automation and notification
   examples in [docs/HOME_ASSISTANT.md](docs/HOME_ASSISTANT.md).
@@ -122,12 +126,14 @@ pixelpane-library/
 | calendar | calendar, with a countdown | `next_event` |
 | homelab | a six-page animated dashboard | `homelab` |
 | tiles | readings that look how they feel (temperature, air quality, humidity, CO2, battery), or cards with animated icons and gauges | `tiles` |
-| alerts | notify, on_air, message | |
+| alerts | notify (classic, banner, burst or ticker), on_air, message | |
 | gifs | gif, gif:&lt;category&gt; | |
 | seasonal | a scene per season and holiday, plus your birthday | |
 | generative | fire, plasma, life, matrix_rain, starfield, lava, ripples, reaction, sand, aurora, fireflies, aquarium, snake, hourglass, smog; an `ambient` slot that picks one to suit the weather and air | |
 | sky | moon (phase, named full moons, supermoons, blue moons), zodiac | |
 | effects | no scenes: transitions, up to four overlays (time, date, temperature, a tile reading, your next meeting, your own text), status dots | `status` |
+| effects | no scenes: transitions, an overlay on GIFs, status dots | `status` |
+| triggers | no scenes: reminders and watches that raise notifications | |
 | generator | no scenes: settings for making GIFs from a prompt ([docs/GIFS.md](docs/GIFS.md#make-one-from-a-prompt)) | |
 
 Switch plugins on or off on the control page, or in the config. Writing your
@@ -184,7 +190,7 @@ Allowed host names. See [SECURITY.md](SECURITY.md).
 | `GET /api/health` | | power, scene, themes, temperature, throttle flags, version |
 | `GET /api/state` | | the above plus plugins, scenes, icons, data ages |
 | `POST /api/state` | `{"power": true, "brightness": 40}` | on/off, brightness 1-100 |
-| `POST /api/notify` | `{"text": "Doorbell", "icon": "bell", "color": "#ffcc00", "flash": true, "seconds": 10}` | a message that jumps the queue |
+| `POST /api/notify` | `{"text": "Doorbell", "icon": "bell", "color": "#ffcc00", "flash": true, "seconds": 10, "style": "banner"}` | a message that jumps the queue; anything left out comes from the alerts settings |
 | `POST /api/pin`, `DELETE /api/pin` | `{"scene": "on_air", "minutes": 30}` | hold a scene, or clear it |
 | `POST /api/skip` | | end the current scene (never a notification) |
 | `POST /api/play` | `{"scene": "halloween"}` or `{"scene": "gif:retro"}` | play next |

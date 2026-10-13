@@ -257,8 +257,8 @@ test('plugin tiles open a panel with details and editable settings', async ({ pa
   c = await config(request);
   expect([c.plugins.weather.latitude, c.plugins.weather.longitude]).toEqual([51.5, -0.12]);
 
-  await page.getByTestId('plugin-alerts').locator('strong').click();   // no settings: no Save
-  await expect(dlg.getByTestId('dlg-save')).toHaveCount(0);
+  await page.getByTestId('plugin-alerts').locator('strong').click();   // the notification look
+  await expect(dlg.locator('#pf-style')).toHaveValue('classic');
   await dlg.getByTestId('dlg-play-on_air').click();
   await expect.poll(async () => (await health(request)).scene).toBe('on_air');
   await dlg.getByTestId('dlg-close').click();
