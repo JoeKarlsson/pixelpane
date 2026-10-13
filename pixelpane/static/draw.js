@@ -188,6 +188,78 @@ function select(i) {
   stopPlaying(); cur = i; render(); drawStrip();
 }
 function structural(fn) { stopPlaying(); snapshot(); fn(); changed(true); }
+
+// --- examples (Animate) -----------------------------------------------------------
+
+// Starting points that show how a loop is built. Each draws its frames on a 32x32 grid
+// (scaled up on bigger boards): frame(i, n, dot) calls dot(x, y, [r, g, b]).
+const EXAMPLES = {
+  'Bouncing ball': {n: 10, ms: 70, frame(i, n, dot) {
+    const h = Math.abs(Math.sin(Math.PI * i / n));   // height above the floor, 0..1
+    const cy = 24 - 18 * h, squash = h < .15 ? 1.4 : 1;   // flattens where it hits the floor
+    for (let x = 0; x < 32; x++) dot(x, 29, [95, 87, 79]);
+    for (let x = -6; x <= 6; x++) if (Math.abs(x) < 3 + 3 * (1 - h)) dot(16 + x, 28, [40, 40, 48]);   // shadow
+    for (let yy = -6; yy <= 6; yy++) for (let x = -7; x <= 7; x++) {
+      const nx = x / (4.5 * squash), ny = yy / (4.5 / squash);
+      if (nx * nx + ny * ny <= 1) dot(16 + x, Math.round(cy) + yy, nx < -.2 && ny < -.2 ? [255, 160, 190] : [255, 0, 77]);
+    }
+  }},
+  'Heartbeat': {n: 6, ms: 110, frame(i, n, dot) {
+    const s = [1, 1.18, 1.32, 1.18, 1, 1][i] * 9;
+    for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) {
+      const u = (x - 15.5) / s, v = -(y - 15) / s;
+      if ((u * u + v * v - 1) ** 3 - u * u * v ** 3 <= 0) dot(x, y, (u + .45) ** 2 + (v - .5) ** 2 < .04 ? [255, 170, 200] : [255, 0, 77]);
+    }
+  }},
+  'Blinking face': {n: 8, ms: 160, frame(i, n, dot) {
+    for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) {
+      const d = Math.hypot(x - 15.5, y - 15.5);
+      if (d <= 13) dot(x, y, d > 12 ? [255, 163, 0] : [255, 236, 39]);
+    }
+    const shut = i === 6;   // one frame with closed eyes reads as a blink
+    for (const ex of [10, 20]) {
+      if (shut) for (let x = -2; x <= 1; x++) dot(ex + x, 13, [40, 30, 20]);
+      else for (let y = 10; y <= 14; y++) for (let x = -1; x <= 0; x++) dot(ex + x, y, [40, 30, 20]);
+    }
+    for (let x = 9; x <= 22; x++) dot(x, Math.round(19 + 4 * Math.sin(Math.PI * (x - 9) / 13)), [171, 82, 54]);
+  }},
+  'Loading spinner': {n: 8, ms: 90, frame(i, n, dot) {
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * 2 * Math.PI, glow = ((k - i + 8) % 8) / 7;   // the head is brightest, the tail fades
+      const cx = 16 + 10 * Math.cos(a), cy = 16 + 10 * Math.sin(a), c = [41, 173, 255].map(v => Math.round(v * (.15 + .85 * glow)));
+      for (let y = -2; y <= 2; y++) for (let x = -2; x <= 2; x++) if (x * x + y * y <= 4) dot(Math.round(cx + x), Math.round(cy + y), c);
+    }
+  }},
+  'Rainbow wave': {n: 12, ms: 80, frame(i, n, dot) {
+    const colors = [[255, 0, 77], [255, 163, 0], [255, 236, 39], [0, 228, 54], [41, 173, 255], [131, 118, 156]];
+    for (let x = 0; x < 32; x++) {
+      const top = Math.round(12 + 5 * Math.sin(2 * Math.PI * (x / 32 + i / n)));
+      colors.forEach((c, k) => { for (let y = 0; y < 2; y++) dot(x, top + 2 * k + y, c); });
+    }
+  }},
+};
+
+function exampleFrames(name) {
+  const ex = EXAMPLES[name], k = Math.max(1, Math.floor(Math.min(W, H) / 32));
+  const ox = Math.floor((W - 32 * k) / 2), oy = Math.floor((H - 32 * k) / 2);
+  return Array.from({length: ex.n}, (_, i) => {
+    const f = blank();
+    ex.frame(i, ex.n, (x, y, c) => {
+      if (x < 0 || y < 0 || x >= 32 || y >= 32) return;
+      for (let dy = 0; dy < k; dy++) for (let dx = 0; dx < k; dx++) {
+        const j = ((oy + y * k + dy) * W + ox + x * k + dx) * 3;
+        f[j] = c[0]; f[j + 1] = c[1]; f[j + 2] = c[2];
+      }
+    });
+    return f;
+  });
+}
+function useExample(name, quiet) {
+  const set = () => { frames = exampleFrames(name); cur = 0; ms = EXAMPLES[name].ms; $('#fps').value = Math.round(1000 / ms); showFps(); };
+  if (quiet) return set();   // first visit: show it, but don't put it on the board until you edit
+  structural(set);
+  toast(`${name}: ${frames.length} frames. Press Play, then change it (Ctrl+Z undoes)`);
+}
 $('#fadd').onclick = () => frames.length < 64 ? structural(() => frames.splice(++cur, 0, blank())) : toast('64 frames at most');
 $('#fdup').onclick = () => frames.length < 64 ? structural(() => frames.splice(cur + 1, 0, frames[cur++].slice())) : toast('64 frames at most');
 $('#fdel').onclick = () => frames.length > 1 && structural(() => { frames.splice(cur, 1); cur = Math.min(cur, frames.length - 1); });
@@ -275,7 +347,11 @@ async function init() {
     $('#brandword').textContent = 'animate';
     $('#drawtitle').textContent = 'pixelpane@board: animate';
     $('#framebox').hidden = false;
+    $('#examples').hidden = false;
+    $('#examples').append(...Object.keys(EXAMPLES).map(name =>
+      btn(name, () => useExample(name), '', 'example-' + name.toLowerCase().replace(/ /g, '-'))));
     $('#hint').textContent = 'Each frame is one step of the loop; the faint picture is the frame before. ' +
+      'The examples above are good to pull apart: step through their frames to see what changes. ' +
       'N adds a frame, D copies this one, , and . step through them, space plays. With Live on, the board plays your loop as you edit it.';
   } else {
     $('#hint').textContent = 'With Live on, the board shows your drawing while you draw it, and stays on it until you press Stop showing. ' +
@@ -294,7 +370,8 @@ async function init() {
   // keeps your own loop, else starts from the board's if that's an animation.
   const ok = ANIM ? loadSaved(local) || (board?.frames.length > 1 && loadSaved(board))
     : (board?.frames.length === 1 && loadSaved(board)) || loadSaved(local);
-  if (!ok) frames = [blank()];
+  if (!ok && ANIM) useExample('Bouncing ball', true);
+  else if (!ok) frames = [blank()];
   if (!ANIM) { frames = [frames[cur]]; cur = 0; }
   $('#fps').value = Math.max(1, Math.min(24, Math.round(1000 / ms))); showFps();
   setColor(color); setTool('pen');

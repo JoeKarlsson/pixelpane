@@ -36,14 +36,26 @@ test('what you draw shows on the board while you draw it', async ({ page, reques
   expect(page.errors).toEqual([]);
 });
 
+test('Animate starts from an example, and examples load as frames you can undo', async ({ page, request }) => {
+  await page.goto('/animate');
+  await expect(page.getByTestId('frame-9')).toBeVisible();   // the bouncing ball, 10 frames
+  expect((await health(request)).pinned).toBeNull();          // not on the board until you edit
+  await page.getByTestId('example-heartbeat').click();
+  await expect(page.locator('#strip > *')).toHaveCount(6);
+  await expect.poll(async () => (await sketch(request)).frames.length).toBe(6);
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('#strip > *')).toHaveCount(10);
+  expect(page.errors).toEqual([]);
+});
+
 test('animate frames, play them on the board and save a GIF', async ({ page, request }) => {
   await page.goto('/animate');
   await expect(page.getByTestId('frames')).toBeVisible();
   await stroke(page, [0.2, 0.2], [0.8, 0.2]);
   await page.keyboard.press('n');
   await stroke(page, [0.2, 0.8], [0.8, 0.8]);
-  await expect(page.getByTestId('frame-1')).toBeVisible();
-  await expect.poll(async () => (await sketch(request)).frames.length).toBe(2);
+  await expect(page.getByTestId('frame-10')).toBeVisible();   // after the example's ten
+  await expect.poll(async () => (await sketch(request)).frames.length).toBe(11);
 
   await page.getByTestId('draw-name').fill('two lines');
   await page.getByTestId('draw-save').click();
