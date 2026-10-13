@@ -1,0 +1,40 @@
+#!/bin/bash
+# Runs what CI runs before a push leaves this machine, so main stays green.
+# Turn it on once per clone: git config core.hooksPath .githooks
+# Skip it once: git push --no-verify
+set -uo pipefail
+cd "$(git rev-parse --show-toplevel)"
+
+# What's being pushed: docs-only pushes don't need the tests.
+zero=0000000000000000000000000000000000000000
+files=""
+while read -r _ local_sha _ remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue   # deleting a branch
+  if [ "$remote_sha" = "$zero" ]; then range="origin/main..$local_sha"; else range="$remote_sha..$local_sha"; fi
+  files+="$(git diff --name-only "$range" 2>/dev/null)"$'\n'
+done
+if ! grep -qvE '^$|\.md$|^docs/|^LICENSE$' <<<"$files"; then
+  echo "pre-push: docs only, skipping tests"
+  exit 0
+fi
+
+PY="${PYTHON:-}"
+[ -z "$PY" ] && [ -x .venv/bin/python ] && PY="$PWD/.venv/bin/python"
+PY="${PY:-python3}"
+
+echo "pre-push: lint, backend and browser tests (about 2 minutes; git push --no-verify skips)"
+"$PY" -m pyflakes pixelpane tests/*.py || exit 1
+bash -n install.sh tools/deploy.sh tools/test.sh tools/ingest-gif.sh || exit 1
+
+# The backend tests mostly wait, so both suites run at once.
+logs=$(mktemp -d)
+"$PY" -m unittest discover -s tests -t . >"$logs/backend.log" 2>&1 & backend=$!
+(cd tests/frontend && { [ -d node_modules ] || npm install --silent; } && PYTHON="$PY" npx playwright test) >"$logs/frontend.log" 2>&1 & frontend=$!
+wait $backend; b=$?
+wait $frontend; f=$?
+
+if [ $b -ne 0 ]; then echo "pre-push: backend tests failed:"; grep -vE '^(ok|\.)' "$logs/backend.log" | tail -40; fi
+if [ $f -ne 0 ]; then echo "pre-push: browser tests failed:"; grep -v WebServer "$logs/frontend.log" | tail -40; fi
+if [ $b -ne 0 ] || [ $f -ne 0 ]; then echo "pre-push: push refused (full logs in $logs)"; exit 1; fi
+echo "pre-push: $(tail -1 <(grep '^Ran ' "$logs/backend.log")), browser $(grep -oE '[0-9]+ passed' "$logs/frontend.log" | tail -1)"
+rm -rf "$logs"

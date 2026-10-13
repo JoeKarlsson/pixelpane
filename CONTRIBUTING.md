@@ -8,7 +8,12 @@ reports especially) are all welcome.
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 cd tests/frontend && npm install && cd ../..
+git config core.hooksPath .githooks   # run the tests before every push
 ```
+
+The pre-push hook runs the same checks as CI (lint, backend and browser tests,
+about 2 minutes) and refuses the push if any fail. Pushes that only touch docs
+skip it, and `git push --no-verify` skips it once.
 
 Run the controller without a panel:
 
