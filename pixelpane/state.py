@@ -153,7 +153,7 @@ class State:
 
     def schedule_status(self):
         sched = self.scheduled()
-        overridden = sched["off"] and time.time() < self.override_until
+        overridden = sched["off"] and now().timestamp() < self.override_until
         return {"off": sched["off"] and not overridden, "overridden": overridden,
                 "until": sched["until"].isoformat(timespec="minutes") if sched["until"] else None,
                 "brightness": sched["brightness"], "playlist": sched["rotation"] is not None,
@@ -163,7 +163,7 @@ class State:
         """On, unless switched off or in scheduled off time (not overridden)."""
         if not self.power:
             return False
-        return not (self.scheduled()["off"] and time.time() >= self.override_until)
+        return not (self.scheduled()["off"] and now().timestamp() >= self.override_until)
 
     def effective_brightness(self):
         dim = self.scheduled()["brightness"]
