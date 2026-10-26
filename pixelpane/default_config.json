@@ -4,7 +4,7 @@
                "clock", "gif", "seasonal", "calendar", "tiles", "gif", "homelab", "moon"],
   "dwell": {
     "gif": 20, "clock": 10, "weather": 12, "seasonal": 20, "generative": 25,
-    "now_playing": 15, "calendar": 10, "homelab": 24, "tiles": 12, "moon": 12, "zodiac": 12
+    "now_playing": 15, "calendar": 10, "homelab": 24, "tiles": 12, "moon": 12, "zodiac": 12, "aquatic": 25
   },
   "plugins": {},
   "panel": {"cols": 32, "rows": 32},

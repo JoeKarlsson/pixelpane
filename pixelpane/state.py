@@ -1,6 +1,7 @@
 """Config, runtime state, pushed data and the GIF library."""
 import json
 import os
+import re
 import threading
 import time
 from collections import OrderedDict, deque
@@ -89,12 +90,30 @@ class State:
         self.started = time.time()
         self.override_until = 0.0   # "turn on anyway" during scheduled off time, until then
         self.sketch = Sketch(VAR / "sketch.png")   # the Draw and Animate pages' drawing
+        self._saved = {}   # plugin name -> its dict kept across restarts (see saved())
 
     # -- persistence --
     def save_state(self):
         with self.lock:
             _atomic_write(self.state_path, {"power": self.power, "brightness": self.brightness,
                                             "pinned": self.pinned})
+
+    def saved(self, name):
+        """A plugin's dict that survives restarts (VAR/saved/<name>.json). Change it, then save(name)."""
+        with self.lock:
+            if name not in self._saved:
+                self._saved[name] = _read(self._saved_path(name))
+            return self._saved[name]
+
+    def save(self, name):
+        with self.lock:
+            _atomic_write(self._saved_path(name), self._saved.get(name, {}))
+
+    @staticmethod
+    def _saved_path(name):
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", str(name)):
+            raise ValueError(f"bad name for saved plugin state: {name!r}")
+        return VAR / "saved" / f"{name}.json"
 
     def update_config(self, changes, replace=()):
         """Merge changes into the saved config; keys in `replace` are swapped whole instead."""

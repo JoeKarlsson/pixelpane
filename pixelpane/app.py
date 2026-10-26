@@ -38,6 +38,13 @@ class Ctx:
         """A dict a plugin can keep things in (caches) for the life of the process."""
         return self._stores.setdefault(name, {})
 
+    def saved(self, name):
+        """A dict a plugin keeps across restarts (a fish tank's fish); save(name) writes it."""
+        return self.state.saved(name)
+
+    def save(self, name):
+        self.state.save(name)
+
     @property
     def config(self):
         return self.state.config

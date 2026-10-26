@@ -97,6 +97,7 @@ not silently swapped in. Load errors show on the control page and in Settings, S
 | `ctx.now()` | the current local time (use it instead of `datetime.now()` so tests can freeze time) |
 | `ctx.rng` | a `random.Random` |
 | `ctx.store(name)` | a dict for caches that should live as long as the process |
+| `ctx.saved(name)`, `ctx.save(name)` | a dict that survives restarts (kept in `/var/lib/pixelpane/saved/<name>.json`): change it, then `save` it. The aquatic plugin keeps its fish here |
 | `ctx.state.put_data(key, value)` | for tasks that fetch their own data |
 
 **The toolkit** (`pixelpane.kit` and `pixelpane.gfx`):

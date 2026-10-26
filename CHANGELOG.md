@@ -24,6 +24,11 @@ and the project uses [semantic versioning](https://semver.org/).
 - With a token set, logs and backups need it too.
 
 ### Added
+- An aquatic plugin: a fish tank that lives. Fish hatch from eggs, grow from fry to
+  adults, lay eggs and grow old over about a week, even while the tank isn't on screen.
+  When a CO2, temperature or air quality tile goes bad they turn pale, slow down and
+  stop laying, and the water clouds over. Feed them with `/api/play` and `feed: true`.
+- Plugins can keep state across restarts with `ctx.saved(name)` and `ctx.save(name)`.
 - Ten more transitions: iris, zoom, pixelate, blinds, blocks, diagonal, push up, melt
   (columns drip away), dip to black and TV switch-off. Random picks from all of them
   unless you untick some.

@@ -70,7 +70,7 @@ class DisableTest(unittest.TestCase):
     def test_api_hides_and_rejects_disabled_plugins(self):
         s = self.client.get("/api/state").get_json()
         self.assertNotIn("homelab", s["scenes"].get("widget", []))
-        self.assertNotIn("generative", s["scenes"])
+        self.assertNotIn("fire", s["scenes"].get("generative", []))
         rows = {p["name"]: p for p in s["plugins"]}
         self.assertFalse(rows["homelab"]["enabled"])
         self.assertTrue(rows["clock"]["enabled"])

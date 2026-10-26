@@ -22,6 +22,7 @@ class FakeCtx:
         self.rng = random.Random(seed)
         self.label = ""
         self._stores = {}
+        self._saved = {}
         self.config = {"plugins": {owner: dict(settings or {})}}
 
     def settings(self, name):
@@ -29,6 +30,12 @@ class FakeCtx:
 
     def store(self, name):
         return self._stores.setdefault(name, {})
+
+    def saved(self, name):
+        return self._saved.setdefault(name, {})
+
+    def save(self, name):
+        pass   # kept in memory for the life of the test
 
     def now(self):
         return self._now or datetime.now()
