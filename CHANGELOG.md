@@ -24,6 +24,10 @@ and the project uses [semantic versioning](https://semver.org/).
 - With a token set, logs and backups need it too.
 
 ### Added
+- Holidays build up: in the last days before one (a week by default, the seasonal
+  plugin's countdown setting; 0 turns it off) the seasonal slot always shows it, its
+  scene comes round every ten minutes or so on top of the playlist, and its GIFs get the
+  themed GIF slots to themselves instead of sharing them with the season.
 - The playlist follows what's happening: while music plays, now playing comes round
   every few minutes; when a meeting is close, the calendar does; when the weather turns,
   the window does. Each slots in between playlist entries, never twice in a row, and

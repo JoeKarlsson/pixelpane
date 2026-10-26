@@ -214,6 +214,18 @@ class State:
         birthday = (b["month"], b["day"]) if b.get("month") and b.get("day") else None
         return seasons.active_themes(today or date.today(), birthday)
 
+    def close_holidays(self, today=None):
+        """Today's holidays whose big day is within the seasonal plugin's countdown_days
+        (0 = off), so they can take over in the run-up."""
+        today = today or date.today()
+        days = plugin.settings(self.config, "seasonal").get("countdown_days") or 0
+        out = []
+        for t in self.themes(today):
+            left = seasons.days_until(t, today)
+            if left is not None and 0 <= left <= days:
+                out.append(t)
+        return out
+
 
 class GifLibrary:
     """Repo GIFs (gifs/, gifs/themes/<t>/) plus web uploads (uploads/all|<t>/)."""
@@ -374,6 +386,8 @@ class GifLibrary:
             return self._draw(f"cat:{category}", files) if files else None
         themed = [(t, self.pool(t)) for t in self.state.themes()]
         themed = [(t, f) for t, f in themed if f]
+        close = [(t, f) for t, f in themed if t in self.state.close_holidays()]
+        themed = close or themed   # in a holiday's last days, its GIFs get the themed share to themselves
         if themed and self.rng.random() < plugin.settings(cfg, "gifs")["theme_share"]:
             t, files = self.rng.choice(themed)
             return self._draw(t, files)

@@ -90,3 +90,31 @@ def active_themes(d, birthday=None):
     if birthday and md == tuple(birthday):
         themes.append("birthday")
     return themes
+
+
+def days_until(theme, d):
+    """Days from d to the holiday's big day (0 on the day, negative after it, as on
+    Dec 26 for Christmas), or None for a season, the birthday or a theme not on today.
+    A custom holiday's big day is the last day of the range that's on."""
+    if theme not in active_themes(d) or theme in SEASONS:
+        return None
+    y = d.year
+    day = {"new_year": date(y + 1 if d.month == 12 else y, 1, 1), "valentines": date(y, 2, 14),
+           "st_patricks": date(y, 3, 17), "july4": date(y, 7, 4), "halloween": date(y, 10, 31),
+           "thanksgiving": thanksgiving(y), "christmas": date(y, 12, 25)}.get(theme)
+    if day is None:
+        for c in _settings["custom"]:
+            if c["key"] != theme:
+                continue
+            for a, b in c["dates"]:
+                if not in_range(d, a, b):
+                    continue
+                if len(str(b).split("-")) == 3:
+                    day = date.fromisoformat(b)
+                else:
+                    m, dd = (int(x) for x in str(b).split("-"))
+                    day = date(y, m, dd)
+                    if day < d:
+                        day = date(y + 1, m, dd)   # a range that wraps the new year
+                break
+    return None if day is None else (day - d).days

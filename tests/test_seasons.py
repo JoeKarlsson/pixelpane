@@ -1,5 +1,6 @@
 import unittest
 from datetime import date
+from unittest import mock
 
 from pixelpane import seasons
 from pixelpane.seasons import active_themes, thanksgiving
@@ -56,3 +57,60 @@ class CustomThemesTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CountdownTest(unittest.TestCase):
+    """In a holiday's last days it takes over the seasonal slot, gets extra turns and the GIFs."""
+
+    def setUp(self):
+        seasons.configure(None)
+        self.addCleanup(seasons.configure, None)
+
+    def test_days_until_the_big_day(self):
+        d = seasons.days_until
+        self.assertEqual(d("halloween", date(2026, 10, 26)), 5)
+        self.assertEqual(d("halloween", date(2026, 10, 31)), 0)
+        self.assertEqual(d("christmas", date(2026, 12, 26)), -1)
+        self.assertEqual(d("new_year", date(2026, 12, 31)), 1)
+        self.assertEqual(d("thanksgiving", date(2026, 11, 24)), 2)
+        self.assertIsNone(d("autumn", date(2026, 10, 26)))          # seasons have no big day
+        self.assertIsNone(d("christmas", date(2026, 10, 26)))       # not on yet
+        seasons.configure({"custom": [{"key": "diwali", "name": "Diwali", "dates": [["10-28", "11-01"]]},
+                                      {"key": "hogmanay", "name": "Hogmanay", "dates": [["12-30", "01-02"]]}]})
+        self.assertEqual(d("diwali", date(2026, 10, 29)), 3)
+        self.assertEqual(d("hogmanay", date(2026, 12, 30)), 3)     # the range wraps the new year
+
+    def test_the_run_up_takes_over(self):
+        from tests import support
+        support.load_plugins()
+        from pixelpane import plugin
+        from pixelpane.plugins import seasonal
+        support.reset()
+        ctx = support.ctx_with()
+        ctx.state.update_config({"plugins": {"seasonal": {"holiday_share": 0.0, "countdown_days": 7}}})
+        early, late = date(2026, 10, 5), date(2026, 10, 26)
+        with mock.patch("pixelpane.state.date") as fake:
+            fake.today.return_value = early
+            self.assertEqual(ctx.state.close_holidays(), [])
+            self.assertEqual({seasonal.pick(ctx) for _ in range(20)}, {"autumn"})   # share 0: the season
+            self.assertIsNone(seasonal.holiday_soon(ctx))
+            fake.today.return_value = late
+            self.assertEqual(ctx.state.close_holidays(), ["halloween"])
+            self.assertEqual({seasonal.pick(ctx) for _ in range(20)}, {"halloween"})
+            self.assertEqual(seasonal.holiday_soon(ctx), ("halloween", 10))
+            self.assertEqual(plugin.boosted(ctx.config, ctx, {}, 2e9), "halloween")
+            ctx.state.update_config({"plugins": {"seasonal": {"countdown_days": 0}}})
+            self.assertEqual(ctx.state.close_holidays(), [])                       # 0 turns it off
+
+    def test_close_holiday_gets_the_themed_gifs(self):
+        from tests import support
+        support.load_plugins()
+        support.reset()
+        support.make_gif(support.HOME / "gifs/themes/halloween/pumpkin-two.gif")
+        support.make_gif(support.HOME / "gifs/themes/autumn/leaf.gif")
+        ctx = support.ctx_with()
+        ctx.state.update_config({"plugins": {"gifs": {"theme_share": 1.0}, "seasonal": {"countdown_days": 7}}})
+        with mock.patch("pixelpane.state.date") as fake:
+            fake.today.return_value = date(2026, 10, 26)
+            picks = {ctx.gifs.next().parent.name for _ in range(30)}
+        self.assertEqual(picks, {"halloween"})   # not autumn, in Halloween's last week

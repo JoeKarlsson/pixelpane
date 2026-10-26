@@ -23,6 +23,9 @@ os.environ["PIXELPANE_PLUGINS"] = str(ROOT / "user-plugins")
 def load_plugins():
     from pixelpane import plugin
     plugin.load(user_dir=None)
+    # Tests run on any date: a real holiday's countdown would take over the playlist
+    # (Halloween's last week did). Countdown tests switch it on themselves.
+    plugin.PLUGINS["seasonal"].defaults["countdown_days"] = 0
 
 
 def make_gif(path, size=(32, 32), frames=3, colors=((255, 0, 0), (0, 255, 0), (0, 0, 255))):

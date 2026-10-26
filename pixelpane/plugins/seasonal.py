@@ -10,16 +10,22 @@ from ..plugin import SCENES, Plugin
 
 plugin = Plugin(
     "seasonal", "Seasons, holidays and a birthday",
-    defaults={"holiday_share": 0.7, "birthday": None},
+    defaults={"holiday_share": 0.7, "birthday": None, "countdown_days": 7},
     about="A scene for each season (falling leaves, snow, flowers, beach days) and "
           "holiday (Halloween, Thanksgiving, Christmas, New Year, Valentine's, "
-          "St. Patrick's, the Fourth of July), picked by today's date. On your birthday a "
-          "cake with candles and your name plays every fourth slot.",
+          "St. Patrick's, the Fourth of July), picked by today's date. In the last days "
+          "before a holiday it takes over: the seasonal slot always shows it, it comes round "
+          "every ten minutes or so on top of the playlist, and its GIFs get the themed GIF "
+          "slots to themselves. On your birthday a cake with candles and your name plays "
+          "every fourth slot.",
     fields=[{"key": "holiday_share", "label": "Holidays vs seasons", "type": "range",
              "min": 0, "max": 1, "step": 0.05,
              "help": "When a holiday is active, how often it wins over the season's scene."},
             {"key": "birthday", "label": "Birthday", "type": "monthday",
-             "help": "Leave empty for no birthday scene."}])
+             "help": "Leave empty for no birthday scene."},
+            {"key": "countdown_days", "label": "Holiday countdown (days)", "type": "number",
+             "min": 0, "max": 31, "step": 1,
+             "help": "How many days before a holiday it takes over. 0: never."}])
 
 
 @plugin.picker("seasonal")
@@ -30,9 +36,19 @@ def pick(ctx):
     holidays = [t for t in themes[1:] if t in SCENES]   # your own holidays play GIFs, not a scene
     if "birthday" in holidays:
         return "birthday"
+    close = [t for t in ctx.state.close_holidays() if t in holidays]
+    if close:   # the run-up to a holiday: it always wins
+        return ctx.rng.choice(close)
     if holidays and ctx.rng.random() < ctx.settings("seasonal")["holiday_share"]:
         return ctx.rng.choice(holidays)
     return themes[0]
+
+
+@plugin.boost
+def holiday_soon(ctx):
+    """In a holiday's last days its scene comes round every ten minutes, on top of the playlist."""
+    close = [t for t in ctx.state.close_holidays() if t in SCENES and t != "birthday"]
+    return (close[-1], 10) if close else None
 
 
 LEAVES = [(230, 90, 10), (200, 40, 10), (240, 170, 20), (150, 70, 20)]
