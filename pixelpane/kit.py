@@ -9,7 +9,7 @@ import math
 import numpy as np
 from PIL import Image, ImageDraw
 
-from . import gfx
+from . import astro, gfx
 from .gfx import H, W
 
 def ticks(secs, fps):
@@ -201,6 +201,18 @@ def mix(a, b, f):
     """A color f of the way from a to b."""
     f = max(0.0, min(1.0, f))
     return tuple(int(x + (y - x) * f) for x, y in zip(a, b))
+
+
+def sun_times(ctx, now):
+    """Today's sunrise and sunset (local) at the weather plugin's latitude and longitude,
+    or 7:00 and 19:30 without them (or where the sun doesn't rise or set today)."""
+    w = ctx.settings("weather")
+    try:
+        times = astro.sun_times(now.date(), float(w["latitude"]), float(w["longitude"]))
+    except (KeyError, TypeError, ValueError):
+        times = None
+    return times or (now.replace(hour=7, minute=0, second=0, microsecond=0),
+                     now.replace(hour=19, minute=30, second=0, microsecond=0))
 
 
 def temp_color(f, cold=(90, 160, 255), comfy=(60, 220, 170), hot=(255, 60, 40), low=68, high=76):

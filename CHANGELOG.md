@@ -24,6 +24,12 @@ and the project uses [semantic versioning](https://semver.org/).
 - With a token set, logs and backups need it too.
 
 ### Added
+- A window scene: a little landscape whose sky is the real one outside. The sun and the
+  moon (in its real phase) cross it from sunrise to sunset, clouds cover as much sky as
+  they do, rain, snow and hail fall as hard as they are and slant in the wind, storms
+  flash and fog rolls in. The tree bends in the wind and follows the season, smoke rises
+  from the chimney when it's cold, snow lies on the ground, the horizon shimmers in the
+  heat and goes hazy when the air quality is bad, and the house lights up at dusk.
 - An aquatic plugin: a fish tank that lives. Fish hatch from eggs, grow from fry to
   adults, lay eggs and grow old over about a week, even while the tank isn't on screen.
   When a CO2, temperature or air quality tile goes bad they turn pale, slow down and

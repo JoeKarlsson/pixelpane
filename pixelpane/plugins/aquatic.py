@@ -8,9 +8,9 @@ import threading
 import numpy as np
 from PIL import Image, ImageDraw
 
-from .. import astro, gfx
+from .. import gfx
 from ..gfx import H, W
-from ..kit import mix, ticks
+from ..kit import mix, sun_times, ticks
 from ..plugin import Plugin
 from .tiles import read
 
@@ -135,14 +135,7 @@ def air_stress(ctx):
 
 def daylight(ctx, now):
     """1 by day, 0 at night, easing over the hour around sunrise and sunset."""
-    w = ctx.settings("weather")
-    times = None
-    try:
-        times = astro.sun_times(now.date(), float(w["latitude"]), float(w["longitude"]))
-    except (KeyError, TypeError, ValueError):
-        pass
-    rise, sets = times or (now.replace(hour=7, minute=0, second=0, microsecond=0),
-                           now.replace(hour=19, minute=30, second=0, microsecond=0))
+    rise, sets = sun_times(ctx, now)
     hours = min((now - rise).total_seconds(), (sets - now).total_seconds()) / 3600
     return max(0.0, min(1.0, hours + 0.5))
 
