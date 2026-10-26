@@ -132,7 +132,7 @@ window.addEventListener('beforeunload', e => {
 });
 
 const SOURCE = {playlist: n => `Playlist ${n.index + 1}/${n.length}`, requested: () => 'Requested',
-  notification: () => 'Notification', pinned: () => 'Pinned', birthday: () => 'Birthday bonus',
+  notification: () => 'Notification', pinned: () => 'Pinned', birthday: () => 'Birthday bonus', boosted: () => 'Happening now',
   off: () => 'Off', schedule: () => 'Quiet hours', starting: () => 'Starting'};
 
 function prettyScene(label, entry) {

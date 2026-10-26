@@ -1,7 +1,9 @@
-"""Now playing: album art, equalizer bars, title and artist."""
+"""Now playing: album art, equalizer bars, title and artist, in the album's colors."""
+import colorsys
 import io
 import logging
 import threading
+import time
 import urllib.request
 from collections import OrderedDict
 from urllib.parse import urlsplit
@@ -18,11 +20,13 @@ plugin = Plugin(
     "now_playing", "What's playing, with album art",
     data={"now_playing": 360},
     defaults={"art_hosts": [], "art_seconds": 6, "equalizer": True, "show_room": True,
-              "title_color": "#50dcff", "artist_color": "#dcdcdc"},
+              "title_color": "#50dcff", "artist_color": "#dcdcdc", "art_colors": True, "boost": True},
     about="Shows the album art full screen for a few seconds, then the title and artist "
-          "beside dancing equalizer bars. It skips itself when nothing is playing. For "
-          "art, the board downloads the image itself, so list the hosts it may fetch "
-          "from (usually your Home Assistant).",
+          "beside dancing equalizer bars, in colors taken from the album art. While music "
+          "plays it comes round every few minutes, not just at its turn in the playlist. "
+          "Paused, it shows dimmed with a pause sign for a quarter of an hour, then skips "
+          "itself like it does when nothing is playing. For art, the board downloads the "
+          "image itself, so list the hosts it may fetch from (usually your Home Assistant).",
     fields=[{"key": "art_hosts", "label": "Album art may come from", "type": "list",
              "placeholder": "http://homeassistant.local:8123/",
              "help": "One URL prefix per line. Anything else is never fetched."},
@@ -32,7 +36,13 @@ plugin = Plugin(
             {"key": "equalizer", "label": "Equalizer", "type": "toggle", "text": "Dancing bars"},
             {"key": "show_room", "label": "Room", "type": "toggle", "text": "Show which player it's on"},
             {"key": "title_color", "label": "Title color", "type": "color"},
-            {"key": "artist_color", "label": "Artist color", "type": "color"}])
+            {"key": "artist_color", "label": "Artist color", "type": "color"},
+            {"key": "art_colors", "label": "Album colors", "type": "toggle",
+             "text": "Color the bars, title and glow from the album art (else the colors above)"},
+            {"key": "boost", "label": "While music plays", "type": "toggle",
+             "text": "Show it every few minutes, not just at its turn"}])
+
+PAUSED_FOR = 15 * 60   # a paused song stays on the board this long, dimmed
 
 
 class ArtCache:
@@ -114,11 +124,54 @@ def _origin(url):
         return None
 
 
+def _playing(ctx):
+    """The now_playing data if something is playing (noting when), else None."""
+    np_ = ctx.data("now_playing")
+    if np_ and np_.get("state", "playing") == "playing" and np_.get("title"):
+        ctx.store("now_playing")["last_playing"] = time.time()
+        return np_
+    return None
+
+
+@plugin.boost
+def playing_now(ctx):
+    """Music on: the scene comes round every few minutes."""
+    if _playing(ctx) and ctx.settings("now_playing").get("boost", True):
+        return ("now_playing", 4)
+    return None
+
+
+def art_palette(art):
+    """Up to three vivid colors from the album art, brightest-and-most-colorful first,
+    lifted so they read on LEDs. None for a grey cover."""
+    small = art.quantize(8)
+    pal = small.getpalette()[:24]
+    picks = []
+    for count, idx in sorted(small.getcolors(), reverse=True):
+        r, g, b = pal[idx * 3:idx * 3 + 3]
+        h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+        if s > 0.25 and v > 0.2 and count > 8:
+            picks.append((s * v * (count ** 0.3), h, s))
+    picks.sort(reverse=True)
+    out = []
+    for _, h, sat in picks:
+        if all(min(abs(h - o), 1 - abs(h - o)) > 0.08 for o in out):
+            out.append(h)
+        if len(out) == 3:
+            break
+    return [gfx.hsv(h, max(0.55, sat), 1.0) for h in out] or None
+
+
 @plugin.scene("now_playing")
 def now_playing(ctx, secs):
-    np_ = ctx.data("now_playing")
-    if not np_ or np_.get("state", "playing") != "playing" or not np_.get("title"):
-        return
+    np_ = _playing(ctx)
+    paused = False
+    if not np_:
+        np_ = ctx.data("now_playing")
+        recent = time.time() - ctx.store("now_playing").get("last_playing", 0) < PAUSED_FOR
+        if not (np_ and np_.get("state") == "paused" and np_.get("title") and recent):
+            return
+        paused = True
     title = str(np_["title"]).upper()
     artist = str(np_.get("artist") or "").upper()
     cfg = ctx.settings("now_playing")
@@ -127,40 +180,61 @@ def now_playing(ctx, secs):
     title_col = gfx.hex_color(cfg.get("title_color"), (80, 220, 255))
     artist_col = gfx.hex_color(cfg.get("artist_color"), (220, 220, 220))
     secs = max(secs, scroll_seconds(title, "5x7", 16) + 1)
-    levels = [3.0] * 5
+    levels = [1.0 if paused else 3.0] * 5
     rng = ctx.rng
     full = cfg.get("art_seconds")
     art_secs = min(6.0 if full is None else float(full), secs * 0.4)  # with album art: show it full size first
+    colors = None
+    dim = 0.4 if paused else 1.0
     for i, t in ticks(secs + art_secs, 10):
         art = album_art(ctx, np_.get("art"))
-        for b in range(5):
-            levels[b] = max(1, min(8, levels[b] + rng.uniform(-2, 2)))
+        if colors is None and art is not None and cfg.get("art_colors", True):
+            colors = art_palette(art) or False
+        bars = [colors[b % len(colors)] for b in range(5)] if colors else \
+            [gfx.hsv(0.45 + b * 0.05, 0.8, 1) for b in range(5)]
+        if not paused:
+            for b in range(5):
+                levels[b] = max(1, min(8, levels[b] + rng.uniform(-2, 2)))
         if art is not None and t < art_secs:
-            img = art.copy()
-            if eq:
-                d = ImageDraw.Draw(img)
+            img = art.copy() if not paused else Image.eval(art, lambda v: int(v * dim))
+            d = ImageDraw.Draw(img)
+            if paused:
+                _pause_sign(d, 13, 12)
+            elif eq:
                 d.rectangle((19, 23, 31, 31), fill=(0, 0, 0))  # mini equalizer over the art
                 for b in range(4):
                     h = int(levels[b] * 0.8)
-                    d.rectangle((20 + b * 3, 30 - h, 21 + b * 3, 30), fill=gfx.hsv(0.45 + b * 0.05, 0.8, 1))
+                    d.rectangle((20 + b * 3, 30 - h, 21 + b * 3, 30), fill=bars[b])
             yield img, 0.1
             continue
         t -= art_secs if art is not None else 0
         img = gfx.blank()
+        if colors and not paused:   # a soft glow of the album's color that breathes with the bars
+            beat = sum(levels) / 40
+            glow = gfx.scale(colors[0], 0.06 + 0.06 * beat)
+            ImageDraw.Draw(img).rectangle((0, 10, 31, 31), fill=glow)
         d = ImageDraw.Draw(img)
         if art is not None:
-            img.paste(art.resize((10, 10), Image.LANCZOS), (0, 0))
+            img.paste(Image.eval(art.resize((10, 10), Image.LANCZOS), lambda v: int(v * dim)), (0, 0))
         else:
             animated_icon(img, "music", (1, 1), t)
-        if eq:
+        if paused:
+            _pause_sign(d, 18, 2)
+        elif eq:
             for b in range(5):
                 x = 12 + b * 4
-                d.rectangle((x, 9 - int(levels[b]), x + 2, 8), fill=gfx.hsv(0.45 + b * 0.05, 0.8, 1))
-        scroll_text(img, 12, title, title_col, "5x7", t, 16)
-        scroll_text(img, 21, artist, artist_col, "tom-thumb", t, 14)
+                d.rectangle((x, 9 - int(levels[b]), x + 2, 8), fill=bars[b])
+        tc = colors[0] if colors else title_col
+        scroll_text(img, 12, title, gfx.scale(tc, dim), "5x7", t, 16)
+        scroll_text(img, 21, artist, gfx.scale(artist_col, dim), "tom-thumb", t, 14)
         if room:
             gfx.text_center(img, 27, room[:8], (90, 90, 110), "tom-thumb")
         yield img, 0.1
+
+
+def _pause_sign(d, x, y):
+    d.rectangle((x, y, x + 1, y + 6), fill=(230, 230, 230))
+    d.rectangle((x + 4, y, x + 5, y + 6), fill=(230, 230, 230))
 
 
 def album_art(ctx, url):

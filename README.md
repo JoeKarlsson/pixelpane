@@ -134,8 +134,8 @@ pixelpane-library/
 |--------|--------|------------|
 | clock | clock, on a classic, frame, arcade or sky face | |
 | weather | weather (+ Open-Meteo fallback) | `weather` |
-| now_playing | now_playing, with album art | `now_playing` |
-| calendar | calendar, with a countdown | `next_event` |
+| now_playing | now_playing, with album art, in the album's colors; comes round more often while music plays, and shows dimmed while paused | `now_playing` |
+| calendar | calendar, with a countdown; comes round more often when a meeting is close | `next_event` |
 | homelab | a six-page animated dashboard | `homelab` |
 | tiles | readings that look how they feel (temperature, air quality, humidity, CO2, battery), or cards with animated icons and gauges | `tiles` |
 | alerts | notify (classic, banner, burst or ticker), on_air, message | |
@@ -147,6 +147,7 @@ pixelpane-library/
 | sky | moon (phase, named full moons, supermoons, blue moons), zodiac | |
 | effects | no scenes: transitions, up to four overlays (time, date, temperature, a tile reading, your next meeting, your own text), status dots | `status` |
 | triggers | no scenes: reminders and watches that raise notifications | |
+| room_light | no scenes: the panel dims in a dark room and comes up in a bright one | `room_light` (`{"lux": 120}`) |
 | draw | sketch: whatever the Draw and Animate pages send, held on screen until you stop it | |
 | generator | no scenes: settings for making GIFs from a prompt ([docs/GIFS.md](docs/GIFS.md#make-one-from-a-prompt)) | |
 

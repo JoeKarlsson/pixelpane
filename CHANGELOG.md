@@ -24,6 +24,19 @@ and the project uses [semantic versioning](https://semver.org/).
 - With a token set, logs and backups need it too.
 
 ### Added
+- The playlist follows what's happening: while music plays, now playing comes round
+  every few minutes; when a meeting is close, the calendar does; when the weather turns,
+  the window does. Each slots in between playlist entries, never twice in a row, and
+  each plugin can switch it off. Plugins can do the same with `@plugin.boost`.
+- Now playing takes its colors from the album art (bars, title and a glow that breathes
+  with the music), and a paused song stays up, dimmed with a pause sign, for 15 minutes.
+- The window gets visitors: birds at dawn, fireflies on summer nights, bats and a
+  jack-o'-lantern at Halloween, lights on the house at Christmas, a snowman after snow,
+  fireworks on the Fourth of July and New Year's Eve. When rain is likely, dark clouds
+  build on the horizon before it comes.
+- Room light: push a light sensor's lux to `/api/data/room_light` and the panel dims in a
+  dark room and comes up in a bright one, easing between. Plugins can adjust brightness
+  with `@plugin.level`.
 - A window scene: a little landscape whose sky is the real one outside. The sun and the
   moon (in its real phase) cross it from sunrise to sunset, clouds cover as much sky as
   they do, rain, snow and hail fall as hard as they are and slant in the wind, storms

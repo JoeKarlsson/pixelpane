@@ -74,6 +74,8 @@ class Player:
         self.played = 0
         self.slot = None
         self.shown_at = 0.0   # when the last frame shown stops being current
+        self.last_played = {}   # scene -> when it was last on screen, for boosts
+        self.boosted = False    # the last slot was a boost: the playlist gets the next one
         self.stop = threading.Event()   # run()'s, so a scene ends as soon as we're told to stop
 
     # -- choosing what to play --
@@ -136,9 +138,10 @@ class Player:
                 if not shown:
                     st.label = self.ctx.label or label
                     shown = True
+                    self.last_played[scene] = time.time()
                 if not st.effective_power():   # scheduled off time began
                     return shown
-                self.display.brightness = st.effective_brightness()
+                self.display.brightness = plugin.level(st.config, self.ctx, st.effective_brightness())
                 self.display.show(img)
                 st.last_frame = img
                 deadline = time.monotonic() + hold
@@ -202,6 +205,15 @@ class Player:
                 self.mark("requested", req["scene"], item[2] if item else None)
                 if not (item and self.play(item[0], item[1])):
                     self.placeholder(req["scene"])  # asked for on purpose: say why it is blank
+                continue
+            boost = None if self.boosted else plugin.boosted(st.config, self.ctx, self.last_played, time.time())
+            self.boosted = bool(boost)
+            if boost:   # something that matters right now goes before the next entry
+                self.last_played[boost] = time.time()   # even if it turns out to have nothing to show
+                item = self.resolve(boost)
+                self.mark("boosted", boost, item[2] if item else None)
+                if item:
+                    self.play(item[0], item[1])
                 continue
             entry = self.next_item()
             item = self.resolve(entry)

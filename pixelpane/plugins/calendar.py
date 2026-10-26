@@ -8,17 +8,42 @@ from ..plugin import Plugin
 
 plugin = Plugin(
     "calendar", "Next event and countdown", data={"next_event": 720},
-    defaults={"lookahead_hours": 12, "bell_minutes": 10, "title_color": "#b4dcff"},
+    defaults={"lookahead_hours": 12, "bell_minutes": 10, "title_color": "#b4dcff", "boost_minutes": 15},
     about="Shows your next timed event with a bar that empties as it gets closer, and a "
           "ringing bell in the last ten minutes. It only appears when an event starts "
           "within the look-ahead below; otherwise it quietly skips. Feed it from Home "
           "Assistant: POST /api/data/next_event with {title, start}. The time follows the "
-          "clock plugin's 12 or 24 hours.",
+          "clock plugin's 12 or 24 hours. When a meeting is close it comes round every few "
+          "minutes, not just at its turn in the playlist.",
     fields=[{"key": "lookahead_hours", "label": "Show events starting within (hours)", "type": "number",
              "min": 1, "max": 48, "step": 1},
             {"key": "bell_minutes", "label": "Ring the bell in the last (minutes)", "type": "number",
              "min": 0, "max": 120, "step": 1, "help": "The countdown turns red then too. 0: never."},
-            {"key": "title_color", "label": "Title color", "type": "color"}])
+            {"key": "title_color", "label": "Title color", "type": "color"},
+            {"key": "boost_minutes", "label": "Show it every few minutes in the last (minutes)",
+             "type": "number", "min": 0, "max": 120, "step": 1, "help": "0: only at its turn"}])
+
+
+def minutes_to_next(ctx):
+    """Minutes until the next event starts (negative once it has), or None."""
+    ev = ctx.data("next_event")
+    if not ev or not ev.get("title") or not ev.get("start"):
+        return None
+    try:
+        start = datetime.fromisoformat(str(ev["start"]))
+    except ValueError:
+        return None
+    if start.tzinfo:
+        start = start.astimezone().replace(tzinfo=None)
+    return (start - ctx.now()).total_seconds() / 60
+
+
+@plugin.boost
+def meeting_soon(ctx):
+    """A meeting coming up: the countdown comes round every five minutes."""
+    mins = minutes_to_next(ctx)
+    soon = float(ctx.settings("calendar").get("boost_minutes") or 0)
+    return ("calendar", 5) if mins is not None and 0 <= mins <= soon else None
 
 
 @plugin.scene("calendar")

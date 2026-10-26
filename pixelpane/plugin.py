@@ -40,11 +40,13 @@ API_VERSION = 1
 SCENES = {}    # scene name -> generator function (with .kind, .plugin, .pinnable, .params, .empty_text)
 PICKERS = {}   # playlist entry -> fn(ctx) returning the scene to play (seasonal, generative)
 WRAPPERS = []  # fn(ctx, frames, info) that rework every scene's frames (overlays, transitions)
+BOOSTS = []    # fn(ctx) -> (scene, minutes) or None: a scene that matters right now (see Plugin.boost)
+LEVELS = []    # fn(ctx, brightness) -> brightness: the panel's brightness, adjusted (room light)
 PLUGINS = {}   # plugin name -> Plugin
 ERRORS = []    # plugins that failed to load: [{"source", "error"}], shown on the page
 
 BUILTIN = ["alerts", "clock", "weather", "now_playing", "calendar", "homelab", "tiles",
-           "gifs", "seasonal", "generative", "aquatic", "sky", "window", "generator", "effects", "triggers", "draw"]
+           "gifs", "seasonal", "generative", "aquatic", "sky", "window", "generator", "effects", "triggers", "draw", "room_light"]
 # Root-owned on the Pi, so the service (which can write /var/lib/pixelpane) can't
 # plant code that it would then load.
 USER_DIR = Path(os.environ.get("PIXELPANE_PLUGINS", "/etc/pixelpane/plugins"))
@@ -127,6 +129,21 @@ class Plugin:
         WRAPPERS.append(fn)
         return fn
 
+    def boost(self, fn):
+        """Register fn(ctx) -> (scene, minutes) or None, asked between playlist entries:
+        a scene that matters right now (music playing, a meeting soon). The player slots
+        it in before the next entry, at most once every `minutes`, never twice in a row."""
+        fn.plugin = self.name
+        BOOSTS.append(fn)
+        return fn
+
+    def level(self, fn):
+        """Register fn(ctx, brightness) -> brightness, run on the panel's brightness (1-100)
+        while the plugin is on: dim it in a dark room, say."""
+        fn.plugin = self.name
+        LEVELS.append(fn)
+        return fn
+
     def task(self, fn):
         """Register a background task, run as fn(ctx, stop_event) in its own thread while
         the plugin is on. stop_event is set when the plugin is turned off or the board
@@ -149,12 +166,14 @@ def _forget(before):
     for name in set(PICKERS) - before["pickers"]:
         PICKERS.pop(name)
     del WRAPPERS[before["wrappers"]:]
+    del BOOSTS[before["boosts"]:]
+    del LEVELS[before["levels"]:]
 
 
 def _guarded(source, load_one):
     """Run one plugin load; a broken plugin is logged and recorded, never fatal."""
     before = {"plugins": set(PLUGINS), "scenes": set(SCENES), "pickers": set(PICKERS),
-              "wrappers": len(WRAPPERS)}
+              "wrappers": len(WRAPPERS), "boosts": len(BOOSTS), "levels": len(LEVELS)}
     try:
         load_one()
     except Exception as e:  # one broken plugin must not stop the board
@@ -210,6 +229,32 @@ def wrap(config, ctx, frames, info):
         if enabled(config, fn.plugin):
             frames = fn(ctx, frames, info)
     return frames
+
+
+def boosted(config, ctx, last_played, now):
+    """The first scene an enabled plugin's boost asks for that hasn't played within its minutes."""
+    for fn in BOOSTS:
+        if not enabled(config, fn.plugin):
+            continue
+        try:
+            want = fn(ctx)
+        except Exception:  # a broken boost must not stop the playlist
+            log.exception("boost from %s failed", fn.plugin)
+            continue
+        if want and now - last_played.get(want[0], 0) >= want[1] * 60 and scene_enabled(config, want[0]):
+            return want[0]
+    return None
+
+
+def level(config, ctx, brightness):
+    """The panel brightness after every enabled plugin's adjustment."""
+    for fn in LEVELS:
+        if enabled(config, fn.plugin):
+            try:
+                brightness = fn(ctx, brightness)
+            except Exception:
+                log.exception("brightness from %s failed", fn.plugin)
+    return max(1, min(100, round(brightness)))
 
 
 def pinnable(scene):
