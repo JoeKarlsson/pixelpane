@@ -27,7 +27,13 @@ and the project uses [semantic versioning](https://semver.org/).
 - An aquatic plugin: a fish tank that lives. Fish hatch from eggs, grow from fry to
   adults, lay eggs and grow old over about a week, even while the tank isn't on screen.
   When a CO2, temperature or air quality tile goes bad they turn pale, slow down and
-  stop laying, and the water clouds over. Feed them with `/api/play` and `feed: true`.
+  stop laying, and the water clouds over.
+- The fish tank comes alive: babies sometimes hatch striped, two-tone, gold or albino and
+  pass it on (the board announces them); the tank earns a starfish, a castle, a treasure
+  chest and a snail; it dims and the fish rest at night (sunrise and sunset from the
+  weather plugin's location); it feeds itself at feeding times you set; and Home
+  Assistant can bring the fish to the glass to greet you (`greet`) or tap it to scatter
+  them (`tap`). The generative aquarium now shows your tank instead of strangers.
 - Plugins can keep state across restarts with `ctx.saved(name)` and `ctx.save(name)`.
 - Ten more transitions: iris, zoom, pixelate, blinds, blocks, diagonal, push up, melt
   (columns drip away), dip to black and TV switch-off. Random picks from all of them

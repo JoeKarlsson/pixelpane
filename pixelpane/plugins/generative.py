@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw
 from .. import gfx
 from ..gfx import H, W
 from ..kit import palette, ticks
-from ..plugin import SCENES, Plugin
+from ..plugin import SCENES, Plugin, enabled
 
 SCENE_NAMES = ["fire", "plasma", "life", "matrix_rain", "starfield", "lava", "ripples", "reaction",
           "sand", "aurora", "fireflies", "aquarium", "snake", "hourglass", "smog"]
@@ -21,7 +21,8 @@ plugin = Plugin(
                          "aurora", "fireflies", "aquarium"], "speed": "normal"},
     about="Art that's computed, not stored: a fire, a plasma of drifting color, "
           "Conway's Game of Life, matrix rain, a starfield, a lava lamp, rain ripples, "
-          "reaction-diffusion, falling sand, an aurora, fireflies, an aquarium, a snake "
+          "reaction-diffusion, falling sand, an aurora, fireflies, an aquarium (your living "
+          "tank, while the aquatic plugin is on), a snake "
           "that plays itself, an hourglass that drains toward your next meeting and a murky "
           "smog. The playlist's \"generative\" slot picks one of the scenes you tick below. "
           "The \"ambient\" slot picks one that fits outside: ripples when it rains, fire "
@@ -390,58 +391,14 @@ def fireflies(ctx, secs):
 
 # --- aquarium ---------------------------------------------------------------------
 
-FISH = ["..XX.",
-        "XXXXX",
-        "..XX."]
-
-
 @plugin.scene("aquarium", "generative")
 def aquarium(ctx, secs):
-    """Fish swimming past swaying weed, with bubbles rising."""
-    r = ctx.rng
-    colors = [(255, 140, 0), (255, 220, 40), (240, 70, 120), (80, 200, 255), (160, 255, 120)]
-    fish = [[r.uniform(0, W), r.uniform(4, 22), r.choice((-1, 1)) * r.uniform(0.15, 0.4),
-             r.choice(colors), r.uniform(0, 6.28)] for _ in range(4)]
-    weeds = [(x, r.randrange(7, 14), r.uniform(0, 6.28)) for x in (3, 9, 22, 28)]
-    bubbles = []
-    bg = np.zeros((H, W, 3), dtype=np.uint8)
-    bg[..., 2] = (90 - YY * 2).clip(20).astype(np.uint8)
-    bg[..., 1] = (40 - YY).clip(8).astype(np.uint8)
-    for i, t in ticks(secs, 15):
-        img = Image.fromarray(bg, "RGB")
-        d = ImageDraw.Draw(img)
-        for x in range(W):                        # light rays wobbling from the surface
-            if int(x + t * 3) % 11 == 0:
-                d.line((x, 0, x - 3, 10), fill=(20, 60, 120))
-        d.rectangle((0, H - 2, W - 1, H - 1), fill=(150, 120, 70))   # sand
-        for x, h, ph in weeds:
-            for k in range(h):
-                sway = round(math.sin(t * 1.4 + ph + k * 0.4) * k / 6)
-                img.putpixel(((x + sway) % W, H - 3 - k), (30, 150 - k * 5, 60))
-        if r.random() < 0.12:
-            bubbles.append([r.choice((5, 12, 25)) + r.uniform(-1, 1), H - 3.0])
-        for b in bubbles[:]:
-            b[1] -= 0.35
-            if b[1] < 0:
-                bubbles.remove(b)
-                continue
-            img.putpixel((int(b[0] + math.sin(b[1]) * 0.6) % W, int(b[1])), (170, 220, 255))
-        for f in fish:
-            f[0] += f[2]
-            if f[0] > W + 4 or f[0] < -6:
-                f[2] = -f[2]
-                f[1] = r.uniform(4, 22)
-            y = int(f[1] + math.sin(t * 2 + f[4]))
-            right = f[2] > 0
-            for row, line in enumerate(FISH):
-                for col, ch in enumerate(line if right else line[::-1]):
-                    px, py = int(f[0]) + col, y + row
-                    if ch == "X" and 0 <= px < W and 0 <= py < H:
-                        img.putpixel((px, py), f[3])
-            ex = int(f[0]) + (3 if right else 1)   # the eye, toward the head
-            if 0 <= ex < W and 0 <= y < H:
-                img.putpixel((ex, y), (0, 0, 0))
-        yield img, 1 / 15
+    """Your living tank while the aquatic plugin is on; otherwise a few fish swimming past."""
+    from . import aquatic
+    if enabled(ctx.config, "aquatic"):
+        yield from aquatic.aquatic(ctx, secs)
+    else:
+        yield from aquatic.render(ctx, secs, aquatic.visitors(ctx))
 
 
 # --- snake ------------------------------------------------------------------------

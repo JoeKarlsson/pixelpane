@@ -1,4 +1,4 @@
-"""Moon phases, full moon names and zodiac signs. Pure functions, no network.
+"""Moon phases, full moon names, zodiac signs and sunrise. Pure functions, no network.
 
 New and full moon times follow Jean Meeus, Astronomical Algorithms (2nd ed.),
 chapter 49, with the main periodic terms: good to a few minutes. The moon's
@@ -23,6 +23,27 @@ def julian(dt: datetime) -> float:
 
 def from_julian(jd: float) -> datetime:
     return datetime(2000, 1, 1, 12, tzinfo=timezone.utc) + timedelta(days=jd - J2000)
+
+
+def sun_times(d: date, lat: float, lon: float) -> tuple[datetime, datetime] | None:
+    """Sunrise and sunset on d at lat/lon (east positive), as local naive datetimes,
+    or None when the sun doesn't rise or set that day. The sunrise equation: good to
+    a minute or two away from the poles."""
+    n = round(julian(datetime(d.year, d.month, d.day, 12)) - J2000 - lon / 360) - lon / 360
+    m = (357.5291 + 0.98560028 * n) % 360
+    c = 1.9148 * math.sin(_rad(m)) + 0.02 * math.sin(_rad(2 * m)) + 0.0003 * math.sin(_rad(3 * m))
+    ecl = (m + c + 282.9372) % 360
+    noon = J2000 + n + 0.0053 * math.sin(_rad(m)) - 0.0069 * math.sin(_rad(2 * ecl))
+    dec = math.asin(math.sin(_rad(ecl)) * math.sin(math.radians(23.4397)))
+    phi = math.radians(lat)
+    cos_w = (math.sin(math.radians(-0.833)) - math.sin(phi) * math.sin(dec)) / (math.cos(phi) * math.cos(dec))
+    if not -1 <= cos_w <= 1:
+        return None
+    w = math.degrees(math.acos(cos_w)) / 360
+
+    def local(jd):
+        return from_julian(jd).astimezone().replace(tzinfo=None)
+    return local(noon - w), local(noon + w)
 
 
 def _rad(deg: float) -> float:

@@ -142,7 +142,7 @@ pixelpane-library/
 | gifs | gif, gif:&lt;category&gt; | |
 | seasonal | a scene per season and holiday, plus your birthday | |
 | generative | fire, plasma, life, matrix_rain, starfield, lava, ripples, reaction, sand, aurora, fireflies, aquarium, snake, hourglass, smog; an `ambient` slot that picks one to suit the weather and air | |
-| aquatic | aquatic: a living fish tank whose fish hatch, grow, lay eggs and grow old over days, and go pale when the air is stale (reads CO2, temperature and air quality tiles) | |
+| aquatic | aquatic: a living fish tank. Fish hatch, grow, lay eggs and grow old over days; rare colors run in families; the tank earns a starfish, castle, chest and snail; it follows the sun, feeds itself, goes murky when the air is stale (CO2, temperature and air quality tiles), and the fish greet you or scatter at a tap (`/api/play` params `greet`, `tap`). The generative `aquarium` shows this tank too | |
 | sky | moon (phase, named full moons, supermoons, blue moons), zodiac | |
 | effects | no scenes: transitions, up to four overlays (time, date, temperature, a tile reading, your next meeting, your own text), status dots | `status` |
 | triggers | no scenes: reminders and watches that raise notifications | |

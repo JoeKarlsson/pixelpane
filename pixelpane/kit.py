@@ -69,7 +69,7 @@ def animated_icon(img, name, xy, t, level=None):
     sprite = gfx.sprite(name)
     if name == "bell":                      # rings: swings side to side
         x += (-1, 0, 1, 0)[int(t * 8) % 4]
-    elif name in ("package", "mail", "home", "car", "cat"):
+    elif name in ("package", "mail", "home", "car", "cat", "fish"):
         y += -abs(round(math.sin(t * 4) * 2))  # hops
     elif name == "alert" and int(t * 4) % 2:
         return                              # blinks

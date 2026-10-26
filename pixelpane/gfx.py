@@ -196,6 +196,16 @@ SPRITES = {
         "..GG....",
         "........",
     ],
+    "fish": [
+        "........",
+        "....OO..",
+        "O..OOOO.",
+        "OOOOOKOO",
+        "OOOOOOOO",
+        "O..OOOO.",
+        "....OO..",
+        "........",
+    ],
     "heart": [
         ".RR..RR.",
         "RRRRRRRR",

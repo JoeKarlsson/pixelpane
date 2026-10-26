@@ -21,6 +21,17 @@ class AstroTest(unittest.TestCase):
     def near(self, got, want, minutes=10):
         self.assertLess(abs(got - want), timedelta(minutes=minutes), (got, want))
 
+    def test_sunrise_and_sunset(self):
+        def local(*a):   # sun_times answers in the machine's local time
+            return utc(*a).astimezone().replace(tzinfo=None)
+        rise, sets = astro.sun_times(date(2026, 3, 20), 51.48, 0.0)            # Greenwich, equinox
+        self.near(rise, local(2026, 3, 20, 6, 3), 3)
+        self.near(sets, local(2026, 3, 20, 18, 12), 3)
+        rise, sets = astro.sun_times(date(2026, 6, 21), 44.95, -93.09)         # St Paul, solstice
+        self.near(rise, local(2026, 6, 21, 10, 26), 3)                          # 5:26 CDT
+        self.near(sets, local(2026, 6, 22, 2, 3), 3)                            # 21:03 CDT
+        self.assertIsNone(astro.sun_times(date(2026, 12, 21), 78.2, 15.6))    # polar night
+
     def test_phase_times_match_published_ones(self):
         self.near(astro.next_phase(utc(2024, 4, 7), False), utc(2024, 4, 8, 18, 21))   # eclipse new moon
         self.near(astro.next_phase(utc(2024, 9, 17), True), utc(2024, 9, 18, 2, 34))
