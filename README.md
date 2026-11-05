@@ -207,7 +207,7 @@ Allowed host names. See [SECURITY.md](SECURITY.md).
 | `GET /api/state` | | the above plus plugins, scenes, icons, data ages |
 | `POST /api/state` | `{"power": true, "brightness": 40}` | on/off, brightness 1-100 |
 | `POST /api/notify` | `{"text": "Doorbell", "icon": "bell", "color": "#ffcc00", "flash": true, "seconds": 10, "style": "banner"}` | a message that jumps the queue; anything left out comes from the alerts settings |
-| `POST /api/pin`, `DELETE /api/pin` | `{"scene": "on_air", "minutes": 30}` | hold a scene, or clear it |
+| `POST /api/pin`, `DELETE /api/pin` | `{"scene": "on_air", "minutes": 30}` | hold a scene, or clear it; ON AIR and messages without `minutes` clear after 3 hours |
 | `POST /api/skip` | | end the current scene (never a notification) |
 | `POST /api/play` | `{"scene": "halloween"}` or `{"scene": "gif:retro"}` | play next |
 | `POST /api/data/<key>` | see each plugin | feed a scene |

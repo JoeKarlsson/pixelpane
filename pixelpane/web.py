@@ -31,6 +31,9 @@ CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';
        "frame-ancestors 'none'")
 
 
+MODE_PIN_MINUTES = 180  # how long ON AIR or a message stays pinned when the caller gives no minutes
+
+
 def valid_scene(name, config=None):
     """A known scene (or seasonal/generative/gif:<category>), from an enabled plugin if config is given."""
     if not schema.valid_scene(name):
@@ -201,6 +204,8 @@ def create_app(state, gifs, health, restart=_exit_soon):
         if minutes is not None and (isinstance(minutes, bool) or not isinstance(minutes, (int, float))
                                     or not 0 <= minutes <= 7 * 24 * 60):
             abort(400, "minutes must be a number up to a week, or null")
+        if minutes is None and b["scene"] in plugin.SCENES and plugin.SCENES[b["scene"]].kind == "mode":
+            minutes = MODE_PIN_MINUTES  # a missed unpin (camera off, meeting over) can't strand ON AIR
         state.pin(b["scene"], params_of(b), minutes)
         return jsonify(ok=True)
 

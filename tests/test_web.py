@@ -1,5 +1,6 @@
 import io
 import random
+import time
 import unittest
 
 from PIL import Image
@@ -9,6 +10,7 @@ from tests import support
 support.load_plugins()
 from pixelpane.app import health  # noqa: E402
 from pixelpane.state import GifLibrary, State  # noqa: E402
+from pixelpane import web  # noqa: E402
 from pixelpane.web import create_app  # noqa: E402
 
 
@@ -100,6 +102,12 @@ class WebTest(unittest.TestCase):
         self.assertEqual(self.post("/api/pin", {"scene": "gif"}).status_code, 400)
         self.assertEqual(self.client.delete("/api/pin").status_code, 200)
         self.assertIsNone(self.state.active_pin())
+
+    def test_mode_pin_expires_without_minutes(self):
+        self.post("/api/pin", {"scene": "on_air"})
+        self.assertAlmostEqual(self.state.active_pin()["until"] - time.time(), web.MODE_PIN_MINUTES * 60, delta=5)
+        self.post("/api/pin", {"scene": "clock"})
+        self.assertIsNone(self.state.active_pin()["until"])
 
     def test_data(self):
         for key, value in support.SAMPLE_DATA.items():
