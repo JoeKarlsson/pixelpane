@@ -32,9 +32,9 @@ What it shows, panel's-eye view:
 
 ## Recording (November 2026)
 
-[![The PixelPane control page: pressing Play now on moon, fire, clock and Halloween, with the live preview of the panel switching to each scene](.github/readme/2026-11-recording.webp)](.github/readme/2026-11-recording.mp4)
+![The PixelPane control page: pressing Play now on moon, fire, clock and Halloween, with the live preview of the panel switching to each scene](.github/readme/2026-11-recording.gif)
 
-What PixelPane looked like in November 2026, recorded for [its page on joekarlsson.com](https://www.joekarlsson.com/work/pixelpane/). Click the picture to play the video.
+What PixelPane looked like in November 2026, recorded for [its page on joekarlsson.com](https://www.joekarlsson.com/work/pixelpane/). The full-quality video is [2026-11-recording.mp4](.github/readme/2026-11-recording.mp4).
 
 ## What it does
 
