@@ -30,6 +30,12 @@ What it shows, panel's-eye view:
 |---|---|
 | ![The control page: live preview, now playing, Play now buttons](docs/images/control-page.png) | ![The control page on a phone](docs/images/control-page-phone.png) |
 
+## Recording (November 2026)
+
+[![The PixelPane control page: pressing Play now on moon, fire, clock and Halloween, with the live preview of the panel switching to each scene](.github/readme/2026-11-recording.webp)](.github/readme/2026-11-recording.mp4)
+
+What PixelPane looked like in November 2026, recorded for [its page on joekarlsson.com](https://www.joekarlsson.com/work/pixelpane/). Click the picture to play the video.
+
 ## What it does
 
 - **Scenes, not just a slideshow.** A playlist mixes GIFs with live scenes. A
