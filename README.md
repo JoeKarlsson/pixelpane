@@ -1,97 +1,25 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-dark.png">
-    <img src="docs/images/logo-light.png" width="420" alt="PixelPane">
-  </picture>
-</p>
+# PixelPane
 
-<p align="center"><b>A 32x32 LED art pane for your wall, driven by a Raspberry Pi.</b></p>
+[![CI](https://github.com/JoeKarlsson/pixelpane/actions/workflows/ci.yml/badge.svg)](https://github.com/JoeKarlsson/pixelpane/actions/workflows/ci.yml)
+[![MIT license](https://img.shields.io/badge/license-MIT-a98bff)](LICENSE)
+![Raspberry Pi 3, 4, 5](https://img.shields.io/badge/Raspberry%20Pi-3%20%7C%204%20%7C%205-58e0c8)
 
-<p align="center">
-  <a href="https://github.com/JoeKarlsson/pixelpane/actions/workflows/ci.yml"><img src="https://github.com/JoeKarlsson/pixelpane/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-a98bff" alt="MIT license"></a>
-  <img src="https://img.shields.io/badge/Raspberry%20Pi-3%20%7C%204%20%7C%205-58e0c8" alt="Raspberry Pi 3, 4, 5">
-</p>
-
-It mixes pixel-art
-GIFs with live, animated scenes: a clock, weather, what's playing (with album
-art), your next meeting, a homelab dashboard, seasonal and holiday animations,
-and generative art. Home Assistant can push notifications to it (doorbell,
-laundry, weather warnings) and control it like a light. Everything is a plugin,
-in the spirit of MagicMirror.
-
-<p align="center"><img src="docs/images/board-demo.gif" width="400" alt="The board on a desk: a shadow box with a two-way mirror front, showing the clock, a spinning planet and a Halloween scene"></p>
-
-What it shows, panel's-eye view:
-
-![Nine of the built-in scenes, animated](docs/images/scenes.gif)
-
-| Control page | On a phone |
-|---|---|
-| ![The control page: live preview, now playing, Play now buttons](docs/images/control-page.png) | ![The control page on a phone](docs/images/control-page-phone.png) |
-
-## Recording (November 2026)
+PixelPane is a 32x32 LED art pane for your wall, driven by a Raspberry Pi. It
+mixes pixel-art GIFs with live scenes (a clock, weather, what's playing, your
+next meeting, a homelab dashboard, seasonal animations, generative art), and
+Home Assistant can push notifications to it and control it like a light. This
+repo has the controller and its web app, the plugins, the installer and the
+3D-printable light grid. Everything is a plugin, in the spirit of MagicMirror.
 
 ![The PixelPane control page: pressing Play now on moon, fire, clock and Halloween, with the live preview of the panel switching to each scene](.github/readme/2026-11-recording.gif)
 
-What PixelPane looked like in November 2026, recorded for [its page on joekarlsson.com](https://www.joekarlsson.com/work/pixelpane/). The full-quality video is [2026-11-recording.mp4](.github/readme/2026-11-recording.mp4).
+<p align="center"><img src="docs/images/board-demo.gif" width="400" alt="The board on a desk: a shadow box with a two-way mirror front, showing the clock, a spinning planet and a Halloween scene"></p>
 
 ## Artist statement
 
 PixelPane is a dark mirror on the shelf next to my desk until its lights come on, and most of the time it just shows pixel art: a pumpkin in October, a snowman in December, tonight's moon in its real phase. What I love about that art is how much it does with almost nothing. The board is mine, but almost none of the art on it is.
 
 [Read the full statement](https://www.joekarlsson.com/work/pixelpane/).
-
-## What it does
-
-- **Scenes, not just a slideshow.** A playlist mixes GIFs with live scenes. A
-  scene with nothing to show (no music playing, no meeting soon) is skipped.
-- **Everything animates.** Icons ring, hop and spin; gauges fill; the homelab
-  dashboard cycles through six animated pages.
-- **Readings you can feel from across the room.** Send a temperature, air quality,
-  humidity or CO2 reading and the whole panel shows it: frost creeping in, heat
-  shimmer, thick smog, condensation running down. The weather fills the panel too,
-  with rain slanting in the wind. A reading that turns bad jumps the queue.
-- **Seasons and holidays.** Autumn leaves, snow, flowers, beach days, Halloween,
-  Thanksgiving, Christmas, New Year, Valentine's, St. Patrick's, the Fourth of
-  July and your birthday, each with a scene and its own GIF folder. Add your
-  own holidays (Diwali, Lunar New Year, an anniversary), switch built-in ones
-  off, or flip the seasons for the southern hemisphere.
-- **A web app in five pages**: a control page (live preview, a "now playing"
-  view that follows the playlist, a drag-and-drop playlist editor and plugin
-  switches), Draw (scribble on the board live), Animate (frame-by-frame loops
-  that save as GIFs), a GIFs page (the generator and the library; uploads
-  convert anything to 32x32) and Settings. Dark, light or match-the-device, in an accent
-  color you pick.
-- **GIFs from a prompt.** Type "a cat chasing a laser dot" (or press Surprise
-  me) and a chat model (any OpenAI-compatible server such as LiteLLM,
-  OpenRouter or Ollama, or Anthropic's API) designs a looping animation. Preview
-  it, refine it, then save it to your library or throw it out. See
-  [which models draw best](docs/GIFS.md#choosing-a-model).
-- **Draw on the board, live.** The Draw page is a pixel canvas the size of the
-  board: what you scribble shows on the panel as you draw it, until you press Stop
-  showing. Pen, eraser, fill and a color picker, brush sizes, a mirror for
-  symmetric drawings, an opacity slider for softer shades, undo, and a palette that
-  reads well on LEDs.
-- **Animate it.** The Animate page makes frame-by-frame loops: step through frames
-  with the arrows (or ← →), add, copy, delete and reorder them, and see the frame
-  before as a teal onion-skin ghost. Start from an example (a bouncing ball, a
-  heartbeat, a blinking face, a spinner, a rainbow wave) and pull it apart. With Live
-  on, the board plays your loop while you edit it; with it off, Show on board sends
-  it when you're ready. The same button then reads Stop showing. Either page saves to the GIF library.
-- **Transitions and overlays.** Scenes fade (or wipe, slide, dissolve, iris, melt, switch off like an old TV, and more) into each
-  other, GIFs can carry a small clock, date, temperature or meeting countdown in
-  their calmest corner, and Home Assistant can light status dots along the top edge
-  (laundry done, garage open).
-- **Notifications in four styles** (classic, a banner that slides down, a burst
-  of ripples, a big ticker), plus ones the board raises by itself: reminders at a
-  time on the days you pick, and watches that go off when the air turns bad, it
-  starts to snow or a meeting is five minutes away. Set them up on the Settings page.
-- **An HTTP API** for notifications, modes (ON AIR, messages) and data.
-- **Home Assistant ready**: a light entity, a feed automation and notification
-  examples in [docs/HOME_ASSISTANT.md](docs/HOME_ASSISTANT.md).
-- **Appliance-grade setup**: one idempotent installer, unattended security
-  updates, logs in RAM, runs unprivileged, survives power cuts.
 
 ## Build one
 
@@ -154,8 +82,8 @@ pixelpane-library/
 | gifs | gif, gif:&lt;category&gt; | |
 | seasonal | a scene per season and holiday, plus your birthday | |
 | generative | fire, plasma, life, matrix_rain, starfield, lava, ripples, reaction, sand, aurora, fireflies, aquarium, snake, hourglass, smog; an `ambient` slot that picks one to suit the weather and air | |
-| aquatic | aquatic: a living fish tank. Fish hatch, grow, lay eggs and grow old over days; rare colors run in families; the tank earns a starfish, castle, chest and snail; it follows the sun, feeds itself, goes murky when the air is stale (CO2, temperature and air quality tiles), and the fish greet you or scatter at a tap (`/api/play` params `greet`, `tap`). The generative `aquarium` shows this tank too | |
-| window | window: a landscape whose sky is the real one: the sun and the moon (in its phase) where they are, clouds, rain, snow, hail, lightning and fog as they are, wind in the tree and the chimney smoke, the season, haze when the air is bad, a lit house at dusk | (uses `weather`) |
+| aquatic | aquatic: a living fish tank that goes murky when the air is stale (CO2, temperature and air quality tiles); the fish greet you or scatter at a tap (`/api/play` params `greet`, `tap`). The generative `aquarium` shows this tank too | |
+| window | window: a landscape whose sky follows the real sun, moon, weather and season | (uses `weather`) |
 | sky | moon (phase, named full moons, supermoons, blue moons), zodiac | |
 | effects | no scenes: transitions, up to four overlays (time, date, temperature, a tile reading, your next meeting, your own text), status dots | `status` |
 | triggers | no scenes: reminders and watches that raise notifications | |
@@ -166,8 +94,6 @@ pixelpane-library/
 Switch plugins on or off on the control page (a card opens that plugin on the Settings
 page, with its options, its scenes and the data it has received), or in the config. Writing your
 own takes one Python file: see **[docs/PLUGINS.md](docs/PLUGINS.md)**.
-
-![Plugin switches on the control page](docs/images/plugins.png)
 
 ## Configuration
 
@@ -253,7 +179,7 @@ PYTHON=.venv/bin/python tools/test.sh   # backend unittest + Playwright tests of
 for the backend (they also run on the Pi) and Playwright for the page, which
 clicks every button against the real server. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Layout
+Layout:
 
 ```
 pixelpane/            the controller: app (player), web (API + page), state, display, kit (scene toolkit)
@@ -273,11 +199,6 @@ tests/               backend tests and tests/frontend (Playwright)
 - [Silkscreen](https://github.com/googlefonts/silkscreen) by Jason Kottke for the web page (SIL OFL 1.1).
 - [Inter](https://github.com/rsms/inter) and [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) for the web page (SIL OFL 1.1). The page's look follows [joekarlsson.com](https://www.joekarlsson.com).
 - Fonts from the X11 misc-fixed set (public domain) and [tom-thumb](https://robey.lag.net/2010/01/23/tiny-monospace-font.html) by Robey Pointer (MIT).
-
-## Name
-
-PixelPane started life in 2020 as *Graffiti Board*, a live collaborative drawing
-wall. It grew into a wall display, and the name grew with it.
 
 ## License
 
