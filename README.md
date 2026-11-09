@@ -7,11 +7,11 @@
 ![The PixelPane control page: pressing Play now on moon, fire, clock and Halloween, with the live preview of the panel switching to each scene](.github/readme/2026-11-recording.gif)
 <p align="center"><img src="docs/images/board-demo.gif" width="400" alt="The board on a desk: a shadow box with a two-way mirror front, showing the clock, a spinning planet and a Halloween scene"></p>
 
-PixelPane is a 32x32 LED pixel art frame driven by a Raspberry Pi. It's a dark
-mirror on the shelf until its lights come on, and most of the time it just shows
-pixel art: a pumpkin in October, a snowman in December, tonight's moon in its
-real phase. Home Assistant can push to it too, like ON AIR when your camera
-turns on or a flash for the doorbell, and every scene is a plugin.
+PixelPane is a dark mirror on the shelf until its lights come on, and most of
+the time it just shows pixel art: a pumpkin in October, a snowman in December,
+tonight's moon in its real phase. Only a few things get to interrupt it, like ON
+AIR when your camera turns on or a flash for the doorbell, so a flash still
+means something.
 
 [Read the full statement](https://www.joekarlsson.com/work/pixelpane/)
 
