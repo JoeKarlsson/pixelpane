@@ -36,6 +36,12 @@ What it shows, panel's-eye view:
 
 What PixelPane looked like in November 2026, recorded for [its page on joekarlsson.com](https://www.joekarlsson.com/work/pixelpane/). The full-quality video is [2026-11-recording.mp4](.github/readme/2026-11-recording.mp4).
 
+## Artist statement
+
+PixelPane is a dark mirror on the shelf next to my desk until its lights come on, and most of the time it just shows pixel art: a pumpkin in October, a snowman in December, tonight's moon in its real phase. What I love about that art is how much it does with almost nothing. The board is mine, but almost none of the art on it is.
+
+[Read the full statement](https://www.joekarlsson.com/work/pixelpane/).
+
 ## What it does
 
 - **Scenes, not just a slideshow.** A playlist mixes GIFs with live scenes. A
