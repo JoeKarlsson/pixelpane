@@ -2,24 +2,18 @@
 
 [![CI](https://github.com/JoeKarlsson/pixelpane/actions/workflows/ci.yml/badge.svg)](https://github.com/JoeKarlsson/pixelpane/actions/workflows/ci.yml)
 [![MIT license](https://img.shields.io/badge/license-MIT-a98bff)](LICENSE)
+
 ![Raspberry Pi 3, 4, 5](https://img.shields.io/badge/Raspberry%20Pi-3%20%7C%204%20%7C%205-58e0c8)
-
-PixelPane is a 32x32 LED art pane for your wall, driven by a Raspberry Pi. It
-mixes pixel-art GIFs with live scenes (a clock, weather, what's playing, your
-next meeting, a homelab dashboard, seasonal animations, generative art), and
-Home Assistant can push notifications to it and control it like a light. This
-repo has the controller and its web app, the plugins, the installer and the
-3D-printable light grid. Everything is a plugin, in the spirit of MagicMirror.
-
 ![The PixelPane control page: pressing Play now on moon, fire, clock and Halloween, with the live preview of the panel switching to each scene](.github/readme/2026-11-recording.gif)
-
 <p align="center"><img src="docs/images/board-demo.gif" width="400" alt="The board on a desk: a shadow box with a two-way mirror front, showing the clock, a spinning planet and a Halloween scene"></p>
 
-## Artist statement
+PixelPane is a 32x32 LED pixel art frame driven by a Raspberry Pi. It's a dark
+mirror on the shelf until its lights come on, and most of the time it just shows
+pixel art: a pumpkin in October, a snowman in December, tonight's moon in its
+real phase. Home Assistant can push to it too, like ON AIR when your camera
+turns on or a flash for the doorbell, and every scene is a plugin.
 
-PixelPane is a dark mirror on the shelf next to my desk until its lights come on, and most of the time it just shows pixel art: a pumpkin in October, a snowman in December, tonight's moon in its real phase. What I love about that art is how much it does with almost nothing. The board is mine, but almost none of the art on it is.
-
-[Read the full statement](https://www.joekarlsson.com/work/pixelpane/).
+[Read the full statement](https://www.joekarlsson.com/work/pixelpane/)
 
 ## Build one
 
