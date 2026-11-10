@@ -196,4 +196,5 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden) { refresh(); pollNow().catch(() => {}); }
 });
 startPreview('#preview');
-init().catch(e => $('#stat').textContent = 'error: ' + e.message);
+init().catch(e => $('#stat').textContent = 'error: ' + e.message)
+  .finally(() => $('main').removeAttribute('aria-busy'));   // reveal once Play now is drawn: no jump

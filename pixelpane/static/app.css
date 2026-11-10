@@ -394,7 +394,7 @@ button.swatch, button.swatch:hover, button.swatch.on { width: 26px; height: 26px
 .swap > span { grid-area: 1 / 1; transition: opacity .15s ease-out, filter .15s ease-out; }
 .swap > span[aria-hidden="true"] { opacity: 0; filter: blur(3px); }
 /* Settings: sections stay hidden until they're filled in, so nothing jumps on load */
-main[aria-busy="true"] > section { visibility: hidden; }
+main[aria-busy="true"] > section ~ section { visibility: hidden; }   /* the top card (live preview) shows at once */
 /* Library: the empty grid holds its space while GIFs load, so the pager doesn't jump */
 #gifs:empty { min-height: 100vh; }
 /* playlist rows glide to their new place; the rest of the page (and the live preview) doesn't crossfade */

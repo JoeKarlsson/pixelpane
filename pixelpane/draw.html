@@ -47,7 +47,7 @@
       <div class="canvaswrap grid" id="wrap"><canvas id="canvas" data-testid="draw-canvas" aria-label="Drawing canvas"></canvas></div>
       <div class="side">
         <div class="stat">On the board now</div>
-        <div class="panel"><canvas id="preview" width="32" height="32" role="img" aria-label="live panel preview" data-testid="preview"></canvas></div>
+        <div class="panel" style="--led:5px"><canvas id="preview" style="width:160px" width="32" height="32" role="img" aria-label="live panel preview" data-testid="preview"></canvas></div>
         <label class="toggle"><input type="checkbox" id="live" checked data-testid="draw-live"> Live on the board</label>
         <div class="row"><button id="board" class="on" data-testid="board-toggle" title="Put it on the board, or take it off">Show on board</button></div>
         <div class="stat" id="livestat" role="status" data-testid="draw-status"></div>
