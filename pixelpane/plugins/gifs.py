@@ -11,7 +11,9 @@ plugin = Plugin(
           "(the part of the file name before the first dash).",
     fields=[{"key": "theme_share", "label": "Share of seasonal GIFs", "type": "range",
              "min": 0, "max": 1, "step": 0.05,
-             "help": "When a season or holiday is active, how often a GIF slot picks from its folder."}])
+             "help": "When a season or holiday is active, how often a GIF slot picks from its folder. "
+                     "A small folder gets less, so a seasonal GIF plays at most 5 times as often "
+                     "as an all-year one."}])
 
 
 # --- GIFs --------------------------------------------------------------------

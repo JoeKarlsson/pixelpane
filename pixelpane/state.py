@@ -232,6 +232,9 @@ class GifLibrary:
 
     # drafts (generated, not yet saved) can be played by id but are never in the library
     ROOTS = {"repo": HOME / "gifs", "upload": VAR / "uploads", "draft": VAR / "generated"}
+    # a seasonal GIF plays at most this many times as often as an all-year one, so a
+    # theme folder of six GIFs doesn't take a third of the slots and repeat all day
+    THEME_BOOST = 5
 
     def __init__(self, state, rng):
         self.state, self.rng = state, rng
@@ -380,7 +383,6 @@ class GifLibrary:
         return sorted({self.category(p) for p in self.pool()})
 
     def next(self, category=None):
-        cfg = self.state.config
         if category:
             files = [p for p in self.pool() if self.category(p) == category]
             return self._draw(f"cat:{category}", files) if files else None
@@ -388,11 +390,19 @@ class GifLibrary:
         themed = [(t, f) for t, f in themed if f]
         close = [(t, f) for t, f in themed if t in self.state.close_holidays()]
         themed = close or themed   # in a holiday's last days, its GIFs get the themed share to themselves
-        if themed and self.rng.random() < plugin.settings(cfg, "gifs")["theme_share"]:
-            t, files = self.rng.choice(themed)
-            return self._draw(t, files)
         files = self.pool()
+        if themed and self.rng.random() < self.theme_share(sum(len(f) for _, f in themed), len(files)):
+            # weighted by folder size, so each themed GIF is as likely as any other
+            t, picks = self.rng.choices(themed, weights=[len(f) for _, f in themed])[0]
+            return self._draw(t, picks)
         return self._draw("all", files) if files else None
+
+    def theme_share(self, n_themed, n_all):
+        """The setting's share, capped so a seasonal GIF plays at most THEME_BOOST times as
+        often as an all-year one."""
+        boosted = self.THEME_BOOST * n_themed
+        cap = boosted / (boosted + n_all) if n_all else 1.0
+        return min(plugin.settings(self.state.config, "gifs")["theme_share"], cap)
 
     def gif_size(self):
         """GIFs play at full resolution on a bigger square panel (64x64); otherwise 32x32."""

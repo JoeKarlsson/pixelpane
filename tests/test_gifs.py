@@ -81,10 +81,19 @@ class GifLibraryTest(unittest.TestCase):
     def test_theme_share_prefers_active_theme(self):
         self.state.update_config({"plugins": {"gifs": {"theme_share": 1.0}}})
         with mock.patch.object(self.state, "themes", return_value=["autumn", "halloween"]):
-            self.assertEqual(self.lib.next().name, "pumpkin-glow.gif")
+            picks = [self.lib.next().name for _ in range(200)]
+        # one pumpkin against four all-year GIFs: capped at 5/9 of the slots, not all of them
+        self.assertTrue(0.45 < picks.count("pumpkin-glow.gif") / 200 < 0.65)
         self.state.update_config({"plugins": {"gifs": {"theme_share": 0.0}}})
         with mock.patch.object(self.state, "themes", return_value=["autumn", "halloween"]):
             self.assertNotEqual(self.lib.next().name, "pumpkin-glow.gif")
+
+    def test_small_theme_folder_cannot_crowd_out_the_library(self):
+        # six autumn GIFs against 359 all-year ones, at a 0.5 share: about 8%, not 50%
+        self.state.update_config({"plugins": {"gifs": {"theme_share": 0.5}}})
+        self.assertAlmostEqual(self.lib.theme_share(6, 359), 30 / 389)
+        self.assertEqual(self.lib.theme_share(100, 100), 0.5)   # a big folder gets the full share
+        self.assertEqual(self.lib.theme_share(3, 0), 0.5)
 
     def test_resolve_and_ids(self):
         p = self.lib.resolve("repo/themes/halloween/pumpkin-glow.gif")

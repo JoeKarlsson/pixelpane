@@ -113,4 +113,5 @@ class CountdownTest(unittest.TestCase):
         with mock.patch("pixelpane.state.date") as fake:
             fake.today.return_value = date(2026, 10, 26)
             picks = {ctx.gifs.next().parent.name for _ in range(30)}
-        self.assertEqual(picks, {"halloween"})   # not autumn, in Halloween's last week
+        self.assertIn("halloween", picks)
+        self.assertNotIn("autumn", picks)   # not autumn, in Halloween's last week

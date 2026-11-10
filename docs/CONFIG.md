@@ -96,7 +96,7 @@ and its data keys are refused). Secret settings come back from the API as
 | calendar | `lookahead_hours` (show events starting within, default 12), `bell_minutes` (bell and red countdown, default 10), `title_color` | `next_event` (720 min) |
 | homelab | `pages` (any of hosts, nas, net, ups, plex; alerts and status always show), `cpu_warn`, `cpu_crit`, `disk_warn`, `disk_crit` (%, amber and red) | `homelab` (60 min) |
 | tiles | `temp_unit` (`F` or `C`), `comfy_low` and `comfy_high` (the comfortable range, `null` for 68 to 76F / 20 to 24C), `humidity_low`, `humidity_high` (%), `co2_high` (ppm), `cold_color`, `comfy_color`, `hot_color` (`#rrggbb`), `alert` (a reading that turns bad jumps the queue), `moods` (`full`, `subtle` or `off`), `sparkline`, `trend`, `count_up` | `tiles` (240 min) |
-| gifs | `theme_share`: 0 to 1, how often a GIF slot picks from an active theme | |
+| gifs | `theme_share`: 0 to 1, how often a GIF slot picks from an active theme, capped so a seasonal GIF plays at most 5 times as often as an all-year one | |
 | seasonal | `holiday_share`: 0 to 1, how often a holiday wins over the season; `birthday`: `{"month", "day", "name"}` or `null` | |
 | generative | `scenes`: which of fire, plasma, life, matrix_rain, starfield, lava, ripples, reaction, sand, aurora, fireflies, aquarium, snake, hourglass and smog the `generative` and `ambient` slots pick from; `speed` (`slow`, `normal`, `fast`) | |
 | generator | `provider` (`openai` or `anthropic`), `base_url`, `model`, `api_key` (secret), `review` | |
