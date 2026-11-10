@@ -104,6 +104,15 @@ class TransitionTest(unittest.TestCase):
         self.assertEqual(len(effects.STYLES), len(set(effects.STYLES)))
         self.assertIn("random", effects.TRANSITIONS)
 
+    def test_transitions_ease_in_and_out(self):
+        self.assertEqual((effects.ease_in_out(0), effects.ease_in_out(0.5), effects.ease_in_out(1)), (0, 0.5, 1))
+        self.assertLess(effects.ease_in_out(0.1), 0.1)      # starts slow
+        self.assertGreater(effects.ease_in_out(0.9), 0.9)   # and lands slow
+
+    def test_fade_keeps_its_brightness_in_the_middle(self):
+        mid = effects.blend(Image.new("RGB", (32, 32), RED), Image.new("RGB", (32, 32), BLUE), 0.5, "fade")
+        self.assertGreater(mid.getpixel((0, 0))[0], 128)   # a plain mix gives 127: dim on the LEDs
+
     def test_random_picks_from_the_mix_and_never_repeats(self):
         c = ctx({"transition_mix": ["wipe", "dissolve", "fade"]})
         picks = [effects.pick_style(c, ["wipe", "dissolve", "fade"]) for _ in range(40)]

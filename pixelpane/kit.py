@@ -79,6 +79,8 @@ def animated_icon(img, name, xy, t, level=None):
         x, y = x - (sprite.width - 8) // 2, y - (sprite.height - 8) // 2
     elif name == "music":
         y += round(math.sin(t * 5))
+    elif name == "leaf":                    # sways in a breeze
+        x += round(math.sin(t * 2.5))
     img.paste(sprite, (x, y), sprite)
     if name == "thermometer":               # mercury climbs to the level and shimmers
         lv = 0.6 if level is None else max(0.0, min(1.0, level))
@@ -92,6 +94,11 @@ def animated_icon(img, name, xy, t, level=None):
             px = x + 3.5 + 1.6 * math.cos(a + k * 2.1)
             py = y + 3.5 + 1.6 * math.sin(a + k * 2.1)
             img.putpixel((int(round(px)), int(round(py))), (30, 120, 170))
+    elif name == "bolt":                    # a spark runs down it, faster the more power is drawn
+        lv = 0.4 if level is None else max(0.0, min(1.0, level))
+        path = ((5, 0), (4, 1), (3, 2), (2, 3), (5, 4), (4, 5), (3, 6), (2, 7))
+        sx, sy = path[int(t * (6 + 18 * lv)) % len(path)]
+        img.putpixel((x + sx, y + sy), (255, 255, 230))
     elif name == "drop":                    # a drip falls
         dy = int(t * 10) % 8
         img.putpixel((x + 3, min(y + 7 + dy // 2, H - 1)), (80, 220, 255))

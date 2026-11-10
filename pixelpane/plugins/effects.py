@@ -140,7 +140,7 @@ def transition(frames, prev, style, secs, seed=0):
     order = np.random.default_rng(seed).permutation(cur.width * cur.height)
     t, due, ended = 0.0, hold, False   # scene time, when the next scene frame is due
     for k in range(1, n):
-        yield blend(prev, cur, k / n, style, order), STEP
+        yield blend(prev, cur, ease_in_out(k / n), style, order), STEP
         t += STEP
         while not ended and t >= due - 1e-9:
             try:
@@ -153,6 +153,18 @@ def transition(frames, prev, style, secs, seed=0):
         return
     yield cur, max(0.01, due - t)
     yield from it
+
+
+def ease_in_out(p):
+    """Cubic ease-in-out, so a wipe or slide starts and lands gently instead of at full speed."""
+    return 4 * p ** 3 if p < 0.5 else 1 - (-2 * p + 2) ** 3 / 2
+
+
+def _crossfade(a, b, p):
+    """Mix in linear light: the LED driver's luminance correction makes a plain mix of the
+    pixel values go dim in the middle of a fade between two bright scenes."""
+    lin = (1 - p) * (np.asarray(a, float) / 255) ** 2.2 + p * (np.asarray(b, float) / 255) ** 2.2
+    return Image.fromarray(np.round(lin ** (1 / 2.2) * 255).astype(np.uint8), "RGB")
 
 
 _YY, _XX = np.mgrid[0:32, 0:32]
@@ -175,7 +187,7 @@ def blend(a, b, p, style, order=None):
     w, h = b.size
     a, b = a.convert("RGB"), b.convert("RGB")
     if style == "fade":
-        return Image.blend(a, b, p)
+        return _crossfade(a, b, p)
     edge = round(w * p)
     if style == "wipe":
         out = a.copy()
