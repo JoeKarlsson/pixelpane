@@ -45,6 +45,12 @@ async function loadGifs() {
   $('#gcount').textContent = `${all.length} match · ${list.length} in the library`;
   $('#gpage').textContent = `Page ${gifPage + 1} of ${pages}` + (all.length ? ` · ${gifPage * size + 1}-${gifPage * size + shown.length}` : '');
   $('#gprev').disabled = gifPage === 0; $('#gnext').disabled = gifPage >= pages - 1;
+  if (!all.length) {   // say why the grid is empty, and offer the way back
+    const why = words.length ? `No GIFs match "${$('#gsearch').value.trim()}"` : 'No GIFs here yet';
+    $('#gifs').replaceChildren(el('div', {className: 'empty stat'}, why, ' ',
+      ...(words.length ? [btn('Clear search', () => { $('#gsearch').value = ''; gifPage = 0; loadGifs(); })] : [])));
+    return;
+  }
   $('#gifs').replaceChildren(...shown.map(g => {
     const d = document.createElement('div'); d.dataset.testid = 'gif-card'; d.dataset.id = g.id;
     d.className = 'gif' + (g.hidden ? ' hidden' : '') + (selecting ? ' selecting' : '') + (picked.has(g.id) ? ' picked' : '');

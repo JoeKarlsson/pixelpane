@@ -16,7 +16,11 @@ async function refresh() {
         .filter(Boolean).join(' · ') || `Schedule: ${sch.rules?.join(', ')}`;
   if (document.activeElement !== $('#bright')) $('#bright').value = S.brightness;
   $('#bv').textContent = S.brightness;
-  $('#scene').textContent = S.pinned ? `pinned: ${S.pinned.scene}` : S.scene;
+  // only for a pin: the Now line below already names the scene, and updates faster
+  $('#scene').hidden = !S.pinned;
+  $('#scene').textContent = S.pinned ? `pinned: ${S.pinned.scene}` : '';
+  const onAir = S.pinned?.scene === 'on_air', airBtn = document.querySelector('[data-pin=on_air]');
+  airBtn.classList.toggle('on', onAir); airBtn.setAttribute('aria-pressed', onAir);
   if (S.panel) {   // preview takes the panel's shape; the LED grid matches its pixels
     const [cols, rows] = S.panel, w = cols >= rows ? 256 : Math.round(256 * cols / rows);
     $('#preview').style.width = w + 'px';
@@ -90,7 +94,9 @@ function drawPlugins() {
 function moveRot(from, to) {
   if (from === to || to < 0 || to >= rotation.length) return;
   rotation.splice(to, 0, ...rotation.splice(from, 1));
+  const label = document.activeElement?.getAttribute('aria-label');   // redraw replaces the button you pressed
   drawRot();
+  if (label) $(`#rot li[data-index="${to}"] [aria-label="${label}"]`)?.focus();
 }
 
 function drawRot() {
@@ -115,18 +121,20 @@ function drawRot() {
 }
 
 // Toggles what the panel actually shows: during quiet hours this turns it on anyway.
-$('#power').onclick = () => api('/api/state', 'POST', {power: !S.on}).then(refresh);
+$('#power').onclick = busy(() => api('/api/state', 'POST', {power: !S.on}).then(refresh).then(() => toast(S.on ? 'Power on' : 'Power off')));
 $('#bright').oninput = e => $('#bv').textContent = e.target.value;
 $('#bright').onchange = e => api('/api/state', 'POST', {brightness: +e.target.value}).then(refresh);
-document.querySelectorAll('[data-pin]').forEach(b => b.onclick = () =>
-  api('/api/pin', 'POST', {scene: b.dataset.pin, minutes: +$('#mins').value || null}).then(refresh));
-$('#pinmsg').onclick = () => api('/api/pin', 'POST', {scene:'message', params:{text: $('#msg').value || 'HELLO'}, minutes: +$('#mins').value || null}).then(refresh);
-$('#unpin').onclick = () => api('/api/pin', 'DELETE').then(refresh);
-$('#nsend').onclick = () => api('/api/notify', 'POST', {text: $('#ntext').value, icon: $('#nicon').value,
-  color: $('#ncolor').value, flash: $('#nflash').checked, style: $('#nstyle').value}).then(() => toast('Sent'));
-$('#skip').onclick = () => api('/api/skip', 'POST').then(() => toast('Skipped'));
+document.querySelectorAll('[data-pin]').forEach(b => b.onclick = busy(() =>
+  api('/api/pin', 'POST', {scene: b.dataset.pin, minutes: +$('#mins').value || null}).then(refresh)
+    .then(() => toast(`${b.textContent} on`))));
+$('#pinmsg').onclick = busy(() => api('/api/pin', 'POST', {scene:'message', params:{text: $('#msg').value || 'HELLO'}, minutes: +$('#mins').value || null})
+  .then(refresh).then(() => toast('Showing your message')));
+$('#unpin').onclick = busy(() => api('/api/pin', 'DELETE').then(refresh).then(() => toast('Cleared')));
+$('#nsend').onclick = busy(() => api('/api/notify', 'POST', {text: $('#ntext').value, icon: $('#nicon').value,
+  color: $('#ncolor').value, flash: $('#nflash').checked, style: $('#nstyle').value}).then(() => toast('Sent')));
+$('#skip').onclick = busy(() => api('/api/skip', 'POST').then(() => toast('Skipped')));
 $('#add').onclick = () => { rotation.push($('#addsel').value); drawRot(); };
-$('#saverot').onclick = () => api('/api/config', 'PUT', {rotation}).then(c => { C = c; drawRot(); toast('Playlist saved'); });
+$('#saverot').onclick = busy(() => api('/api/config', 'PUT', {rotation}).then(c => { C = c; drawRot(); toast('Playlist saved'); }));
 window.addEventListener('beforeunload', e => {
   if (C.rotation && JSON.stringify(rotation) !== JSON.stringify(C.rotation)) e.preventDefault();
 });
@@ -154,12 +162,29 @@ async function pollNow() {
   const h = await api('/api/health');
   const n = h.now || {};
   $('#nowsrc').textContent = (SOURCE[n.source] || (() => n.source || '…'))(n);
-  $('#nowscene').textContent = n.source === 'notification' ? `Notification · ${n.text || ''}` : prettyScene(h.scene, n.entry);
+  const name = n.source === 'notification' ? `Notification · ${n.text || ''}` : prettyScene(h.scene, n.entry);
+  if ($('#nowscene').textContent !== name) {   // a new scene fades in (opacity only: fine under reduced motion)
+    $('#nowscene').textContent = name; $('#nowscene').title = name;
+    $('#nowscene').animate([{opacity: 0}, {opacity: 1}], {duration: 180, easing: 'ease-out'});
+  }
   const pct = n.seconds ? Math.min(100, 100 * (n.elapsed || 0) / n.seconds) : (n.source === 'pinned' ? 100 : 0);
-  $('#nowbar').style.width = pct + '%';
+  setBar(n, pct);
   $('#nownext').textContent = n.next ? `Up next in the playlist: ${n.next.replace('_', ' ')}` : '';
   document.querySelectorAll('#rot li').forEach(li =>
     li.classList.toggle('current', n.source === 'playlist' && +li.dataset.index === n.index));
+}
+
+// The bar glides to the end on the board's own clock and only resyncs on a new scene or
+// drift, so it neither lurches between 2 s polls nor animates backwards at a scene change.
+let barKey = null;
+function setBar(n, pct) {
+  const bar = $('#nowbar'), left = n.seconds ? Math.max(0, n.seconds - (n.elapsed || 0)) : 0;
+  const shown = 100 * (parseFloat(getComputedStyle(bar).scale) || 0);
+  if (!calmMotion.matches && n.started === barKey && Math.abs(shown - pct) < 3) return;
+  barKey = n.started;
+  bar.dataset.pct = Math.round(pct);
+  bar.style.transition = 'none'; bar.style.scale = `${pct / 100} 1`;   // a new scene starts where it is, no rewind
+  if (left && !calmMotion.matches) { bar.offsetWidth; bar.style.transition = `scale ${left}s linear`; bar.style.scale = '1 1'; }
 }
 
 // Everything else updates on a timer, paused while the tab is in the background.

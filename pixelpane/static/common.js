@@ -28,9 +28,12 @@ async function send(path, opts, retry = true) {
 const api = (path, method = 'GET', body) => send(path, {method, headers: body ? {'Content-Type': 'application/json'} : {},
   body: body ? JSON.stringify(body) : undefined}).then(r => r.json());
 let toastTimer = null;
+const calmMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const toast = t => {
-  const e = $('#toast'); e.textContent = t; e.style.opacity = 1;
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => e.style.opacity = 0, t.length > 60 ? 4000 : 1800);
+  const e = $('#toast'), again = e.classList.contains('show');
+  e.textContent = t; e.classList.add('show');
+  if (again && !calmMotion.matches) e.animate([{scale: .97}, {scale: 1}], {duration: 180, easing: 'cubic-bezier(.22, 1, .36, 1)'});
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => e.classList.remove('show'), t.length > 60 ? 4000 : 1800);
 };
 
 function el(tag, props = {}, ...kids) {
@@ -39,10 +42,19 @@ function el(tag, props = {}, ...kids) {
 // label: what the button shows; name: what it's called for screen readers and on
 // hover, for buttons that show only a symbol (↑, ✕, 🗑).
 function btn(label, fn, cls, testid, name) {
-  const b = document.createElement('button'); b.textContent = label; b.onclick = fn;
+  const b = document.createElement('button'); b.textContent = label; b.onclick = busy(fn);
   if (cls) b.className = cls; if (testid) b.dataset.testid = testid;
   if (name) { b.setAttribute('aria-label', name); b.title = name; }
   return b;
+}
+// Wraps a click handler: while the promise it returns runs, its button is disabled, so a
+// double tap can't send the request twice (two skips).
+function busy(fn) {
+  return function (e) {
+    const b = e?.currentTarget, r = fn.call(this, e);
+    if (b && r && typeof r.finally === 'function') { b.disabled = true; b.ariaBusy = 'true'; r.finally(() => { b.disabled = false; b.ariaBusy = null; }); }
+    return r;
+  };
 }
 // A click whose API call fails says why instead of failing silently.
 window.addEventListener('unhandledrejection', e => toast(e.reason?.message || 'Something went wrong'));
@@ -51,7 +63,7 @@ const ago = s => s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)}m ago` 
 const clockTime = iso => iso ? new Date(iso).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}) : '';
 // The header's status pill and the footer's version, from /api/state or /api/health.
 function showStatus(S) {
-  $('#stat').textContent = [S.temp_c ? S.temp_c.toFixed(0) + '°C' : null, S.throttled ? `throttled ${S.throttled}` : null,
+  $('#stat').textContent = [S.temp_c ? S.temp_c.toFixed(0) + '°C' : null, S.throttled && S.throttled !== '0x0' ? `throttled ${S.throttled}` : null,
     `up ${Math.round(S.uptime_s / 3600)}h`, S.version].filter(Boolean).join(' · ');
   const v = document.getElementById('footver');
   if (v) v.textContent = S.version ? `version ${S.version}` : '';
@@ -83,8 +95,9 @@ function fieldInput(f, value, id = 'pf-' + f.key) {
     const v = value || {};
     const m = el('select', {id: id + '-month'}, new Option('Month', ''), ...['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((n, i) => new Option(n, i + 1)));
     m.value = v.month || '';
-    const d = el('input', {type: 'number', id: id + '-day', min: 1, max: 31, placeholder: 'Day', value: v.day || ''});
-    const n = el('input', {id: id + '-name', placeholder: 'Name', value: v.name || ''});
+    const d = el('input', {type: 'number', id: id + '-day', min: 1, max: 31, placeholder: 'Day', value: v.day || '', ariaLabel: 'Day'});
+    const n = el('input', {id: id + '-name', placeholder: 'Name', value: v.name || '', ariaLabel: 'Name'});
+    m.ariaLabel = 'Month';
     return [el('div', {className: 'md'}, m, d, n), () => m.value && d.value ? {month: +m.value, day: +d.value, name: n.value.trim()} : null];
   }
   if (f.type === 'secret') {

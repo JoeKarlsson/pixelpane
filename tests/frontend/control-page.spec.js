@@ -215,7 +215,7 @@ test('live view shows what is on, where it came from, and highlights the playlis
   await expect.poll(() => current.getAttribute('data-index'), { timeout: 10_000 }).not.toBe(first); // it moves along
   await expect(page.locator('#nowscene')).toHaveText(/^(Clock|GIF · retro · .+)$/);
   await expect(page.locator('#nownext')).toContainText('Up next in the playlist');
-  await expect.poll(() => page.locator('#nowbar').evaluate((el) => parseFloat(el.style.width))).toBeGreaterThan(0);
+  await expect.poll(() => page.locator('#nowbar').evaluate((el) => parseFloat(getComputedStyle(el).scale))).toBeGreaterThan(0);
 
   await request.post('/api/notify', { data: { text: 'Door', seconds: 3 } });
   await expect(page.locator('#nowsrc')).toHaveText('Notification');

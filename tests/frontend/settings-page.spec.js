@@ -333,11 +333,16 @@ test('the log can show only warnings and errors', async ({ page, request }) => {
 
 test('the live preview folds away and back', async ({ page }) => {
   const box = page.getByTestId('mini-preview');
+  await page.setViewportSize({ width: 1440, height: 900 });   // open by default only where it fits beside the column
+  await page.reload();
   await expect(box.locator('canvas')).toBeVisible();
   await box.locator('summary').click();
   await expect(box.locator('canvas')).toBeHidden();
   await box.locator('summary').click();
   await expect(box.locator('canvas')).toBeVisible();
+  await page.setViewportSize({ width: 1100, height: 800 });   // narrower, it starts folded so it doesn't cover controls
+  await page.reload();
+  await expect(box.locator('canvas')).toBeHidden();
 });
 
 test('Show a GIF now and Try the reminders send to the board', async ({ page, request }) => {

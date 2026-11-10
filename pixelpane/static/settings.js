@@ -454,4 +454,6 @@ load().then(() => {
   if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
 }).catch(e => $('#stat').textContent = 'error: ' + e.message);
 setInterval(() => { if (!document.hidden) api('/api/state').then(s => { S = s; drawStatus(); drawSystem(); }).catch(() => {}); }, 15000);
+// open only where it fits beside the 1040px column; narrower, it would cover the controls
+$('.minipreview').open = matchMedia('(min-width: 1360px)').matches;
 startPreview('#livepreview');

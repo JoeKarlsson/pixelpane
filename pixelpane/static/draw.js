@@ -367,7 +367,7 @@ $('#board').onclick = async () => {
 $('#live').onchange = () => { if ($('#live').checked) { dirty = true; pump(); } else showing(onBoard); };
 function status(t) { $('#livestat').textContent = t; }
 function showing(on) {
-  status(on ? '● Showing on the board' : $('#live').checked ? 'Draw something to show it on the board' : 'Not on the board');
+  status(on ? '● Showing on the board' : $('#live').checked ? 'Not on the board yet: your next stroke shows it' : 'Not on the board');
   $('#livestat').classList.toggle('live', on);
   onBoard = on;
   $('#board').textContent = on ? 'Stop showing' : 'Show on board';
@@ -426,7 +426,13 @@ async function init() {
   $('#fps').value = Math.max(1, Math.min(24, Math.round(1000 / ms))); showFps();
   setColor(color); setTool('pen');
   render(); drawStrip(); showing(sk.showing);
-  showStatus(await api('/api/health'));
+  const h = await api('/api/health');
+  showStatus(h);
+  // Live would replace a pin (ON AIR, a message) with the first stroke, so start with it off then
+  if (h.pinned && !sk.showing) {
+    $('#live').checked = false;
+    status(`${String(h.pinned.scene || h.pinned).replace(/_/g, ' ').toUpperCase()} is pinned on the board: Live is off so drawing won't replace it`);
+  }
 }
 
 startPreview('#preview');
