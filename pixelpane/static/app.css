@@ -388,3 +388,22 @@ button.swatch, button.swatch:hover, button.swatch.on { width: 26px; height: 26px
   .gif button { min-width: 44px; min-height: 44px; }
   .gifs { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }   /* fits ▶, hide and ✎ at 44px */
 }
+
+/* label swaps: both labels share one cell, so the button keeps its width */
+.swap { display: inline-grid; }
+.swap > span { grid-area: 1 / 1; transition: opacity .15s ease-out, filter .15s ease-out; }
+.swap > span[aria-hidden="true"] { opacity: 0; filter: blur(3px); }
+/* Settings: sections stay hidden until they're filled in, so nothing jumps on load */
+main[aria-busy="true"] > section { visibility: hidden; }
+/* Library: the empty grid holds its space while GIFs load, so the pager doesn't jump */
+#gifs:empty { min-height: 100vh; }
+/* playlist rows glide to their new place; the rest of the page (and the live preview) doesn't crossfade */
+:root { view-transition-name: none; }
+::view-transition-group(*) { animation-duration: .22s; animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
+@media (prefers-reduced-motion: no-preference) {
+  .swap > span { transition: opacity .15s ease-out, filter .15s ease-out, scale .15s ease-out; }
+  .swap > span[aria-hidden="true"] { scale: .9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}

@@ -47,6 +47,21 @@ function btn(label, fn, cls, testid, name) {
   if (name) { b.setAttribute('aria-label', name); b.title = name; }
   return b;
 }
+// A button whose label changes (Play/Stop, Select/Done) crossfades between two labels
+// stacked in one grid cell, so the button keeps its width and doesn't jump. The hidden
+// one is aria-hidden, so the button's accessible name is only the shown label.
+function setLabel(b, text) {
+  let [a, z] = b.querySelectorAll(':scope > .swap > span');
+  if (!a) {
+    const was = b.textContent; b.textContent = '';
+    a = el('span', {textContent: was}); z = el('span'); z.setAttribute('aria-hidden', 'true');
+    b.append(el('span', {className: 'swap'}, a, z));
+  }
+  const shown = a.hasAttribute('aria-hidden') ? z : a, other = shown === a ? z : a;
+  if (shown.textContent === text) return;
+  other.textContent = text;
+  other.removeAttribute('aria-hidden'); shown.setAttribute('aria-hidden', 'true');
+}
 // Wraps a click handler: while the promise it returns runs, its button is disabled, so a
 // double tap can't send the request twice (two skips).
 function busy(fn) {

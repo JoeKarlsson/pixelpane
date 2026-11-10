@@ -1,7 +1,7 @@
 // PixelPane control page. Talks to the board's HTTP API (see README).
 // $, api, send, toast, el, btn, ago and showStatus come from common.js. The GIF maker
 // and library are on /library (library.js).
-let S = {}, C = {}, rotation = [];
+let S = {}, C = {}, rotation = [], rotIds = [], nextRotId = 0;   // ids: each entry's view-transition name
 
 async function refresh() {
   S = await api('/api/state');
@@ -33,7 +33,7 @@ async function refresh() {
 async function init() {
   await refresh();
   C = await api('/api/config');
-  rotation = [...C.rotation];
+  rotation = [...C.rotation]; rotIds = rotation.map((_, i) => i); nextRotId = rotation.length;
   const cats = S.categories.map(c => 'gif:' + c);
   drawPlayNow(cats);
   $('#nicon').replaceChildren(...S.icons.map(i => new Option(i, i)));
@@ -93,15 +93,16 @@ function drawPlugins() {
 // Move playlist entry `from` to position `to` (drag and drop, or the arrows).
 function moveRot(from, to) {
   if (from === to || to < 0 || to >= rotation.length) return;
-  rotation.splice(to, 0, ...rotation.splice(from, 1));
+  rotation.splice(to, 0, ...rotation.splice(from, 1)); rotIds.splice(to, 0, ...rotIds.splice(from, 1));
   const label = document.activeElement?.getAttribute('aria-label');   // redraw replaces the button you pressed
-  drawRot();
-  if (label) $(`#rot li[data-index="${to}"] [aria-label="${label}"]`)?.focus();
+  const redraw = () => { drawRot(); if (label) $(`#rot li[data-index="${to}"] [aria-label="${label}"]`)?.focus(); };
+  document.startViewTransition && !calmMotion.matches ? document.startViewTransition(redraw) : redraw();
 }
 
 function drawRot() {
   $('#rot').replaceChildren(...rotation.map((s, i) => {
     const li = document.createElement('li'); li.dataset.index = i; li.draggable = true;
+    li.style.viewTransitionName = 'rot-' + rotIds[i];
     li.ondragstart = e => { e.dataTransfer.setData('text/plain', String(i)); e.dataTransfer.effectAllowed = 'move'; li.classList.add('dragging'); };
     li.ondragend = () => li.classList.remove('dragging');
     li.ondragover = e => { e.preventDefault(); li.classList.add('over'); };
@@ -111,12 +112,12 @@ function drawRot() {
     const span = el('span', {className: 'name', textContent: `${i+1}. ${s}`});
     li.append(grip, span, btn('↑', () => moveRot(i, i - 1), '', '', 'Move up'),
       btn('↓', () => moveRot(i, i + 1), '', '', 'Move down'),
-      btn('✕', () => { rotation.splice(i, 1); drawRot(); }, '', '', 'Remove'));
+      btn('✕', () => { rotation.splice(i, 1); rotIds.splice(i, 1); drawRot(); }, '', '', 'Remove'));
     return li;
   }));
   // Edits stay in the page until Save playlist, so say when there are some.
   const dirty = JSON.stringify(rotation) !== JSON.stringify(C.rotation);
-  $('#saverot').textContent = dirty ? 'Save playlist •' : 'Save playlist';
+  setLabel($('#saverot'), dirty ? 'Save playlist •' : 'Save playlist');
   $('#rotdirty').hidden = !dirty;
 }
 
@@ -133,7 +134,7 @@ $('#unpin').onclick = busy(() => api('/api/pin', 'DELETE').then(refresh).then(()
 $('#nsend').onclick = busy(() => api('/api/notify', 'POST', {text: $('#ntext').value, icon: $('#nicon').value,
   color: $('#ncolor').value, flash: $('#nflash').checked, style: $('#nstyle').value}).then(() => toast('Sent')));
 $('#skip').onclick = busy(() => api('/api/skip', 'POST').then(() => toast('Skipped')));
-$('#add').onclick = () => { rotation.push($('#addsel').value); drawRot(); };
+$('#add').onclick = () => { rotation.push($('#addsel').value); rotIds.push(nextRotId++); drawRot(); };
 $('#saverot').onclick = busy(() => api('/api/config', 'PUT', {rotation}).then(c => { C = c; drawRot(); toast('Playlist saved'); }));
 window.addEventListener('beforeunload', e => {
   if (C.rotation && JSON.stringify(rotation) !== JSON.stringify(C.rotation)) e.preventDefault();

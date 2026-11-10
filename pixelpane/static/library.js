@@ -155,7 +155,7 @@ function openClassify(gs) {
 
 $('#gselect').onclick = () => {
   selecting = !selecting; if (!selecting) { picked.clear(); lastPick = null; }
-  $('#gselect').textContent = selecting ? 'Done' : 'Select';
+  setLabel($('#gselect'), selecting ? 'Done' : 'Select');
   $('#gselect').setAttribute('aria-pressed', selecting); loadGifs();
 };
 $('#gselall').onclick = () => {
@@ -277,8 +277,8 @@ $('#sddiscard').onclick = async () => {
 // Deleting can't be undone, so the first click arms the button and a second one deletes.
 function confirmDelete(g, b) {
   if (!b.classList.contains('armed')) {
-    b.classList.add('armed'); b.textContent = 'Delete?'; b.setAttribute('aria-label', 'Confirm delete');
-    setTimeout(() => { b.classList.remove('armed'); b.textContent = '🗑'; b.setAttribute('aria-label', 'Delete'); }, 3000);
+    b.classList.add('armed'); setLabel(b, 'Delete?'); b.setAttribute('aria-label', 'Confirm delete');
+    setTimeout(() => { b.classList.remove('armed'); setLabel(b, '🗑'); b.setAttribute('aria-label', 'Delete'); }, 3000);
     return;
   }
   api('/api/gifs/' + encodeURI(g.id), 'DELETE').then(() => { toast('Deleted ' + g.name); loadGifs(); });

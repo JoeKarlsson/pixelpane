@@ -315,7 +315,7 @@ let player = null;
 function stopPlaying() {
   if (!player) return;
   clearInterval(player.timer); player = null;
-  $('#play').textContent = '▶ Play'; render();
+  setLabel($('#play'), '▶ Play'); render();
 }
 $('#play').onclick = () => {
   if (player) return stopPlaying();
@@ -323,7 +323,7 @@ $('#play').onclick = () => {
     player.i = (player.i + 1) % frames.length;
     render(player.i, false);
   }, ms)};
-  $('#play').textContent = '■ Stop';
+  setLabel($('#play'), '■ Stop');
 };
 
 // --- the board ---------------------------------------------------------------------
@@ -370,7 +370,7 @@ function showing(on) {
   status(on ? '● Showing on the board' : $('#live').checked ? 'Not on the board yet: your next stroke shows it' : 'Not on the board');
   $('#livestat').classList.toggle('live', on);
   onBoard = on;
-  $('#board').textContent = on ? 'Stop showing' : 'Show on board';
+  setLabel($('#board'), on ? 'Stop showing' : 'Show on board');
   $('#board').classList.toggle('on', !on);
 }
 

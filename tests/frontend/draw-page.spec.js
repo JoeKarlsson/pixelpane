@@ -35,14 +35,14 @@ test('what you draw shows on the board while you draw it', async ({ page, reques
   expect(sk.frames).toHaveLength(1);
   expect(Buffer.from(sk.frames[0], 'base64').some(v => v)).toBeTruthy();   // something was drawn
 
-  await expect(page.getByTestId('board-toggle')).toHaveText('Stop showing');
+  await expect(page.getByTestId('board-toggle')).toHaveAccessibleName('Stop showing');
   await page.getByTestId('board-toggle').click();
   await expect.poll(async () => (await health(request)).pinned).toBeNull();
-  await expect(page.getByTestId('board-toggle')).toHaveText('Show on board');
+  await expect(page.getByTestId('board-toggle')).toHaveAccessibleName('Show on board');
   await expect(page.getByTestId('draw-live')).not.toBeChecked();
   await page.getByTestId('board-toggle').click();   // and back on, with Live off
   await expect.poll(async () => (await health(request)).pinned?.scene).toBe('sketch');
-  await expect(page.getByTestId('board-toggle')).toHaveText('Stop showing');
+  await expect(page.getByTestId('board-toggle')).toHaveAccessibleName('Stop showing');
   expect(page.errors).toEqual([]);
 });
 
@@ -268,11 +268,11 @@ test('Animate: frame buttons and keys step, add, copy, delete, move, change spee
   const canvas = () => page.evaluate(() => $('#canvas').toDataURL());           // play / stop
   const still = await canvas();
   await page.getByTestId('anim-play').click();
-  await expect(page.getByTestId('anim-play')).toHaveText('■ Stop');
+  await expect(page.getByTestId('anim-play')).toHaveAccessibleName('■ Stop');
   await expect.poll(canvas).not.toEqual(still);
   await blur(page);
   await page.keyboard.press(' ');
-  await expect(page.getByTestId('anim-play')).toHaveText('▶ Play');
+  await expect(page.getByTestId('anim-play')).toHaveAccessibleName('▶ Play');
   expect(page.errors).toEqual([]);
 });
 
