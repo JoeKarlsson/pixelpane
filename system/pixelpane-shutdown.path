@@ -4,7 +4,6 @@ Description=Power the Pi off when PixelPane asks (POST /api/system/shutdown)
 [Path]
 # The service runs as the pixelpane user and can't power off; it leaves this file instead.
 PathExists=/var/lib/pixelpane/shutdown-requested
-Unit=pixelpane-shutdown.service
 
 [Install]
 WantedBy=multi-user.target

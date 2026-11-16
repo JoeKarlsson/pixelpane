@@ -87,8 +87,11 @@ SHUTDOWN_REQUEST = VAR / "shutdown-requested"
 def _request_poweroff():
     """Power the Pi off. The service runs as the pixelpane user, so it leaves a request
     that pixelpane-shutdown.path (root) acts on. The request holds this boot's id: one
-    left behind by a power cut is ignored on the next boot instead of switching it off."""
-    SHUTDOWN_REQUEST.write_text(BOOT_ID.read_text().strip() + "\n")
+    left behind by a power cut is ignored on the next boot instead of switching it off.
+    Written whole, then renamed into place: the path unit fires the moment the file exists."""
+    tmp = SHUTDOWN_REQUEST.with_suffix(".tmp")
+    tmp.write_text(BOOT_ID.read_text().strip() + "\n")
+    os.replace(tmp, SHUTDOWN_REQUEST)
 
 
 def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_poweroff):
