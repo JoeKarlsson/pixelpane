@@ -151,6 +151,8 @@ rm -f "$PREFIX/start-pixelpane.sh"   # the old led-image-viewer launcher
 
 echo "== service + system config"
 install_file "$REPO/system/pixelpane.service" /etc/systemd/system/pixelpane.service 644
+install_file "$REPO/system/pixelpane-shutdown.path" /etc/systemd/system/pixelpane-shutdown.path 644
+install_file "$REPO/system/pixelpane-shutdown.service" /etc/systemd/system/pixelpane-shutdown.service 644
 install_file "$REPO/system/blacklist-rgb-matrix.conf" /etc/modprobe.d/blacklist-rgb-matrix.conf 644
 
 # Onboard audio shares the PWM hardware the hzeller driver uses; it must be off.
@@ -254,6 +256,7 @@ EOF
 systemctl daemon-reload
 systemctl restart systemd-journald
 systemctl enable -q pixelpane.service
+systemctl enable -q --now pixelpane-shutdown.path   # POST /api/system/shutdown
 if [ "$changed" -eq 1 ] || ! systemctl is-active -q pixelpane.service; then
   systemctl restart pixelpane.service
   echo "pixelpane.service restarted"

@@ -80,7 +80,18 @@ def _exit_soon():
     threading.Timer(0.5, os._exit, args=(0,)).start()
 
 
-def create_app(state, gifs, health, restart=_exit_soon):
+BOOT_ID = Path("/proc/sys/kernel/random/boot_id")
+SHUTDOWN_REQUEST = VAR / "shutdown-requested"
+
+
+def _request_poweroff():
+    """Power the Pi off. The service runs as the pixelpane user, so it leaves a request
+    that pixelpane-shutdown.path (root) acts on. The request holds this boot's id: one
+    left behind by a power cut is ignored on the next boot instead of switching it off."""
+    SHUTDOWN_REQUEST.write_text(BOOT_ID.read_text().strip() + "\n")
+
+
+def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_poweroff):
     app = Flask(__name__)
     app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
     thumbs = Thumbs(state, gifs)   # the Play now buttons' little previews
@@ -320,6 +331,13 @@ def create_app(state, gifs, health, restart=_exit_soon):
     @app.post("/api/system/restart")
     def api_restart():
         restart()
+        return jsonify(ok=True)
+
+    @app.post("/api/system/shutdown")
+    def api_shutdown():
+        """Power the Pi off cleanly, so whatever cuts its power next (a smart plug) can't
+        corrupt the SD card. Wait about a minute before cutting power."""
+        poweroff()
         return jsonify(ok=True)
 
     @app.get("/api/gifs")

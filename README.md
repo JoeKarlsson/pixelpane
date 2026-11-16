@@ -153,6 +153,7 @@ Allowed host names. See [SECURITY.md](SECURITY.md).
 | `GET /api/backup`, `POST /api/restore` | a backup file | your settings as a file (secrets stay on the board), and back |
 | `GET /api/logs?since=<unix time>` | | recent log lines |
 | `POST /api/system/restart` | | restart the service |
+| `POST /api/system/shutdown` | | power the Pi off cleanly (then wait about a minute before cutting its power, e.g. from a smart plug) |
 | `GET /preview.png?scale=10` | | the current frame |
 | `GET /api/frames` | | a stream of every frame as the panel shows it (the page's live preview) |
 

@@ -2,11 +2,12 @@
 import json
 import random
 import unittest
+from unittest import mock
 
 from tests import support
 
 support.load_plugins()
-from pixelpane import generate  # noqa: E402
+from pixelpane import generate, web  # noqa: E402
 from pixelpane.app import health  # noqa: E402
 from pixelpane.plugins.now_playing import ArtCache  # noqa: E402
 from pixelpane.state import GifLibrary, State  # noqa: E402
@@ -21,8 +22,10 @@ class SecurityTest(unittest.TestCase):
         self.state = State()
         self.gifs = GifLibrary(self.state, random.Random(0))
         self.restarts = []
+        self.poweroffs = []
         self.client = create_app(self.state, self.gifs, health,
-                                 restart=lambda: self.restarts.append(1)).test_client()
+                                 restart=lambda: self.restarts.append(1),
+                                 poweroff=lambda: self.poweroffs.append(1)).test_client()
         self.outside = support.ROOT / "outside.gif"
         support.make_gif(self.outside)
 
@@ -98,6 +101,20 @@ class SecurityTest(unittest.TestCase):
         self.assertEqual(self.client.get("/api/logs", headers=tok).status_code, 200)
         self.assertEqual(self.client.post("/api/system/restart", headers=tok).status_code, 200)
         self.assertEqual(self.restarts, [1])
+
+    def test_shutdown_needs_the_token(self):
+        self.assertEqual(self.client.post("/api/system/shutdown").status_code, 401)
+        self.assertEqual(self.poweroffs, [])
+        tok = {"X-PixelPane-Token": "s3cret-token"}
+        self.assertEqual(self.client.post("/api/system/shutdown", headers=tok).status_code, 200)
+        self.assertEqual(self.poweroffs, [1])
+
+    def test_shutdown_request_carries_this_boots_id(self):
+        boot_id = support.ROOT / "boot_id"
+        boot_id.write_text("3e58ac88-boot\n")
+        with mock.patch.object(web, "BOOT_ID", boot_id):
+            web._request_poweroff()
+        self.assertEqual(web.SHUTDOWN_REQUEST.read_text(), "3e58ac88-boot\n")
 
     def test_one_generate_job_at_a_time(self):
         jobs = generate.Jobs()

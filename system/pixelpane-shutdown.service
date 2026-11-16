@@ -1,0 +1,8 @@
+[Unit]
+Description=Power the Pi off for a PixelPane shutdown request made in this boot
+
+[Service]
+Type=oneshot
+# The request holds the boot id it was made in. One left behind by a power cut (made in an
+# earlier boot) is dropped, so it can't switch the board off right after it starts again.
+ExecStart=/bin/sh -c 'f=/var/lib/pixelpane/shutdown-requested; asked=$$(cat "$$f" 2>/dev/null); rm -f "$$f"; if [ "$$asked" = "$$(cat /proc/sys/kernel/random/boot_id)" ]; then echo "powering off: asked by PixelPane"; exec systemctl --no-block poweroff; fi; echo "ignored a shutdown request from an earlier boot"'
