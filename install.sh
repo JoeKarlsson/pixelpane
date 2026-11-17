@@ -187,12 +187,18 @@ if [ -n "${PIXELPANE_WIFI_COUNTRY:-}" ] && [ "$(raspi-config nonint get_wifi_cou
 fi
 
 echo "== hardening"
-# Security updates nightly; reboot at 04:00 only when an update needs it.
+# Updates nightly; reboot at 04:00 only when an update needs it. The stock config
+# only takes Debian security fixes, so Debian point releases and the Raspberry Pi
+# archive (firmware, mesa, kernel) piled up until someone upgraded by hand.
 write_file /etc/apt/apt.conf.d/20auto-upgrades 644 <<'EOF'
 APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
 EOF
 write_file /etc/apt/apt.conf.d/52pixelpane-upgrades 644 <<'EOF'
+Unattended-Upgrade::Origins-Pattern {
+        "origin=Debian,codename=${distro_codename}-updates,label=Debian";
+        "origin=Raspberry Pi Foundation,codename=${distro_codename},label=Raspberry Pi Foundation";
+};
 Unattended-Upgrade::Automatic-Reboot "true";
 Unattended-Upgrade::Automatic-Reboot-Time "04:00";
 EOF

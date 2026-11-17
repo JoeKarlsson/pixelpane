@@ -6,6 +6,8 @@ and the project uses [semantic versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Security
+- Nightly auto-updates also install Debian point releases and Raspberry Pi archive
+  packages (firmware, mesa, kernel), not only Debian security fixes.
 - GIF ids could name any file on the Pi (`upload//etc/passwd`): the GIF file route
   served it and DELETE removed it. Ids are now resolved and must stay inside the
   library.
