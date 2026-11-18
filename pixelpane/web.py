@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse, urlsplit
 
-from flask import Flask, Response, abort, jsonify, request, send_file
+from flask import Flask, Response, abort, jsonify, redirect, request, send_file
 from PIL import Image
 from werkzeug.utils import secure_filename
 
@@ -31,8 +31,13 @@ NOTIFY_STYLES = ["classic", "banner", "burst", "ticker"]   # pixelpane.plugins.a
 MAX_STREAMS = 6   # live previews at once; each one costs the Pi a little CPU
 CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
        "connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; "
-       "frame-ancestors 'none'")
-PERMISSIONS = "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+       "frame-ancestors 'none'; require-trusted-types-for 'script'")
+PERMISSIONS = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+GZIP_TYPES = {"application/json", "text/html", "text/css", "text/javascript", "application/javascript", "image/svg+xml"}
+# Page addresses typed by hand: old or likely names, matched ignoring case (/Library is /library).
+PAGE_ALIASES = {"/": "/", "/index.html": "/", "/gifs": "/library", "/library": "/library",
+                "/settings": "/settings", "/draw": "/draw", "/animate": "/animate"}
+PRELOAD_PAGES = {"index", "library", "draw"}   # their scripts drop class="preload" after the first render
 
 
 MODE_PIN_MINUTES = 180  # how long ON AIR or a message stays pinned when the caller gives no minutes
@@ -137,19 +142,23 @@ def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_powero
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "same-origin")
+        response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
         if response.mimetype == "text/html":
             response.headers.setdefault("Content-Security-Policy", CSP)
             response.headers.setdefault("Permissions-Policy", PERMISSIONS)
-            response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
         # Page assets carry ?v=<file time> and fonts never change: the browser keeps them a
         # year instead of asking the Pi again on every page load.
         if request.path.startswith("/static/") and response.status_code == 200 and (
                 request.args.get("v") or request.path.startswith("/static/fonts/")):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-        # /api/state is about 36 KB of JSON, polled every few seconds: gzip it for the phone.
-        if (response.mimetype == "application/json" and not response.direct_passthrough
+        # Text over the LAN to a phone: /api/state is about 36 KB of JSON, the pages and scripts more.
+        # Static files come as a file stream (direct_passthrough); they're small, so read them.
+        # Streams of other types (/api/frames) and partial (206) answers are left alone.
+        if (response.mimetype in GZIP_TYPES and response.status_code != 206
+                and (not response.direct_passthrough or request.path.startswith("/static/"))
                 and "gzip" in request.headers.get("Accept-Encoding", "")
                 and "Content-Encoding" not in response.headers):
+            response.direct_passthrough = False
             data = response.get_data()
             if len(data) > 1024:
                 response.set_data(gzip.compress(data, 5))
@@ -166,15 +175,18 @@ def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_powero
         ui = state.config.get("ui") or {}
         theme = ui.get("theme") or "dark"
         live = board_color(state)
+        # until the page script has drawn the state it sets on load, nothing transitions into it
+        preload = ' class="preload"' if name in PRELOAD_PAGES else ""
         html = PAGES[name].read_text().replace(   # the first --live, so the page paints in the board's color at once
-            '<html lang="en">', f'<html lang="en" data-theme="{theme}" style="--live:{live}">', 1)
+            '<html lang="en">', f'<html lang="en"{preload} data-theme="{theme}" style="--live:{live}">', 1)
         # the browser's own bar and form controls follow the theme too
         metas = (f'<meta name="color-scheme" content="light dark">'
                  f'<meta name="theme-color" content="{THEME_COLOR["light"]}" media="(prefers-color-scheme: light)">'
                  f'<meta name="theme-color" content="{THEME_COLOR["dark"]}" media="(prefers-color-scheme: dark)">'
                  if theme == "auto" else
-                 f'<meta name="color-scheme" content="{theme}"><meta name="theme-color" content="{THEME_COLOR[theme]}">')
-        html = html.replace('<meta name="theme-color" content="#0a0a0a">', metas, 1)
+                 f'<meta name="color-scheme" content="{"only dark" if theme == "dark" else theme}">'
+                 f'<meta name="theme-color" content="{THEME_COLOR[theme]}">')
+        html = html.replace(f'<meta name="theme-color" content="{THEME_COLOR["dark"]}">', metas, 1)
 
         def versioned(m):
             f = STATIC / m.group(1)
@@ -186,6 +198,10 @@ def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_powero
         """A wrong address gets a page with the nav, so there's a way back (API calls get JSON)."""
         if request.path.startswith("/api/"):
             return jsonify(error=e.description), 404
+        to = PAGE_ALIASES.get(request.path.lower().rstrip("/") or "/")
+        if to and request.method in ("GET", "HEAD"):
+            qs = request.query_string.decode()
+            return redirect(to + ("?" + qs if qs else ""), 301)
         return page("404", 404)
 
     @app.get("/")
@@ -203,7 +219,13 @@ def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_powero
     @app.get("/draw")
     @app.get("/animate")
     def draw_page():
-        return page("draw")   # one page, two modes: draw.js reads the path
+        """One page, two modes: draw.js reads the path. The nav and title say which, from the start."""
+        mode = "animate" if request.path.startswith("/animate") else "draw"
+        html, status, hdrs = page("draw")
+        html = html.replace(f'data-testid="{mode}-link"', f'data-testid="{mode}-link" aria-current="page"', 1)
+        if mode == "animate":
+            html = html.replace("<title>Draw · PixelPane</title>", "<title>Animate · PixelPane</title>", 1)
+        return html, status, hdrs
 
     @app.get("/favicon.ico")
     def favicon():
@@ -224,7 +246,7 @@ def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_powero
             "pinnable": sorted(s for s in [*SCENES, *PICKERS] if plugin.pinnable(s)),
             "categories": gifs.categories(),
             "plugins": plugin.describe(state.config), "plugin_errors": plugin.ERRORS,
-            "panel": panel_size(state.config), "host_names": sorted(local_names()),
+            "host_names": sorted(local_names()),
             "data": {k: int(time.time() - v[0]) for k, v in state.data.items()}})
 
     @app.post("/api/state")
@@ -347,7 +369,7 @@ def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_powero
         if not isinstance(cfg, dict):
             return jsonify(error="not a PixelPane settings backup"), 400
         try:
-            changes = schema.validate(cfg)
+            changes = schema.reset_secrets(schema.validate(cfg), state.config)
         except schema.ConfigError as e:
             return jsonify(error=str(e)), 400
         state.update_config(changes, replace=[k for k in changes if k not in ("plugins",)])

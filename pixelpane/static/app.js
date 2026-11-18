@@ -8,8 +8,9 @@ const DUR_ENTER = parseFloat(rootStyle.getPropertyValue('--dur-enter')) * 1000, 
 const coarsePointer = matchMedia('(pointer: coarse)');
 ICONS.grip = 'F ' + [3, 8, 13].map(y => `M5 ${y}a1.25 1.25 0 1 0 2.5 0a1.25 1.25 0 1 0-2.5 0M8.5 ${y}a1.25 1.25 0 1 0 2.5 0a1.25 1.25 0 1 0-2.5 0`).join('');
 
+// The timer and Power only need /api/health (under 1 KB); the full state (36 KB) loads in init.
 async function refresh() {
-  S = await api('/api/state');
+  S = {...S, ...await api('/api/health')};
   const sch = S.schedule || {};
   // the label is the state (no aria-pressed as well, or screen readers say it twice); keeps its width
   setLabel($('#power'), !S.power ? 'Power: OFF' : sch.off ? 'Power: OFF (schedule)' : 'Power: ON');
@@ -27,10 +28,11 @@ async function refresh() {
   airBtn.classList.toggle('on', onAir); airBtn.setAttribute('aria-pressed', onAir);
   if (S.panel) $('.panel').style.setProperty('--led', `calc(100% / ${S.panel[0]})`);   // one round lamp per panel pixel
   showStatus(S);
-  $('#themes').replaceChildren(...S.themes.map(t => { const s = document.createElement('span'); s.className = 'pill'; s.textContent = S.theme_names[t] || t; return s; }));
+  $('#themes').replaceChildren(...S.themes.map(t => { const s = document.createElement('span'); s.className = 'pill'; s.textContent = S.theme_names?.[t] || t; return s; }));
 }
 
 async function init() {
+  S = await api('/api/state');
   await refresh();
   C = await api('/api/config');
   rotation = [...C.rotation]; rotIds = rotation.map((_, i) => i); nextRotId = rotation.length;

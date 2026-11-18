@@ -147,6 +147,13 @@ class BackupTest(unittest.TestCase):
         self.assertEqual(self.state.config["rotation"], ["clock", "gif"])
         self.assertEqual(self.state.config["plugins"]["generator"]["api_key"], "sk-1")   # kept
 
+    def test_restore_to_another_server_drops_the_api_key(self):
+        self.client.put("/api/config", json={"plugins": {"generator": {"base_url": "http://x/v1", "api_key": "sk-1"}}})
+        doc = self.client.get("/api/backup").get_json()
+        doc["config"]["plugins"]["generator"]["base_url"] = "http://evil.example/v1"
+        self.assertEqual(self.client.post("/api/restore", json=doc).status_code, 200)
+        self.assertIsNone(self.state.config["plugins"]["generator"]["api_key"])
+
 
 if __name__ == "__main__":
     unittest.main()
