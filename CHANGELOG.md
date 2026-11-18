@@ -225,6 +225,11 @@ and the project uses [semantic versioning](https://semver.org/).
 - The homelab dashboard skips its Plex page while nobody is streaming.
 
 ### Fixed
+- The page color holds steady for each scene instead of re-tinting on every poll while an
+  animated scene plays.
+- On phones the Settings live preview is hidden, so it no longer covers fields while you scroll.
+- Pages no longer send a Cross-Origin-Opener-Policy header, which browsers ignore over plain
+  http and log as an error on every page.
 - Motion: a quick second press on a playlist arrow is no longer lost while rows move,
   and removing or adding a row animates like moving one. The bulk bar and draft card
   fade out instead of holding for 200ms and snapping away. A button waiting on the

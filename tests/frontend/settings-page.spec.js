@@ -345,6 +345,9 @@ test('the live preview folds away and back', async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 800 });   // narrower, it starts folded so it doesn't cover controls
   await page.reload();
   await expect(box.locator('canvas')).toBeHidden();
+  await page.setViewportSize({ width: 390, height: 844 });    // phones: hidden, so it never covers a field
+  await page.reload();
+  await expect(box).toBeHidden();
 });
 
 test('Show a GIF now and Try the reminders send to the board', async ({ page, request }) => {

@@ -18,7 +18,7 @@ from werkzeug.utils import secure_filename
 
 from . import generate, gfx, logbuf, plugin, schema, seasons, sketch
 from .display import compose, panel_size
-from .livecolor import LIVE_DEFAULT, live_color
+from .livecolor import board_color
 from .plugin import PICKERS, SCENES
 from .state import VAR, _read, convert_upload
 from .state import now as local_now
@@ -156,7 +156,6 @@ def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_powero
         if response.mimetype == "text/html":
             response.headers.setdefault("Content-Security-Policy", CSP)
             response.headers.setdefault("Permissions-Policy", PERMISSIONS)
-            response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
             response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
         # Page assets carry ?v=<file time> and fonts never change: the browser keeps them a
         # year instead of asking the Pi again on every page load.
@@ -182,7 +181,7 @@ def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_powero
         colors at once. Both values were validated (a theme name, a #rrggbb color)."""
         ui = state.config.get("ui") or {}
         theme = ui.get("theme") or "dark"
-        live = live_color(state.last_frame, state.effective_power(), ui.get("accent") or LIVE_DEFAULT)
+        live = board_color(state)
         html = PAGES[name].read_text().replace(   # the first --live, so the page paints in the board's color at once
             '<html lang="en">', f'<html lang="en" data-theme="{theme}" style="--live:{live}">', 1)
         # the browser's own bar and form controls follow the theme too

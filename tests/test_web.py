@@ -66,7 +66,7 @@ class WebTest(unittest.TestCase):
 
     def test_pages_have_headers_cache_keys_and_theme_color(self):
         r = self.client.get("/")
-        self.assertEqual(r.headers["Cross-Origin-Opener-Policy"], "same-origin")
+        self.assertNotIn("Cross-Origin-Opener-Policy", r.headers)   # browsers ignore it over plain http and log an error
         self.assertIn("camera=()", r.headers["Permissions-Policy"])
         html = r.get_data(as_text=True)
         self.assertIn('<meta name="color-scheme" content="dark">', html)

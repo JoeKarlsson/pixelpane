@@ -15,7 +15,7 @@ import time
 from datetime import date
 
 from . import logbuf, plugin
-from .livecolor import LIVE_DEFAULT, live_color
+from .livecolor import board_color
 from .display import FakeDisplay
 from .plugin import PICKERS, SCENES
 from .state import HOME, GifLibrary, State, now
@@ -260,8 +260,7 @@ def health(state):
             "on": state.effective_power(), "schedule": state.schedule_status(),
             "temp_c": temp, "throttled": _throttled["v"], "uptime_s": int(time.time() - state.started),
             "version": version, "date": date.today().isoformat(),
-            "live_color": live_color(state.last_frame, state.effective_power(),
-                                     (state.config.get("ui") or {}).get("accent") or LIVE_DEFAULT)}
+            "live_color": board_color(state)}
 
 
 def drop_privileges(user="pixelpane"):

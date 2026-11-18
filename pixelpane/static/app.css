@@ -411,9 +411,9 @@ button:has(> .icon), button:has(> .swap .icon) { display: inline-flex; align-ite
   .studio-draw > h2:first-child { order: 0; }
   .studio-draw > .easel { order: 1; margin-bottom: 16px; }
   .studio-draw > .tools { order: 2; }
-  /* the Settings preview docks bottom-left, away from the plugins' On/Off switches on the right */
-  .minipreview { right: auto; left: 16px; }
-  main:has(.minipreview) { padding-bottom: 120px; }
+  /* phones: a box pinned to the screen covers some field whichever corner it's in, and the
+     Control page already shows the board, so the Settings preview stays out of the way */
+  .minipreview { display: none; }
 }
 @media (max-width: 420px) { nav.row { gap: 4px 14px; } }   /* all five fit one row at 390 */
 
