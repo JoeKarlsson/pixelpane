@@ -300,6 +300,33 @@ test('with a token set, the page asks for it once and then works', async ({ page
   page.errors = page.errors.filter((e) => !e.includes('401'));   // the expected first refusal
 });
 
+test('a wrong token is not kept, so the right one fixes it for good', async ({ page, request }) => {
+  await request.put('/api/config', { data: { api_token: 'correct-horse' } });
+  try {
+    await page.reload();
+    await page.evaluate(() => localStorage.removeItem('pixelpane-token'));
+    const write = () => page.evaluate(() => api('/api/skip', 'POST').then(() => 'sent', (e) => e.message));
+    const dlg = page.getByTestId('token-dialog');
+    let sent = write();
+    await expect(dlg).toBeVisible();
+    await page.locator('#tokinput').fill('wrong-horse');
+    await page.locator('#toksave').click();
+    expect(await sent).toContain("doesn't match");
+    expect(await page.evaluate(() => localStorage.getItem('pixelpane-token'))).toBeNull();
+    await expect(dlg).toBeHidden();
+    sent = write();
+    await expect(dlg).toBeVisible();
+    await page.locator('#tokinput').fill('correct-horse');
+    await page.locator('#toksave').click();
+    expect(await sent).toBe('sent');
+    expect(await write()).toBe('sent');                        // no prompt this time
+  } finally {
+    await request.put('/api/config', { data: { api_token: null }, headers: { 'X-PixelPane-Token': 'correct-horse' } });
+    await page.evaluate(() => localStorage.removeItem('pixelpane-token'));
+  }
+  page.errors = page.errors.filter((e) => !e.includes('401'));
+});
+
 test('footer links to the project on GitHub', async ({ page }) => {
   const link = page.getByTestId('github-link');
   await expect(link).toHaveAttribute('href', 'https://github.com/JoeKarlsson/pixelpane');

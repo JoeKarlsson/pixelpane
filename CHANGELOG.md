@@ -214,6 +214,9 @@ and the project uses [semantic versioning](https://semver.org/).
 - The homelab dashboard skips its Plex page while nobody is streaming.
 
 ### Fixed
+- With a token set, a wrong token was saved anyway, so every change after it asked
+  for the token again. It's now forgotten with a clear message, and a browser that
+  won't store the token still uses it for the rest of the visit, and says so.
 - File responses (GIFs, the preview, static files) sent two `Date` headers,
   which reverse proxies log as an error on every request.
 - The control page polls half as often and stops polling in a background tab.

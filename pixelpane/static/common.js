@@ -4,12 +4,15 @@ const $ = s => document.querySelector(s);
 // The board may require a token for writes (config "api_token"). We remember it in
 // this browser and ask for it the first time the board says 401.
 const tokenKey = 'pixelpane-token';
+let pageToken = null;   // kept here too, so the token works on this page even if the browser won't store it
 function authHeaders() {
-  let t = null; try { t = localStorage.getItem(tokenKey); } catch (e) {}
+  let t = pageToken; try { t = t || localStorage.getItem(tokenKey); } catch (e) {}
   return t ? {'X-PixelPane-Token': t} : {};
 }
 function rememberToken(t) {
-  try { t ? localStorage.setItem(tokenKey, t) : localStorage.removeItem(tokenKey); } catch (e) {}
+  pageToken = t || null;
+  try { t ? localStorage.setItem(tokenKey, t) : localStorage.removeItem(tokenKey); }
+  catch (e) { if (t) toast("This browser won't save the token, so it will ask again after a reload"); }
 }
 function askToken() {
   return new Promise(resolve => {
@@ -22,6 +25,10 @@ function askToken() {
 async function send(path, opts, retry = true) {
   const r = await fetch(path, {...opts, headers: {...(opts.headers || {}), ...authHeaders()}});
   if (r.status === 401 && retry && await askToken()) return send(path, opts, false);
+  if (r.status === 401 && !retry) {   // the token just typed is wrong: forget it, or every change would ask again
+    rememberToken(null);
+    throw new Error("That token doesn't match the board's");
+  }
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || await r.text());
   return r;
 }
