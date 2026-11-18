@@ -40,8 +40,10 @@ MOVED = {"weather_fallback": ("weather", None), "birthday": ("seasonal", "birthd
 
 
 def migrate(saved):
-    """Move pre-plugin keys into config["plugins"]; returns (config, changed)."""
-    changed = False
+    """Move pre-plugin keys into config["plugins"] and drop the removed api_token;
+    returns (config, changed)."""
+    changed = "api_token" in saved
+    saved.pop("api_token", None)
     for old, (name, key) in MOVED.items():
         if old in saved:
             value = saved.pop(old)

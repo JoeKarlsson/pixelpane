@@ -128,9 +128,7 @@ turns the board on until they end.
 
 ## API
 
-LAN only. No authentication unless you set a token (Settings, Access); then every
-change needs `X-PixelPane-Token: <token>` or `Authorization: Bearer <token>`. The
-board only answers to its IPs and its own host names; add others under Settings,
+LAN only, with no authentication. The board only answers to its IPs and its own host names; add others under Settings,
 Allowed host names. See [SECURITY.md](SECURITY.md).
 
 | Call | Body | Does |

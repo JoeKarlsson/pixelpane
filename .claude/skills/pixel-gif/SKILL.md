@@ -105,10 +105,8 @@ frame_sheet(frames, "sheet.png")                 # numbered sheet + first/last p
 2. **Real LEDs.** Colors look different on the panel. Offer to show it there:
    `show_on_board(frames, ms)` holds the board on it through the Draw page's
    sketch. It refuses when the board is already pinned to something else (ON AIR
-   during meetings); don't unpin that. Board writes need the API token in
-   `PIXELPANE_TOKEN` (the board's Settings, Access); if it isn't set, ask Joe
-   for it rather than reading it off the Pi. Afterwards `DELETE /api/pin` (same
-   token, as `X-PixelPane-Token`) hands the board back, only if `/api/health`
+   during meetings); don't unpin that. Afterwards `DELETE /api/pin` hands the
+   board back, only if `/api/health`
    still shows `"pinned"` on `sketch`.
 3. **Save only after Joe approves.** Write the 32x32 GIF to
    `../pixelpane-library/gifs/<category>-<color>-<subject>.gif` (the part before

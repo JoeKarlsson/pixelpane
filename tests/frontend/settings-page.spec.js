@@ -3,11 +3,9 @@ const { test, expect } = require('@playwright/test');
 
 const config = async (request) => (await request.get('/api/config')).json();
 const health = async (request) => (await request.get('/api/health')).json();
-const TOKEN = 'settings-test-token';
-const withToken = { headers: { 'X-PixelPane-Token': TOKEN } };
 
 test.beforeEach(async ({ page, request }) => {
-  await request.put('/api/config', { ...withToken, data: { schedule: [], api_token: null } });
+  await request.put('/api/config', { data: { schedule: [] } });
   await request.post('/api/state', { data: { power: true, brightness: 60 } });
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
@@ -17,7 +15,7 @@ test.beforeEach(async ({ page, request }) => {
 });
 
 test.afterEach(async ({ page, request }) => {
-  await request.put('/api/config', { ...withToken, data: { schedule: [], api_token: null } });
+  await request.put('/api/config', { data: { schedule: [] } });
   expect(page.errors, 'browser errors').toEqual([]);
 });
 
@@ -83,17 +81,6 @@ test('seconds per scene and display settings save', async ({ page, request }) =>
   await expect(page.locator('#toast')).toContainText('restart to apply');
   expect((await config(request)).gpio_slowdown).toBe(2);
   await request.put('/api/config', { data: { dwell: { clock: 10 }, gpio_slowdown: null } });
-});
-
-test('token: set it, the page keeps working, turn it off', async ({ page, request }) => {
-  await expect(page.locator('#tokstate')).toContainText('No token');
-  await page.getByTestId('token-input').fill(TOKEN);
-  await page.getByTestId('set-token').click();
-  await expect(page.locator('#tokstate')).toContainText('A token is set');
-  expect((await request.post('/api/skip')).status()).toBe(401);            // others need it now
-  await page.getByTestId('clear-token').click();                          // this browser remembered it
-  await expect(page.locator('#tokstate')).toContainText('No token');
-  expect((await request.post('/api/skip')).status()).toBe(200);
 });
 
 test('backup downloads, restores and system shows status and logs', async ({ page, request }) => {

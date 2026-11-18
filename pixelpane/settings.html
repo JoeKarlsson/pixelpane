@@ -130,15 +130,6 @@
   <section id="access" data-testid="access">
     <h2>Access</h2>
     <div class="form">
-      <form class="field" id="tokform">
-        <label for="token">Token for changes</label>
-        <input id="token" type="password" autocomplete="new-password" minlength="8" required aria-describedby="tokstate tokerr"
-          placeholder="at least 8 characters" data-testid="token-input">
-        <small id="tokstate"></small>
-        <small class="err" id="tokerr" role="alert"></small>
-        <div class="row"><button id="settoken" data-testid="set-token">Set token</button>
-          <button id="cleartoken" type="button" data-testid="clear-token">Turn off</button></div>
-      </form>
       <div class="field">
         <label for="hosts">Allowed host names</label>
         <textarea id="hosts" rows="4" placeholder="pixelpane.example.com" data-testid="allowed-hosts"></textarea>
@@ -153,7 +144,7 @@
   <section id="backup" data-testid="backup">
     <h2>Backup and restore</h2>
     <p class="stat">Download your settings (playlist, schedule, timings, plugin settings, GIF categories) as a file.
-      Secrets like API keys and the token stay on the board and are kept when you restore.</p>
+      Secrets like API keys stay on the board and are kept when you restore.</p>
     <div class="row">
       <button id="download" class="on" data-testid="download-backup">Download settings</button>
       <label for="restorefile">Restore from</label><input type="file" id="restorefile" accept="application/json,.json" data-testid="restore-file">
@@ -179,15 +170,6 @@
     <div class="panel"><canvas id="livepreview" width="32" height="32" role="img" aria-label="live panel preview"></canvas></div>
   </details>
 
-  <dialog id="tokdlg" data-testid="token-dialog" aria-labelledby="tokdlg-title" closedby="any">
-    <form method="dialog">
-      <h3 id="tokdlg-title">Token needed</h3>
-      <p class="about">This board asks for a token before it accepts changes. It's the <code>api_token</code> in its config.</p>
-      <div class="field"><label for="tokinput">Token</label>
-        <input id="tokinput" type="password" autocomplete="current-password" required></div>
-      <div class="foot"><button id="tokcancel" type="button">Cancel</button><button id="toksave" value="ok" class="on">Use token</button></div>
-    </form>
-  </dialog>
   <footer class="foot-bar" data-testid="footer">
     <a href="https://github.com/JoeKarlsson/pixelpane" target="_blank" rel="noopener" data-testid="github-link">
       <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>

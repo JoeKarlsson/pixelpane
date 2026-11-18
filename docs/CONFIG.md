@@ -121,7 +121,6 @@ The page and the API keep these; you don't usually write them yourself.
 
 | Key | Default | What it does |
 |-----|---------|--------------|
-| `api_token` | `null` | With a token (8 characters or more), every change, the logs and backups need `X-PixelPane-Token: <token>` or `Authorization: Bearer <token>`. `null` turns it off |
 | `allowed_hosts` | `[]` | Extra host names the board answers to, like a reverse proxy's. It always answers to its IPs and its own names. This blocks DNS rebinding |
 
 ## Display hardware
@@ -140,6 +139,6 @@ These take effect after a restart (Settings, Display, Save and restart).
 
 ## Backup and restore
 
-`GET /api/backup` downloads everything above except secrets (the token and secret
-plugin settings), and `POST /api/restore` puts it back, keeping the secrets already
+`GET /api/backup` downloads everything above except secrets (secret plugin
+settings), and `POST /api/restore` puts it back, keeping the secrets already
 on the board. Both are on Settings, Backup.

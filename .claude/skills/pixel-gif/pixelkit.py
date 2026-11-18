@@ -8,7 +8,6 @@ import urllib.request
 from PIL import Image, ImageDraw
 
 BOARD = os.environ.get("PIXELPANE_URL", "http://pixelpane.local")
-TOKEN = os.environ.get("PIXELPANE_TOKEN")   # the board's Settings > Access token; writes need it
 
 
 def save_gif(frames, path, ms=100, scale=1):
@@ -60,9 +59,7 @@ def show_on_board(frames, ms=100):
     w, h = frames[0].size
     body = {"width": w, "height": h, "ms": ms,
             "frames": [base64.b64encode(f.convert("RGB").tobytes()).decode() for f in frames]}
-    if not TOKEN:
-        raise RuntimeError("set PIXELPANE_TOKEN to the board's API token (Settings, Access)")
     req = urllib.request.Request(f"{BOARD}/api/sketch", data=json.dumps(body).encode(), method="PUT",
-                                 headers={"Content-Type": "application/json", "X-PixelPane-Token": TOKEN})
+                                 headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=10) as r:
         return json.load(r)

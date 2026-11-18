@@ -295,25 +295,10 @@ $('#restart2').onclick = () => saveHardware().then(restart, e => toast(e.message
 // --- access -----------------------------------------------------------------------------
 
 function drawAccess() {
-  $('#tokstate').textContent = S.auth ? 'A token is set: every change needs it.'
-    : 'No token: anyone on your network can change the board.';
-  $('#cleartoken').disabled = !S.auth;
   $('#hosts').value = (C.allowed_hosts || []).join('\n');
   const names = S.host_names || [], me = names.find(n => !n.includes('.') && n !== 'localhost');
   $('#ownnames').textContent = me ? `${me}, ${me}.local and the like, localhost` : names.join(', ');
 }
-$('#tokform').onsubmit = async e => {
-  e.preventDefault();
-  const t = $('#token').value.trim();
-  if (t.length < 8) return showError('#tokerr', 'Use at least 8 characters');
-  try { await api('/api/config', 'PUT', {api_token: t}); } catch (e) { return showError('#tokerr', e.message); }
-  showError('#tokerr', '');
-  rememberToken(t); $('#token').value = ''; toast('Token set, and remembered in this browser'); load();
-};
-$('#cleartoken').onclick = async () => {
-  try { await api('/api/config', 'PUT', {api_token: null}); } catch (e) { return toast(e.message); }
-  rememberToken(null); toast('Token turned off'); load();
-};
 $('#savehosts').onclick = () => api('/api/config', 'PUT', {allowed_hosts: $('#hosts').value.split('\n').map(x => x.trim()).filter(Boolean)})
   .then(c => { C = c; showError('#hostserr', ''); toast('Saved'); drawAccess(); }, e => showError('#hostserr', e.message));
 

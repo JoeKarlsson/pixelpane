@@ -4,8 +4,7 @@
 
 PixelPane is a LAN appliance. Out of the box its web page and API have **no login**:
 anyone who can reach the board on your network can control it, upload GIFs or change
-its settings. Set a token under **Settings, Access** to require it for every change
-(and for logs and backups). Keep the board on your home network (an isolated IoT
+its settings. Keep the board on your home network (an isolated IoT
 network is ideal) and do not expose port 80 to the internet. To reach it remotely,
 put it behind a reverse proxy with authentication (for example Authentik or a VPN
 such as Tailscale), and add the proxy's host name under Settings, Allowed host names.

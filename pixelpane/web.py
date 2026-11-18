@@ -1,6 +1,5 @@
 """HTTP API + control page. LAN only (the board lives on the IoT VLAN)."""
 import gzip
-import hmac
 import io
 import ipaddress
 import json
@@ -30,8 +29,6 @@ ASSET = re.compile(r'"/static/([\w./-]+\.(?:css|js|svg|png))"')   # page assets 
 THEME_COLOR = {"dark": "#000000", "light": "#ffffff"}
 NOTIFY_STYLES = ["classic", "banner", "burst", "ticker"]   # pixelpane.plugins.alerts.STYLES
 MAX_STREAMS = 6   # live previews at once; each one costs the Pi a little CPU
-# Reads that give away more than the board's status: when a token is set they need it too.
-PRIVATE_READS = {"/api/logs", "/api/backup"}
 CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
        "connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; "
        "frame-ancestors 'none'")
@@ -113,24 +110,13 @@ def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_powero
     streams = {}   # stream -> when it last ran; the dev server never closes a dropped
     streams_lock = threading.Lock()   # stream, so a stream that stops running is gone
 
-    def token():
-        return state.config.get("api_token") or os.environ.get("PIXELPANE_TOKEN")
-
-    def token_ok():
-        given = request.headers.get("X-PixelPane-Token") or ""
-        auth = request.headers.get("Authorization", "")
-        if auth.startswith("Bearer "):
-            given = auth[7:]
-        return hmac.compare_digest(given.encode(), token().encode())
-
     @app.before_request
     def guard():
         """1. Only answer to our own host names: a web page on some other name that it
         re-points at the board's IP (DNS rebinding) is turned away, reads included.
         2. Refuse cross-site writes: a web page open in someone's browser on the LAN must
         not be able to drive the board. Browsers send Origin on cross-site requests;
-        Home Assistant, curl and scripts send none and are allowed.
-        3. When an api_token is set, every write (and the private reads) needs it."""
+        Home Assistant, curl and scripts send none and are allowed."""
         if not host_allowed(request.host, state.config.get("allowed_hosts") or ()):
             return jsonify(error=f"this board doesn't answer to the name {request.host!r}. Open it by "
                                  "its IP address and add the name under Settings, Allowed host names "
@@ -140,8 +126,6 @@ def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_powero
             origin = request.headers.get("Origin")
             if origin and urlparse(origin).netloc != request.host:
                 abort(403, "cross-site request refused")
-        if token() and (write or request.path in PRIVATE_READS) and not token_ok():
-            return jsonify(error="token required"), 401
         return None
 
     @app.after_request
@@ -240,7 +224,7 @@ def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_powero
             "pinnable": sorted(s for s in [*SCENES, *PICKERS] if plugin.pinnable(s)),
             "categories": gifs.categories(),
             "plugins": plugin.describe(state.config), "plugin_errors": plugin.ERRORS,
-            "panel": panel_size(state.config), "auth": bool(token()), "host_names": sorted(local_names()),
+            "panel": panel_size(state.config), "host_names": sorted(local_names()),
             "data": {k: int(time.time() - v[0]) for k, v in state.data.items()}})
 
     @app.post("/api/state")
@@ -349,7 +333,6 @@ def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_powero
         saved = schema.masked(_read(state.config_path))
         for name, s in list(saved.get("plugins", {}).items()):
             saved["plugins"][name] = {k: v for k, v in s.items() if v != schema.MASK}
-        saved.pop("api_token", None)
         doc = {"pixelpane_backup": 1, "created": local_now().isoformat(timespec="seconds"),
                "version": health(state).get("version"), "config": saved}
         stamp = local_now().strftime("%Y%m%d-%H%M")

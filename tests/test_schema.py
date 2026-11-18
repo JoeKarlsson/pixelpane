@@ -57,12 +57,8 @@ class SchemaTest(unittest.TestCase):
             with self.assertRaises(schema.ConfigError):
                 schema._field(f, v, "color")
 
-    def test_token_and_masking(self):
-        self.bad({"api_token": "short"}, "8 characters")
-        self.assertEqual(self.ok({"api_token": schema.MASK}), {})          # unchanged on the way back
-        self.assertEqual(self.ok({"api_token": None}), {"api_token": None})
-        out = schema.masked({"api_token": "s3cret-token", "plugins": {}})
-        self.assertEqual(out["api_token"], schema.MASK)
+    def test_api_token_is_gone(self):
+        self.bad({"api_token": "s3cret-token"}, "unknown setting")
 
 
 if __name__ == "__main__":

@@ -211,21 +211,6 @@ class WebTest(unittest.TestCase):
         self.assertEqual(self.client.post("/api/state", json={"brightness": 30}, headers=same).status_code, 200)
         self.assertEqual(self.client.post("/api/state", json={"brightness": 31}).status_code, 200)  # no Origin (HA, curl)
 
-    def test_optional_token(self):
-        self.client.put("/api/config", json={"api_token": "correct-horse"})
-        self.assertEqual(self.client.get("/api/config").get_json()["api_token"], "••••••••")   # never shown
-        self.assertTrue(self.client.get("/api/state").get_json()["auth"])
-        self.assertEqual(self.post("/api/state", {"power": False}).status_code, 401)
-        self.assertEqual(self.client.post("/api/state", json={"power": False},
-                                          headers={"X-PixelPane-Token": "wrong-horse"}).status_code, 401)
-        self.assertEqual(self.client.post("/api/state", json={"power": False},
-                                          headers={"Authorization": "Bearer correct-horse"}).status_code, 200)
-        self.assertFalse(self.state.power)
-        self.assertEqual(self.client.get("/api/health").status_code, 200)   # reads stay open
-        r = self.client.put("/api/config", json={"api_token": None}, headers={"X-PixelPane-Token": "correct-horse"})
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(self.post("/api/state", {"power": True}).status_code, 200)
-
     def test_preview_follows_the_panel(self):
         self.state.update_config({"panel": {"cols": 64, "rows": 32}})
         with Image.open(io.BytesIO(self.client.get("/preview.png").data)) as im:

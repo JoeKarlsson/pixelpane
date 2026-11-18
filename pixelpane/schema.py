@@ -323,10 +323,8 @@ def _plugins(v: Any) -> dict:
 
 
 def masked(config: dict) -> dict:
-    """A copy of config safe to send out: the API token and secret plugin fields hidden."""
+    """A copy of config safe to send out: secret plugin fields hidden."""
     out = dict(config)
-    if out.get("api_token"):
-        out["api_token"] = MASK
     plugins = {}
     for name, settings in (config.get("plugins") or {}).items():
         p = plugin.PLUGINS.get(name)
@@ -400,12 +398,6 @@ def validate(changes: Any) -> dict:
             out[key] = _themes(v)
         elif key == "allowed_hosts":
             out[key] = _hosts(v)
-        elif key == "api_token":
-            if v == MASK:
-                continue
-            if v is not None and (not isinstance(v, str) or len(v) < 8):
-                raise ConfigError("api_token must be at least 8 characters, or null to turn it off")
-            out[key] = v
         else:
             raise ConfigError(f"unknown setting {key!r}")
     return out

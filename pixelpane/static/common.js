@@ -1,47 +1,13 @@
-// Shared by the control page and the settings page: API calls (with the optional
-// token), toasts and small DOM helpers.
+// Shared by the control page and the settings page: API calls, toasts and small DOM helpers.
 const $ = s => document.querySelector(s);
-// The board may require a token for writes (config "api_token"). We remember it in
-// this browser and ask for it the first time the board says 401.
-const tokenKey = 'pixelpane-token';
-let pageToken = null;   // kept here too, so the token works on this page even if the browser won't store it
-function authHeaders() {
-  let t = pageToken; try { t = t || localStorage.getItem(tokenKey); } catch (e) {}
-  return t ? {'X-PixelPane-Token': t} : {};
-}
-function rememberToken(t) {
-  pageToken = t || null;
-  try { t ? localStorage.setItem(tokenKey, t) : localStorage.removeItem(tokenKey); }
-  catch (e) { if (t) toast("This browser won't save the token, so it will ask again after a reload"); }
-}
-// The dialog is a <form method="dialog">: Use token (or Enter) closes it with "ok"; Cancel,
-// Esc or a click outside close it with anything else, and the request is dropped.
-function askToken() {
-  return new Promise(resolve => {
-    const dlg = document.getElementById('tokdlg'), inp = document.getElementById('tokinput');
-    inp.value = ''; dlg.returnValue = '';
-    dlg.addEventListener('close', () => {
-      const t = dlg.returnValue === 'ok' ? inp.value.trim() : '';
-      if (t) rememberToken(t);
-      resolve(!!t);
-    }, {once: true});
-    document.getElementById('tokcancel').onclick = () => dlg.close();
-    dlg.showModal();
-  });
-}
 // An error shown next to what failed (role="alert", so it's announced), not only in a toast.
 function showError(target, msg) {
   const box = typeof target === 'string' ? $(target) : target;
   box.textContent = msg || '';
   if (msg) toast(msg);
 }
-async function send(path, opts, retry = true) {
-  const r = await fetch(path, {...opts, headers: {...(opts.headers || {}), ...authHeaders()}});
-  if (r.status === 401 && retry && await askToken()) return send(path, opts, false);
-  if (r.status === 401 && !retry) {   // the token just typed is wrong: forget it, or every change would ask again
-    rememberToken(null);
-    throw new Error("That token doesn't match the board's");
-  }
+async function send(path, opts) {
+  const r = await fetch(path, opts);
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || await r.text());
   return r;
 }

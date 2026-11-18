@@ -35,8 +35,7 @@ class SecurityTest(unittest.TestCase):
             self.assertIsNone(self.gifs.resolve(gid), gid)
         r = self.client.get("/gif/upload/" + str(self.outside).replace("/", "%2F"))
         self.assertEqual(r.status_code, 404)
-        r = self.client.delete("/api/gifs/upload/" + str(self.outside).replace("/", "%2F"),
-                               headers={"X-PixelPane-Token": "s3cret-token"})
+        r = self.client.delete("/api/gifs/upload/" + str(self.outside).replace("/", "%2F"))
         self.assertEqual(r.status_code, 400)
         self.assertTrue(self.outside.exists())
         # a symlink inside the library that points out of it doesn't count either
@@ -58,31 +57,29 @@ class SecurityTest(unittest.TestCase):
         self.assertEqual(self.client.get("/api/health", headers={"Host": "10.0.0.5"}).status_code, 200)
 
     def test_changing_the_server_clears_the_saved_key(self):
-        tok = {"X-PixelPane-Token": "s3cret-token"}
-        self.client.put("/api/config", headers=tok, json={"plugins": {"generator": {
+        self.client.put("/api/config", json={"plugins": {"generator": {
             "base_url": "http://litellm:4000/v1", "api_key": "sk-real", "model": "m"}}})
         # the page sends everything back with the key masked: unchanged server keeps it
-        self.client.put("/api/config", headers=tok, json={"plugins": {"generator": {
+        self.client.put("/api/config", json={"plugins": {"generator": {
             "base_url": "http://litellm:4000/v1", "api_key": "••••••••", "model": "m2"}}})
         self.assertEqual(self.state.config["plugins"]["generator"]["api_key"], "sk-real")
         # a new server without a new key: the key is dropped, not sent to the new server
-        self.client.put("/api/config", headers=tok, json={"plugins": {"generator": {
+        self.client.put("/api/config", json={"plugins": {"generator": {
             "base_url": "http://attacker:9999/v1", "api_key": "••••••••"}}})
         self.assertIsNone(self.state.config["plugins"]["generator"]["api_key"])
 
     def test_scene_params_are_declared(self):
-        tok = {"X-PixelPane-Token": "s3cret-token"}
-        bad = self.client.post("/api/play", headers=tok, json={"scene": "gif", "params": {"path": str(self.outside)}})
+        bad = self.client.post("/api/play", json={"scene": "gif", "params": {"path": str(self.outside)}})
         self.assertEqual(bad.status_code, 400)
-        ok = self.client.post("/api/play", headers=tok, json={"scene": "gif", "params": {"id": "repo/retro-mario-run.gif"}})
+        ok = self.client.post("/api/play", json={"scene": "gif", "params": {"id": "repo/retro-mario-run.gif"}})
         self.assertEqual(ok.status_code, 200)
-        self.assertEqual(self.client.post("/api/pin", headers=tok, json={
+        self.assertEqual(self.client.post("/api/pin", json={
             "scene": "message", "params": {"text": "HI", "color": "#ff0000"}}).status_code, 200)
-        self.assertEqual(self.client.post("/api/pin", headers=tok, json={
+        self.assertEqual(self.client.post("/api/pin", json={
             "scene": "message", "params": {"text": 5}}).status_code, 400)
-        self.assertEqual(self.client.post("/api/pin", headers=tok, json={
+        self.assertEqual(self.client.post("/api/pin", json={
             "scene": "on_air", "minutes": "soon"}).status_code, 400)
-        self.assertEqual(self.client.post("/api/notify", headers=tok, json={
+        self.assertEqual(self.client.post("/api/notify", json={
             "text": "x", "seconds": "lots"}).status_code, 400)
 
     def test_security_headers(self):
@@ -92,21 +89,14 @@ class SecurityTest(unittest.TestCase):
         self.assertIn("frame-ancestors 'none'", r.headers["Content-Security-Policy"])
         self.assertIn("script-src 'self'", self.client.get("/settings").headers["Content-Security-Policy"])
 
-    def test_private_reads_and_system_need_the_token(self):
-        self.assertEqual(self.client.get("/api/logs").status_code, 401)
-        self.assertEqual(self.client.get("/api/backup").status_code, 401)
-        self.assertEqual(self.client.post("/api/system/restart").status_code, 401)
-        self.assertEqual(self.restarts, [])
-        tok = {"X-PixelPane-Token": "s3cret-token"}
-        self.assertEqual(self.client.get("/api/logs", headers=tok).status_code, 200)
-        self.assertEqual(self.client.post("/api/system/restart", headers=tok).status_code, 200)
+    def test_an_old_token_no_longer_locks_the_board(self):
+        """A config saved with the removed api_token loses it on load, and nothing asks for one."""
+        self.assertNotIn("api_token", self.state.config)
+        self.assertNotIn("api_token", json.loads((support.VAR / "config.json").read_text()))
+        self.assertEqual(self.client.get("/api/backup").status_code, 200)
+        self.assertEqual(self.client.post("/api/system/restart").status_code, 200)
         self.assertEqual(self.restarts, [1])
-
-    def test_shutdown_needs_the_token(self):
-        self.assertEqual(self.client.post("/api/system/shutdown").status_code, 401)
-        self.assertEqual(self.poweroffs, [])
-        tok = {"X-PixelPane-Token": "s3cret-token"}
-        self.assertEqual(self.client.post("/api/system/shutdown", headers=tok).status_code, 200)
+        self.assertEqual(self.client.post("/api/system/shutdown").status_code, 200)
         self.assertEqual(self.poweroffs, [1])
 
     def test_shutdown_request_carries_this_boots_id(self):

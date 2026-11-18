@@ -5,6 +5,10 @@ and the project uses [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Removed
+
+- The API token is gone: no more token prompts, no Settings field for it, and a token saved in an old config is dropped on start. The board is LAN only; cross-site writes and other host names are still refused.
+
 ### Security
 - Nightly auto-updates also install Debian point releases and Raspberry Pi archive
   packages (firmware, mesa, kernel), not only Debian security fixes.
