@@ -139,12 +139,14 @@ function openClassify(gs) {
   $('#gdlgtheme').replaceChildren(...themeOptions(!one));
   $('#gdlgtheme').value = one ? one.theme : '';
   $('#gdlgreset').hidden = !gs.some(g => g.moved);
+  $('#gdlgerr').textContent = '';
   const done = async (body, msg) => {
     try { await api('/api/gifs/classify', 'POST', {ids: gs.map(g => g.id), ...body}); }
-    catch (e) { return toast(e.message); }
+    catch (e) { $('#gdlgerr').textContent = e.message; return; }   // the toast would sit behind the dialog
     toast(msg); dlg.close(); picked.clear(); init();
   };
-  $('#gdlgsave').onclick = () => {
+  $('#gdlgform').onsubmit = e => {
+    e.preventDefault();
     const category = $('#gdlgcat').value.trim(), theme = $('#gdlgtheme').value;
     done({...(category ? {category} : {}), ...(theme ? {theme} : {})}, one ? 'Moved' : `Moved ${gs.length} GIFs`);
   };
@@ -168,11 +170,13 @@ $('#grename').onclick = () => {
   const old = gifFilter.slice(4), dlg = $('#rdlg');
   $('#rdlgabout').textContent = `Renames "${old}" on every GIF in it.`;
   $('#rdlgname').value = old;
+  $('#rdlgerr').textContent = '';
   $('#rdlgcancel').onclick = () => dlg.close();
-  $('#rdlgsave').onclick = async () => {
+  $('#rdlgform').onsubmit = async e => {
+    e.preventDefault();
     let r;
     try { r = await api('/api/categories/rename', 'POST', {from: old, to: $('#rdlgname').value}); }
-    catch (e) { return toast(e.message); }
+    catch (e) { $('#rdlgerr').textContent = e.message; return; }
     toast(`Renamed ${r.changed} GIFs`); dlg.close();
     gifFilter = 'cat:' + $('#rdlgname').value.trim().toLowerCase().replace(/[-\s]+/g, '_'); init();
   };
@@ -188,11 +192,17 @@ const STEPS = {drafting: 'Designing', reviewing: 'Checking its work', starting: 
 async function runJob(body) {
   if (generating) return;
   generating = true; genInputs.forEach(s => $(s).disabled = true);
-  const stat = $('#ggenstat'), began = Date.now();
+  const stat = $('#ggenstat'), secs = $('#ggensecs'), began = Date.now();
   let step = 'starting';
-  const tick = setInterval(() => {
-    stat.textContent = `${STEPS[step] || step}… ${Math.round((Date.now() - began) / 1000)}s`;
-  }, 400);
+  // The step name is a live region, so it's announced only when it changes; the seconds
+  // counter beside it is hidden from screen readers, or they'd read it every tick.
+  const show = () => {
+    const words = `${STEPS[step] || step}…`;
+    if (stat.textContent !== words) stat.textContent = words;
+    secs.textContent = `${Math.round((Date.now() - began) / 1000)}s`;
+  };
+  show();
+  const tick = setInterval(show, 400);
   try {
     const {job} = await api('/api/gifs/generate', 'POST', body);
     let j;
@@ -201,11 +211,11 @@ async function runJob(body) {
       j = await api('/api/gifs/generate/' + job); step = j.step || step;
     } while (j.state === 'working');
     if (j.state !== 'done') throw new Error(j.error || 'failed');
-    stat.textContent = '';
+    stat.textContent = ''; secs.textContent = '';
     showDraft(j.draft);
     loadDrafts();
   } catch (e) {
-    stat.textContent = 'Could not make it: ' + e.message;
+    stat.textContent = 'Could not make it: ' + e.message; secs.textContent = '';
   } finally {
     clearInterval(tick); generating = false;
     genInputs.forEach(s => $(s).disabled = false);
@@ -243,21 +253,22 @@ async function loadDrafts() {
   }));
 }
 
-$('#ggo').onclick = () => {
+// Forms, not Enter handlers: the browser doesn't submit while an IME is composing.
+$('#genform').onsubmit = e => {
+  e.preventDefault();
   const p = $('#gprompt').value.trim();
   if (!p) return toast('Type an idea, or press Surprise me');
   runJob({prompt: p});
 };
-$('#gprompt').onkeydown = e => { if (e.key === 'Enter') $('#ggo').click(); };
 $('#gsurprise').onclick = () => runJob({prompt: ''});
 $('#gsetup').onclick = () => { location.href = '/settings#plugin-generator'; };
 $('#sdagain').onclick = () => draft && runJob({prompt: draft.prompt || ''});
-$('#sdrefine').onclick = () => {
+$('#refineform').onsubmit = e => {
+  e.preventDefault();
   const c = $('#sdchange').value.trim();
   if (!c) return toast('Say what to change');
   runJob({from: draft.id, change: c});
 };
-$('#sdchange').onkeydown = e => { if (e.key === 'Enter') $('#sdrefine').click(); };
 $('#sdplay').onclick = () => api('/api/play', 'POST', {scene: 'gif', params: {id: `draft/${draft.id}.gif`}})
   .then(() => toast('Up next on the panel'));
 $('#sdsave').onclick = async () => {

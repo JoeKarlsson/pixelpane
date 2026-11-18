@@ -214,6 +214,13 @@ and the project uses [semantic versioning](https://semver.org/).
 - The homelab dashboard skips its Plex page while nobody is streaming.
 
 ### Fixed
+- Esc (or a click outside) on the token prompt no longer leaves the button that asked
+  for it stuck disabled, and Enter now uses the token. The move, rename and token
+  dialogs are real forms: Enter submits them, typing in Chinese, Japanese or Korean
+  doesn't submit half-composed words, and their errors show inside the dialog instead
+  of in a toast hidden behind it. Dialogs have names for screen readers.
+- The Make a GIF status line no longer has a screen reader read out a seconds counter
+  every half second; it announces each step once.
 - With a token set, a wrong token was saved anyway, so every change after it asked
   for the token again. It's now forgotten with a clear message, and a browser that
   won't store the token still uses it for the rest of the visit, and says so.

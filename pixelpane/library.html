@@ -23,14 +23,14 @@
     <h2>Make a GIF</h2>
     <p class="about">Describe an idea and a model designs a looping animation. You see it first;
       nothing goes in the library until you save it.</p>
-    <div class="row gen">
+    <form class="row gen" id="genform">
       <input id="gprompt" maxlength="500" placeholder="a tuxedo cat chasing a red laser dot" autocomplete="off"
         aria-label="Your idea" data-testid="generate-prompt">
       <button id="ggo" class="on" data-testid="generate">Generate</button>
-      <button id="gsurprise" data-testid="surprise">Surprise me</button>
-      <button id="gsetup" hidden data-testid="generate-setup">Set up the generator</button>
-    </div>
-    <div class="stat gen-status" id="ggenstat" role="status" data-testid="generate-status"></div>
+      <button id="gsurprise" type="button" data-testid="surprise">Surprise me</button>
+      <button id="gsetup" type="button" hidden data-testid="generate-setup">Set up the generator</button>
+    </form>
+    <div class="stat gen-status" data-testid="generate-status"><span id="ggenstat" role="status"></span> <span id="ggensecs" aria-hidden="true"></span></div>
     <div class="draft" id="sdraft" hidden data-testid="draft">
       <div class="draft-view"><img id="sdimg" alt="the draft, animated"></div>
       <div class="draft-side">
@@ -41,11 +41,11 @@
           <button id="sdagain" data-testid="draft-again">Try again</button>
           <button id="sddiscard" data-testid="draft-discard">Discard</button>
         </div>
-        <div class="row refine">
+        <form class="row refine" id="refineform">
           <input id="sdchange" maxlength="500" placeholder="Change something: make the cat bigger" autocomplete="off"
             aria-label="What to change" data-testid="draft-change">
           <button id="sdrefine" data-testid="draft-refine">Refine</button>
-        </div>
+        </form>
         <div class="save-box">
           <div class="row">
             <input id="sdname" aria-label="Name" placeholder="name" data-testid="draft-name">
@@ -103,7 +103,8 @@
       </select></label>
     </div>
   </section>
-  <dialog id="gdlg" data-testid="classify-dialog">
+  <dialog id="gdlg" data-testid="classify-dialog" aria-labelledby="gdlgtitle" closedby="any">
+    <form id="gdlgform">
     <h3 id="gdlgtitle">Move GIF</h3>
     <p class="about" id="gdlgabout"></p>
     <div class="field"><label for="gdlgcat">Category</label>
@@ -112,23 +113,31 @@
     <div class="field"><label for="gdlgtheme">Plays</label>
       <select id="gdlgtheme" data-testid="classify-theme"></select>
       <small>All year plays any day; a theme plays only on its dates.</small></div>
-    <div class="foot"><button id="gdlgreset" data-testid="classify-reset">Back to where the file is</button>
-      <button id="gdlgcancel">Cancel</button><button id="gdlgsave" class="on" data-testid="classify-save">Save</button></div>
+    <small class="err" id="gdlgerr" role="alert"></small>
+    <div class="foot"><button id="gdlgreset" type="button" data-testid="classify-reset">Back to where the file is</button>
+      <button id="gdlgcancel" type="button">Cancel</button><button id="gdlgsave" class="on" data-testid="classify-save">Save</button></div>
+    </form>
   </dialog>
-  <dialog id="rdlg" data-testid="rename-dialog">
-    <h3>Rename category</h3>
+  <dialog id="rdlg" data-testid="rename-dialog" aria-labelledby="rdlgtitle" closedby="any">
+    <form id="rdlgform">
+    <h3 id="rdlgtitle">Rename category</h3>
     <p class="about" id="rdlgabout"></p>
     <div class="field"><label for="rdlgname">New name</label>
       <input id="rdlgname" list="gcats" autocomplete="off" data-testid="rename-input">
       <small>Use an existing name to merge the two categories.</small></div>
-    <div class="foot"><button id="rdlgcancel">Cancel</button><button id="rdlgsave" class="on" data-testid="rename-save">Rename</button></div>
+    <small class="err" id="rdlgerr" role="alert"></small>
+    <div class="foot"><button id="rdlgcancel" type="button">Cancel</button><button id="rdlgsave" class="on" data-testid="rename-save">Rename</button></div>
+    </form>
   </dialog>
   <datalist id="gcats"></datalist>
-  <dialog id="tokdlg" data-testid="token-dialog">
-    <h3>Token needed</h3>
-    <p class="about">This board asks for a token before it accepts changes. It's the <code>api_token</code> in its config.</p>
-    <input id="tokinput" type="password" autocomplete="off" placeholder="Token" style="width:100%">
-    <div class="foot"><button id="tokcancel">Cancel</button><button id="toksave" class="on">Use token</button></div>
+  <dialog id="tokdlg" data-testid="token-dialog" aria-labelledby="tokdlg-title" closedby="any">
+    <form method="dialog">
+      <h3 id="tokdlg-title">Token needed</h3>
+      <p class="about">This board asks for a token before it accepts changes. It's the <code>api_token</code> in its config.</p>
+      <div class="field"><label for="tokinput">Token</label>
+        <input id="tokinput" type="password" autocomplete="current-password" required></div>
+      <div class="foot"><button id="tokcancel" type="button">Cancel</button><button id="toksave" value="ok" class="on">Use token</button></div>
+    </form>
   </dialog>
   <footer class="foot-bar" data-testid="footer">
     <a href="https://github.com/JoeKarlsson/pixelpane" target="_blank" rel="noopener" data-testid="github-link">

@@ -300,6 +300,43 @@ test('with a token set, the page asks for it once and then works', async ({ page
   page.errors = page.errors.filter((e) => !e.includes('401'));   // the expected first refusal
 });
 
+test('Esc on the token prompt gives the button back', async ({ page, request }) => {
+  await request.put('/api/config', { data: { api_token: 'correct-horse' } });
+  try {
+    await page.reload();
+    await page.evaluate(() => localStorage.removeItem('pixelpane-token'));
+    await page.locator('#skip').click();
+    const dlg = page.getByTestId('token-dialog');
+    await expect(dlg).toBeVisible();
+    await expect(dlg).toHaveAccessibleName('Token needed');
+    await page.keyboard.press('Escape');
+    await expect(dlg).toBeHidden();
+    await expect(page.locator('#skip')).toBeEnabled();
+    await expect(page.locator('#skip')).not.toHaveAttribute('aria-busy', 'true');
+  } finally {
+    await request.put('/api/config', { data: { api_token: null }, headers: { 'X-PixelPane-Token': 'correct-horse' } });
+  }
+  // the refusal that asked for it, and the skip it then dropped
+  page.errors = page.errors.filter((e) => !e.includes('401') && e !== 'token required');
+});
+
+test('Enter in the token prompt uses the token', async ({ page, request }) => {
+  await request.put('/api/config', { data: { api_token: 'correct-horse' } });
+  try {
+    await page.reload();
+    await page.evaluate(() => localStorage.removeItem('pixelpane-token'));
+    const sent = page.evaluate(() => api('/api/skip', 'POST').then(() => 'sent', (e) => e.message));
+    await expect(page.getByTestId('token-dialog')).toBeVisible();
+    await page.locator('#tokinput').fill('correct-horse');
+    await page.locator('#tokinput').press('Enter');
+    expect(await sent).toBe('sent');
+  } finally {
+    await request.put('/api/config', { data: { api_token: null }, headers: { 'X-PixelPane-Token': 'correct-horse' } });
+    await page.evaluate(() => localStorage.removeItem('pixelpane-token'));
+  }
+  page.errors = page.errors.filter((e) => !e.includes('401'));
+});
+
 test('a wrong token is not kept, so the right one fixes it for good', async ({ page, request }) => {
   await request.put('/api/config', { data: { api_token: 'correct-horse' } });
   try {

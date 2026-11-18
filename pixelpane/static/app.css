@@ -206,6 +206,10 @@ dialog .checks label { display: flex; gap: 4px; align-items: center; color: var(
 dialog .md { display: flex; gap: 6px; flex-wrap: wrap; }
 dialog .md input[type=number] { width: 70px; }
 dialog .foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+dialog:modal { overscroll-behavior: contain; }
+/* errors next to what failed (role="alert"), so they don't depend on a toast */
+.err { color: var(--red); font-size: 13px; }
+.err:empty { display: none; }
 
 #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--bar); border: 1px solid var(--line);
   color: var(--bright); font: 13px var(--mono); padding: 9px 16px; border-radius: 8px;

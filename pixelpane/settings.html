@@ -124,13 +124,15 @@
   <section id="access" data-testid="access">
     <h2>Access</h2>
     <div class="form">
-      <div class="field">
+      <form class="field" id="tokform">
         <label for="token">Token for changes</label>
-        <input id="token" type="password" autocomplete="new-password" placeholder="at least 8 characters" data-testid="token-input">
+        <input id="token" type="password" autocomplete="new-password" minlength="8" required aria-describedby="tokstate tokerr"
+          placeholder="at least 8 characters" data-testid="token-input">
         <small id="tokstate"></small>
+        <small class="err" id="tokerr" role="alert"></small>
         <div class="row"><button id="settoken" data-testid="set-token">Set token</button>
-          <button id="cleartoken" data-testid="clear-token">Turn off</button></div>
-      </div>
+          <button id="cleartoken" type="button" data-testid="clear-token">Turn off</button></div>
+      </form>
       <div class="field">
         <label for="hosts">Allowed host names</label>
         <textarea id="hosts" rows="4" placeholder="pixelpane.example.com" data-testid="allowed-hosts"></textarea>
@@ -169,11 +171,14 @@
     <canvas id="livepreview" width="32" height="32" role="img" aria-label="live panel preview"></canvas>
   </details>
 
-  <dialog id="tokdlg" data-testid="token-dialog">
-    <h3>Token needed</h3>
-    <p class="about">This board asks for a token before it accepts changes. It's the <code>api_token</code> in its config.</p>
-    <input id="tokinput" type="password" autocomplete="off" placeholder="Token" style="width:100%">
-    <div class="foot"><button id="tokcancel">Cancel</button><button id="toksave" class="on">Use token</button></div>
+  <dialog id="tokdlg" data-testid="token-dialog" aria-labelledby="tokdlg-title" closedby="any">
+    <form method="dialog">
+      <h3 id="tokdlg-title">Token needed</h3>
+      <p class="about">This board asks for a token before it accepts changes. It's the <code>api_token</code> in its config.</p>
+      <div class="field"><label for="tokinput">Token</label>
+        <input id="tokinput" type="password" autocomplete="current-password" required></div>
+      <div class="foot"><button id="tokcancel" type="button">Cancel</button><button id="toksave" value="ok" class="on">Use token</button></div>
+    </form>
   </dialog>
   <footer class="foot-bar" data-testid="footer">
     <a href="https://github.com/JoeKarlsson/pixelpane" target="_blank" rel="noopener" data-testid="github-link">

@@ -303,10 +303,12 @@ function drawAccess() {
   const names = S.host_names || [], me = names.find(n => !n.includes('.') && n !== 'localhost');
   $('#ownnames').textContent = me ? `${me}, ${me}.local and the like, localhost` : names.join(', ');
 }
-$('#settoken').onclick = async () => {
+$('#tokform').onsubmit = async e => {
+  e.preventDefault();
   const t = $('#token').value.trim();
-  if (t.length < 8) return toast('Use at least 8 characters');
-  try { await api('/api/config', 'PUT', {api_token: t}); } catch (e) { return toast(e.message); }
+  if (t.length < 8) return showError('#tokerr', 'Use at least 8 characters');
+  try { await api('/api/config', 'PUT', {api_token: t}); } catch (e) { return showError('#tokerr', e.message); }
+  showError('#tokerr', '');
   rememberToken(t); $('#token').value = ''; toast('Token set, and remembered in this browser'); load();
 };
 $('#cleartoken').onclick = async () => {

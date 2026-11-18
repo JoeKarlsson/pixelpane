@@ -14,13 +14,26 @@ function rememberToken(t) {
   try { t ? localStorage.setItem(tokenKey, t) : localStorage.removeItem(tokenKey); }
   catch (e) { if (t) toast("This browser won't save the token, so it will ask again after a reload"); }
 }
+// The dialog is a <form method="dialog">: Use token (or Enter) closes it with "ok"; Cancel,
+// Esc or a click outside close it with anything else, and the request is dropped.
 function askToken() {
   return new Promise(resolve => {
     const dlg = document.getElementById('tokdlg'), inp = document.getElementById('tokinput');
-    inp.value = ''; dlg.showModal();
-    document.getElementById('toksave').onclick = () => { rememberToken(inp.value.trim()); dlg.close(); resolve(true); };
-    document.getElementById('tokcancel').onclick = () => { dlg.close(); resolve(false); };
+    inp.value = ''; dlg.returnValue = '';
+    dlg.addEventListener('close', () => {
+      const t = dlg.returnValue === 'ok' ? inp.value.trim() : '';
+      if (t) rememberToken(t);
+      resolve(!!t);
+    }, {once: true});
+    document.getElementById('tokcancel').onclick = () => dlg.close();
+    dlg.showModal();
   });
+}
+// An error shown next to what failed (role="alert", so it's announced), not only in a toast.
+function showError(target, msg) {
+  const box = typeof target === 'string' ? $(target) : target;
+  box.textContent = msg || '';
+  if (msg) toast(msg);
 }
 async function send(path, opts, retry = true) {
   const r = await fetch(path, {...opts, headers: {...(opts.headers || {}), ...authHeaders()}});
