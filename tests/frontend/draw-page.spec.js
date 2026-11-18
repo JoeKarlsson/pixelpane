@@ -331,3 +331,51 @@ test('every Animate example loads its frames and plays them on the board', async
   }
   expect(page.errors).toEqual([]);
 });
+
+test('the keyboard draws: arrow keys move a cursor on the canvas, Space uses the tool there', async ({ page }) => {
+  await page.goto('/draw');
+  await expect(page.getByTestId('draw-status')).not.toBeEmpty();
+  await page.getByTestId('draw-canvas').focus();
+  for (const key of ['ArrowRight', 'ArrowRight', 'ArrowDown']) await page.keyboard.press(key);
+  await expect(page.getByTestId('cursor-pos')).toHaveText('Column 3, row 2');
+  await expect(page.locator('.kcursor')).toBeVisible();
+  await page.keyboard.press(' ');                                                // pen
+  expect(await px(page, 2, 1)).toEqual([255, 0, 77]);
+  expect(await px(page, 3, 1)).toEqual([0, 0, 0]);
+  await page.keyboard.press('e');                                                // shortcuts work on the canvas
+  await page.keyboard.press(' ');                                                // eraser
+  expect(await px(page, 2, 1)).toEqual([0, 0, 0]);
+  await page.keyboard.press('f');
+  await page.keyboard.press(' ');                                                // fill: the whole blank canvas
+  expect(await px(page, 31, 31)).toEqual([255, 0, 77]);
+  expect(page.errors).toEqual([]);
+});
+
+test('Animate: arrow keys move the canvas cursor while it has focus, and step frames elsewhere', async ({ page }) => {
+  await page.goto('/animate');
+  await expect(page.getByTestId('frame-pos')).toHaveText('1 / 10');
+  await page.getByTestId('draw-canvas').focus();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press(' ');                                                // paints, doesn't play
+  await expect(page.getByTestId('frame-pos')).toHaveText('1 / 10');
+  await expect(page.getByTestId('cursor-pos')).toHaveText('Column 2, row 1');
+  await expect(page.getByTestId('anim-play')).toHaveAccessibleName('Play');
+  expect(await px(page, 1, 0)).toEqual([255, 0, 77]);
+  await blur(page);
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByTestId('frame-pos')).toHaveText('2 / 10');
+  expect(page.errors).toEqual([]);
+});
+
+test('one-letter shortcuts stay off outside the canvas and tools', async ({ page }) => {
+  await page.goto('/draw');
+  await expect(page.getByTestId('draw-status')).not.toBeEmpty();
+  for (const id of ['draw-live', 'draw-name']) {
+    await page.getByTestId(id).focus();
+    await page.keyboard.press('e');
+    expect(await page.evaluate(() => tool)).toBe('pen');
+  }
+  await page.getByTestId('tool-fill').focus();                                   // the tools still take them
+  await page.keyboard.press('e');
+  expect(await page.evaluate(() => tool)).toBe('eraser');
+});
