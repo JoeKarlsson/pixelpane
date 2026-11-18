@@ -416,17 +416,17 @@ test('Still previews stops GIFs moving here and on Control, and is remembered', 
   await expect(page.getByTestId('gif-card').first().locator('img')).not.toHaveAttribute('src', /still=1/);
 });
 
-test('without closedby support, a click outside a dialog closes it', async ({ page }) => {
+test('without closedby support, a press outside a dialog closes it', async ({ page }) => {
   await page.addInitScript(() => { delete HTMLDialogElement.prototype.closedBy; });
   await page.reload();
   await page.getByTestId('gif-filter').selectOption('cat:space');
   await page.getByTestId('rename-category').click();
   const dlg = page.getByTestId('rename-dialog');
   await expect(dlg).toBeVisible();
-  // synthetic clicks, so only the fallback (not the browser's own light dismiss) can close it
+  // synthetic presses, so only the fallback (not the browser's own light dismiss) can close it
   const clickAt = (inside) => dlg.evaluate((d, inside) => {
     const r = d.getBoundingClientRect(), x = inside ? r.left + 10 : 2, y = inside ? r.top + 10 : 2;
-    d.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: x, clientY: y }));
+    d.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: x, clientY: y }));
   }, inside);
   await clickAt(true);
   await expect(dlg).toBeVisible();

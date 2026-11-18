@@ -201,10 +201,11 @@ function pluginForm(p, prefix = 'pf-') {
   return [form, readers];
 }
 
-// Safari has no closedby yet: there, a click outside a dialog[closedby=any] closes it too.
-// (A click on the backdrop lands on the dialog itself, at a point outside its box.)
+// Safari has no closedby yet: there, a press outside a dialog[closedby=any] closes it too.
+// (A press on the backdrop lands on the dialog itself, at a point outside its box. Not
+// click: a text selection dragged out of a field ends as a click on the dialog.)
 if (!('closedBy' in HTMLDialogElement.prototype)) {
-  document.addEventListener('click', e => {
+  document.addEventListener('pointerdown', e => {
     const d = e.target;
     if (!(d instanceof HTMLDialogElement) || !d.open || d.getAttribute('closedby') !== 'any') return;
     const r = d.getBoundingClientRect();
