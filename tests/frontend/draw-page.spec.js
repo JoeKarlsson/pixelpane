@@ -206,6 +206,24 @@ test('Draw: every tool and button does its job', async ({ page, request }) => {
   expect(page.errors).toEqual([]);
 });
 
+test('Animate: Space ticks a focused checkbox and presses a focused button, instead of playing', async ({ page }) => {
+  await page.goto('/animate');
+  const onion = page.getByTestId('onion');
+  const was = await onion.isChecked();
+  await onion.focus();
+  await page.keyboard.press(' ');
+  expect(await onion.isChecked()).toBe(!was);
+  await expect(page.getByTestId('anim-play')).toHaveAccessibleName(/Play/);   // still stopped
+  const before = await page.getByTestId('frame-pos').textContent();
+  await page.getByTestId('frame-dup').focus();
+  await page.keyboard.press(' ');
+  await expect(page.getByTestId('frame-pos')).not.toHaveText(before);       // it duplicated
+  await expect(page.getByTestId('anim-play')).toHaveAccessibleName(/Play/);
+  await page.locator('body').click({ position: { x: 1, y: 1 } });
+  await page.keyboard.press(' ');                                            // with nothing focused, Space plays
+  await expect(page.getByTestId('anim-play')).toHaveAccessibleName(/Stop/);
+});
+
 test('Animate: frame buttons and keys step, add, copy, delete, move, change speed and play', async ({ page }) => {
   await page.goto('/animate');
   const at = () => page.evaluate(() => cur);

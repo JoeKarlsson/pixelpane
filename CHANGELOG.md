@@ -214,6 +214,8 @@ and the project uses [semantic versioning](https://semver.org/).
 - The homelab dashboard skips its Plex page while nobody is streaming.
 
 ### Fixed
+- On Animate, Space ticks the focused checkbox (mirror, grid, onion skin, Live) or
+  presses the focused button again, instead of always starting playback.
 - Esc (or a click outside) on the token prompt no longer leaves the button that asked
   for it stuck disabled, and Enter now uses the token. The move, rename and token
   dialogs are real forms: Enter submits them, typing in Chinese, Japanese or Korean

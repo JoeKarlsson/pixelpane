@@ -174,6 +174,8 @@ $('#grid').onchange = () => $('#wrap').classList.toggle('grid', $('#grid').check
 
 document.addEventListener('keydown', e => {
   if (e.target.matches('input:not([type=checkbox]):not([type=range]), select, textarea')) return;
+  // Space and Enter belong to the focused control (tick a checkbox, press a button), not to Play
+  if ((e.key === ' ' || e.key === 'Enter') && e.target.closest('button, input, select, textarea, summary, a[href]')) return;
   const k = e.key.toLowerCase();
   if (ANIM && (k === 'arrowleft' || k === 'arrowright') && !e.target.matches('[type=range]') && !(e.metaKey || e.ctrlKey || e.altKey)) {
     e.preventDefault();
