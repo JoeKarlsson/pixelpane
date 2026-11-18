@@ -72,7 +72,7 @@ test('GIFs can be moved to another category or theme, one at a time or in bulk',
   const count = page.getByTestId('selected-count');
   // click picks a card, a second click unpicks it
   await cards.nth(0).click();
-  await expect(cards.nth(0)).toHaveAttribute('aria-checked', 'true');
+  await expect(cards.nth(0).getByRole('checkbox')).toBeChecked();
   await expect(count).toHaveText('1 selected');
   await cards.nth(0).click();
   await expect(cards.nth(0)).toHaveClass(/selecting/);
@@ -301,6 +301,7 @@ test('Cancel closes the move and rename dialogs without changing anything', asyn
   await cards.first().getByTestId('classify').click();
   const dlg = page.getByTestId('classify-dialog');
   await expect(dlg).toBeVisible();
+  await expect(dlg.getByTestId('classify-category')).toBeFocused();   // autofocus
   await dlg.getByTestId('classify-category').fill('nowhere');
   await page.locator('#gdlgcancel').click();
   await expect(dlg).toBeHidden();
@@ -366,4 +367,69 @@ test('Surprise me and Try again make new drafts', async ({ page, request }) => {
     await request.put('/api/config', { data: { plugins: { generator: { base_url: '', model: '' } } } });
     stub.close();
   }
+});
+
+test('Select and Done answer at once: no refetch, and the grid does not move', async ({ page }) => {
+  const cards = page.getByTestId('gif-card');
+  await expect(cards.first()).toBeVisible();
+  const box = async () => cards.nth(1).boundingBox();
+  const before = await box();
+  let fetched = 0;
+  page.on('request', (r) => { if (new URL(r.url()).pathname === '/api/gifs') fetched += 1; });
+  await page.getByTestId('select-mode').click();
+  await expect(page.getByTestId('bulk-bar')).toBeVisible();
+  expect(await box()).toEqual(before);                     // same place, same height
+  await page.getByTestId('select-page').click();
+  await page.getByTestId('select-clear').click();
+  await page.getByTestId('select-mode').click();
+  await expect(page.getByTestId('bulk-bar')).toBeHidden();
+  expect(fetched).toBe(0);
+});
+
+test('the pager shows every page number, the current one marked', async ({ page }) => {
+  const total = (await (await page.request.get('/api/gifs')).json()).length;
+  const pages = Math.ceil(total / 30);
+  expect(pages).toBeGreaterThan(2);
+  await page.getByTestId('page-size').selectOption('30');
+  const nums = page.getByTestId('page-numbers').getByRole('button');
+  await expect(nums).toHaveCount(pages);
+  await expect(nums.first()).toHaveAttribute('aria-current', 'page');
+  await nums.nth(2).click();
+  await expect(page.locator('#gpage')).toHaveText(new RegExp(`^Page 3 of ${pages}`));
+  await expect(nums.nth(2)).toHaveAttribute('aria-current', 'page');
+  await expect(nums.nth(2)).toBeFocused();
+  await expect(page.locator('#gpages [aria-current]')).toHaveCount(1);
+});
+
+test('Still previews stops GIFs moving here and on Control, and is remembered', async ({ page }) => {
+  const firstImg = page.getByTestId('gif-card').first().locator('img');
+  await expect(firstImg).not.toHaveAttribute('src', /still=1/);
+  await page.getByTestId('still-previews').check();
+  await expect(firstImg).toHaveAttribute('src', /\?still=1$/);
+  await page.reload();
+  await expect(page.getByTestId('still-previews')).toBeChecked();
+  await expect(page.getByTestId('gif-card').first().locator('img')).toHaveAttribute('src', /\?still=1$/);
+  await page.goto('/');
+  await expect(page.locator('img.thumb').first()).toHaveAttribute('src', /\?still=1$/);
+  await page.goto('/library');
+  await page.getByTestId('still-previews').uncheck();
+  await expect(page.getByTestId('gif-card').first().locator('img')).not.toHaveAttribute('src', /still=1/);
+});
+
+test('without closedby support, a press outside a dialog closes it', async ({ page }) => {
+  await page.addInitScript(() => { delete HTMLDialogElement.prototype.closedBy; });
+  await page.reload();
+  await page.getByTestId('gif-filter').selectOption('cat:space');
+  await page.getByTestId('rename-category').click();
+  const dlg = page.getByTestId('rename-dialog');
+  await expect(dlg).toBeVisible();
+  // synthetic presses, so only the fallback (not the browser's own light dismiss) can close it
+  const clickAt = (inside) => dlg.evaluate((d, inside) => {
+    const r = d.getBoundingClientRect(), x = inside ? r.left + 10 : 2, y = inside ? r.top + 10 : 2;
+    d.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: x, clientY: y }));
+  }, inside);
+  await clickAt(true);
+  await expect(dlg).toBeVisible();
+  await clickAt(false);
+  await expect(dlg).toBeHidden();
 });

@@ -201,6 +201,18 @@ function pluginForm(p, prefix = 'pf-') {
   return [form, readers];
 }
 
+// Safari has no closedby yet: there, a press outside a dialog[closedby=any] closes it too.
+// (A press on the backdrop lands on the dialog itself, at a point outside its box. Not
+// click: a text selection dragged out of a field ends as a click on the dialog.)
+if (!('closedBy' in HTMLDialogElement.prototype)) {
+  document.addEventListener('pointerdown', e => {
+    const d = e.target;
+    if (!(d instanceof HTMLDialogElement) || !d.open || d.getAttribute('closedby') !== 'any') return;
+    const r = d.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) d.close();
+  });
+}
+
 // Live preview: the board streams every frame as it shows it (see /api/frames) and we
 // draw them on a canvas, so the preview runs at the panel's own speed.
 let stream = null;
@@ -247,8 +259,12 @@ function startPreview(sel, wanted = () => true) {
   streamPreview();
 }
 
-// Asked the device for less motion: GIF previews show their first frame only.
-const stillGifs = () => calmMotion.matches ? '?still=1' : '';
+// GIF previews show their first frame only when the device asks for less motion or
+// "Still previews" is on (a checkbox on the GIFs page, remembered in this browser).
+function stillPreviews() {
+  try { return localStorage.getItem('pixelpane-still') === '1'; } catch (e) { return false; }   // storage blocked: nothing was saved
+}
+const stillGifs = () => calmMotion.matches || stillPreviews() ? '?still=1' : '';
 // A Play now button's little animated preview of its scene (see /api/scenes/<name>/thumb.gif).
 // Scenes with nothing to show yet get an icon (GIF categories share the GIF one).
 function sceneThumb(scene) {

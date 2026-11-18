@@ -26,18 +26,19 @@
     <h2>Make a GIF</h2>
     <p class="about">Describe an idea and a model designs a looping animation. You see it first;
       nothing goes in the library until you save it.</p>
+    <label class="gen-label" for="gprompt">Your idea</label>
     <form class="row gen" id="genform">
       <input id="gprompt" maxlength="500" placeholder="a tuxedo cat chasing a red laser dot" autocomplete="off"
-        aria-label="Your idea" data-testid="generate-prompt">
+        data-testid="generate-prompt">
       <button id="ggo" class="on" data-testid="generate">Generate</button>
       <button id="gsurprise" type="button" data-testid="surprise">Surprise me</button>
       <button id="gsetup" type="button" hidden data-testid="generate-setup">Set up the generator</button>
     </form>
-    <div class="stat gen-status" data-testid="generate-status"><span id="ggenstat" role="status"></span> <span id="ggensecs" aria-hidden="true"></span></div>
+    <div class="stat gen-status" data-testid="generate-status"><span id="ggenstat" role="status"></span> <span id="ggensecs" class="num" aria-hidden="true"></span></div>
     <div class="draft" id="sdraft" hidden data-testid="draft">
       <div class="draft-view"><img id="sdimg" alt="the draft, animated"></div>
       <div class="draft-side">
-        <div class="title" id="sdtitle"></div>
+        <h3 class="title" id="sdtitle"></h3>
         <div class="stat" id="sdmeta"></div>
         <div class="row">
           <button id="sdplay" data-testid="draft-play">Show on the panel</button>
@@ -45,15 +46,16 @@
           <button id="sddiscard" data-testid="draft-discard">Discard</button>
         </div>
         <form class="row refine" id="refineform">
-          <input id="sdchange" maxlength="500" placeholder="Change something: make the cat bigger" autocomplete="off"
-            aria-label="What to change" data-testid="draft-change">
+          <label for="sdchange">What to change</label>
+          <input id="sdchange" maxlength="500" placeholder="make the cat bigger" autocomplete="off"
+            data-testid="draft-change">
           <button id="sdrefine" data-testid="draft-refine">Refine</button>
         </form>
         <div class="save-box">
           <div class="row">
-            <input id="sdname" aria-label="Name" placeholder="name" data-testid="draft-name">
-            <input id="sdcat" list="gcats" aria-label="Category" placeholder="category" data-testid="draft-category">
-            <select id="sdtheme" aria-label="When it plays" data-testid="draft-theme"></select>
+            <div class="lf"><label for="sdname">Name</label><input id="sdname" data-testid="draft-name"></div>
+            <div class="lf"><label for="sdcat">Category</label><input id="sdcat" list="gcats" autocapitalize="none" spellcheck="false" autocorrect="off" data-testid="draft-category"></div>
+            <div class="lf"><label for="sdtheme">When it plays</label><select id="sdtheme" data-testid="draft-theme"></select></div>
             <button id="sdsave" class="on" data-testid="draft-save">Save to library</button>
           </div>
           <div class="stat" id="sdsaved" data-testid="draft-saved"></div>
@@ -67,6 +69,12 @@
   <section>
     <h2>GIF library</h2>
     <div class="row" style="margin-bottom:10px">
+      <label for="gtheme">Upload to</label><select id="gtheme" data-testid="upload-theme"></select>
+      <input type="file" id="gfile" accept="image/*" multiple aria-label="Choose GIF files">
+      <label><input type="checkbox" id="gsmooth"> smooth (photos)</label>
+      <button id="gup">Upload</button>
+    </div>
+    <search class="row" style="margin-bottom:10px">
       <label for="gfilter">Show</label><select id="gfilter" data-testid="gif-filter"></select>
       <label for="gsort">Sort</label><select id="gsort" data-testid="gif-sort">
         <option value="newest">Recently added</option><option value="oldest">Oldest first</option>
@@ -75,14 +83,16 @@
         <option value="most">Most played</option><option value="least">Least played</option>
         <option value="recent">Recently played</option>
       </select>
-      <input id="gsearch" type="search" placeholder="Search names" aria-label="Search GIFs" data-testid="gif-search">
+      <input id="gsearch" type="search" placeholder="Search names" aria-label="Search GIFs" autocapitalize="none" spellcheck="false" autocorrect="off" data-testid="gif-search">
       <label for="gthumb">Size</label><select id="gthumb" data-testid="gif-thumb">
         <option value="48">small</option><option value="64" selected>medium</option><option value="112">large</option>
       </select>
       <button id="grename" hidden data-testid="rename-category">Rename category</button>
-      <button id="gselect" data-testid="select-mode" aria-pressed="false">Select</button>
-      <span class="stat" id="gcount"></span>
-    </div>
+      <label><input type="checkbox" id="gstill" data-testid="still-previews"> Still previews</label>
+      <button id="gselect" data-testid="select-mode">Select</button>
+      <span class="stat num" id="gcount" role="status"></span>
+    </search>
+    <div class="gifs" id="gifs"></div>
     <div class="row bulk" id="gbulk" hidden data-testid="bulk-bar">
       <span class="stat" id="gselcount" data-testid="selected-count">Click GIFs to pick them</span>
       <button id="gselall" data-testid="select-page">Select page</button>
@@ -90,35 +100,29 @@
       <button id="gmove" class="on" data-testid="bulk-move">Move…</button>
       <small class="hint">Shift-click picks a range</small>
     </div>
-    <div class="row" style="margin-bottom:10px">
-      <label for="gtheme">Upload to</label><select id="gtheme" data-testid="upload-theme"></select>
-      <input type="file" id="gfile" accept="image/*" multiple aria-label="Choose GIF files">
-      <label><input type="checkbox" id="gsmooth"> smooth (photos)</label>
-      <button id="gup">Upload</button>
-    </div>
-    <div class="gifs" id="gifs"></div>
-    <div class="row pager" id="gpager">
-      <button id="gprev" aria-label="Previous page">‹ Prev</button>
-      <span class="stat" id="gpage"></span>
-      <button id="gnext" aria-label="Next page">Next ›</button>
+    <nav class="row pager" id="gpager" aria-label="Library pages">
+      <button id="gprev">‹ Prev</button>
+      <span class="row" id="gpages" data-testid="page-numbers"></span>
+      <button id="gnext">Next ›</button>
+      <span class="stat num" id="gpage"></span>
       <label>per page <select id="gsize" data-testid="page-size">
         <option value="30">30</option><option value="60">60</option><option value="120" selected>120</option><option value="300">300</option>
       </select></label>
-    </div>
+    </nav>
   </section>
   <dialog id="gdlg" data-testid="classify-dialog" aria-labelledby="gdlgtitle" closedby="any">
     <form id="gdlgform">
     <h3 id="gdlgtitle">Move GIF</h3>
     <p class="about" id="gdlgabout"></p>
     <div class="field"><label for="gdlgcat">Category</label>
-      <input id="gdlgcat" list="gcats" autocomplete="off" data-testid="classify-category">
+      <input id="gdlgcat" list="gcats" autocomplete="off" autocapitalize="none" spellcheck="false" autocorrect="off" autofocus data-testid="classify-category">
       <small>Pick one or type a new name. Leave it empty to keep each GIF's category.</small></div>
     <div class="field"><label for="gdlgtheme">Plays</label>
       <select id="gdlgtheme" data-testid="classify-theme"></select>
       <small>All year plays any day; a theme plays only on its dates.</small></div>
     <small class="err" id="gdlgerr" role="alert"></small>
     <div class="foot"><button id="gdlgreset" type="button" data-testid="classify-reset">Back to where the file is</button>
-      <button id="gdlgcancel" type="button">Cancel</button><button id="gdlgsave" class="on" data-testid="classify-save">Save</button></div>
+      <button id="gdlgcancel" type="button" commandfor="gdlg" command="close">Cancel</button><button id="gdlgsave" class="on" data-testid="classify-save">Save</button></div>
     </form>
   </dialog>
   <dialog id="rdlg" data-testid="rename-dialog" aria-labelledby="rdlgtitle" closedby="any">
@@ -126,10 +130,10 @@
     <h3 id="rdlgtitle">Rename category</h3>
     <p class="about" id="rdlgabout"></p>
     <div class="field"><label for="rdlgname">New name</label>
-      <input id="rdlgname" list="gcats" autocomplete="off" data-testid="rename-input">
+      <input id="rdlgname" list="gcats" autocomplete="off" autocapitalize="none" spellcheck="false" autocorrect="off" autofocus data-testid="rename-input">
       <small>Use an existing name to merge the two categories.</small></div>
     <small class="err" id="rdlgerr" role="alert"></small>
-    <div class="foot"><button id="rdlgcancel" type="button">Cancel</button><button id="rdlgsave" class="on" data-testid="rename-save">Rename</button></div>
+    <div class="foot"><button id="rdlgcancel" type="button" commandfor="rdlg" command="close">Cancel</button><button id="rdlgsave" class="on" data-testid="rename-save">Rename</button></div>
     </form>
   </dialog>
   <datalist id="gcats"></datalist>

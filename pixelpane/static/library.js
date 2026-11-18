@@ -22,8 +22,16 @@ async function init() {
   await Promise.all([loadDrafts(), loadGifs()]);
 }
 
+// Fetch the library, then draw it. Toggles that change only the view (Select, paging,
+// filters) call drawGifs() and skip the fetch, so the grid answers at once.
 async function loadGifs() {
-  const list = gifList = await api('/api/gifs');
+  gifList = await api('/api/gifs');
+  drawGifs();
+}
+
+const touch = matchMedia('(pointer: coarse)').matches;
+function drawGifs() {
+  const list = gifList;
   const match = f => g => f === 'everything' ? true : f === 'all' ? g.theme === 'all' : f === 'mine' ? g.upload
     : f === 'hidden' ? g.hidden : f.startsWith('cat:') ? g.theme === 'all' && g.category === f.slice(4) : g.theme === f;
   const count = f => list.filter(match(f)).length;
@@ -44,29 +52,29 @@ async function loadGifs() {
   const size = +$('#gsize').value, pages = Math.max(1, Math.ceil(all.length / size));
   gifPage = Math.min(gifPage, pages - 1);
   const shown = gifShown = all.slice(gifPage * size, (gifPage + 1) * size);
-  $('#gcount').textContent = all.length === list.length ? `${list.length} GIFs` : `${all.length} of ${list.length} GIFs`;
+  const tally = all.length === list.length ? `${list.length} GIFs` : `${all.length} of ${list.length} GIFs`;
+  if ($('#gcount').textContent !== tally) $('#gcount').textContent = tally;   // a live region: say it only when it changes
   $('#gpage').textContent = `Page ${gifPage + 1} of ${pages}` + (all.length ? `, ${gifPage * size + 1} to ${gifPage * size + shown.length}` : '');
   $('#gprev').disabled = gifPage === 0; $('#gnext').disabled = gifPage >= pages - 1;
+  drawPageNumbers(pages);
   if (!all.length) {   // say why the grid is empty, and offer the way back
     const why = words.length ? `No GIFs match "${$('#gsearch').value.trim()}"` : 'No GIFs here yet';
     $('#gifs').replaceChildren(el('div', {className: 'empty stat'}, why, ' ',
-      ...(words.length ? [btn('Clear search', () => { $('#gsearch').value = ''; gifPage = 0; loadGifs(); })] : [])));
+      ...(words.length ? [btn('Clear search', () => { $('#gsearch').value = ''; gifPage = 0; drawGifs(); })] : [])));
     return;
   }
   $('#gifs').replaceChildren(...shown.map(g => {
     const d = document.createElement('div'); d.dataset.testid = 'gif-card'; d.dataset.id = g.id;
     d.className = 'gif' + (g.hidden ? ' hidden' : '') + (selecting ? ' selecting' : '') + (picked.has(g.id) ? ' picked' : '');
-    if (selecting) {   // the whole card is the checkbox; shift-click picks a range
-      d.tabIndex = 0; d.setAttribute('role', 'checkbox'); d.setAttribute('aria-checked', picked.has(g.id));
-      d.setAttribute('aria-label', g.name);
-      d.onclick = e => togglePick(g, e.shiftKey);
-      d.onkeydown = e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); togglePick(g, e.shiftKey); } };
-    }
     const stem = g.name.replace(/\.gif$/i, '');
     d.dataset.name = stem;
     // "film-battle-of-algiers-casbah" reads as "battle of algiers casbah": the category is on the line below
     const [first, ...rest] = stem.split('-');
     const readable = (rest.length && (first === g.category || first === g.default_category) ? rest : [first, ...rest]).join(' ');
+    if (selecting) {   // a real checkbox; a click anywhere on the card picks it too, shift-click picks a range
+      d.append(el('input', {type: 'checkbox', className: 'pick', checked: picked.has(g.id), ariaLabel: readable}));
+      d.onclick = e => togglePick(g, e.shiftKey);
+    }
     const cap = el('div', {className: 'gname', textContent: readable, title: g.name});
     const img = document.createElement('img'); img.loading = 'lazy'; img.src = '/gif/' + encodeURI(g.id) + stillGifs(); img.alt = '';   // the caption names it
     const r = document.createElement('div'); r.className = 'row';
@@ -74,7 +82,7 @@ async function loadGifs() {
     r.append(btn(icon('play'), () => api('/api/play', 'POST', {scene:'gif', params:{id:g.id}}).then(() => toast('Up next')), '', '', `Play next: ${title}`),
       btn(g.hidden ? 'show' : 'hide', () => api('/api/gifs/hide', 'POST', {id:g.id, hidden:!g.hidden}).then(loadGifs), '', '',
         `${g.hidden ? 'Show' : 'Hide'} ${title}`),
-      btn(icon('edit'), () => openClassify([g]), '', 'classify', `Move ${title} to a category or theme`));
+      btn(icon('edit'), e => openClassify([g], e.currentTarget), '', 'classify', `Move ${title} to a category or theme`));
     if (g.upload) r.append(btn(icon('trash'), e => confirmDelete(g, e.currentTarget), '', 'delete', `Delete ${title}`));
     d.append(img, cap, el('span', {className: 'cat' + (g.moved ? ' moved' : ''),
       textContent: g.category.replace(/_/g, ' ') + (g.plays ? `, ${g.plays} play${g.plays === 1 ? '' : 's'}` : ''),
@@ -115,7 +123,7 @@ function togglePick(g, range) {
   lastPick = g.id;
   document.querySelectorAll('#gifs .gif').forEach(card => {
     const p = picked.has(card.dataset.id);
-    card.classList.toggle('picked', p); card.setAttribute('aria-checked', p);
+    card.classList.toggle('picked', p); card.querySelector('.pick').checked = p;
   });
   drawPicked();
 }
@@ -124,10 +132,32 @@ function drawPicked() {
   $('#gbulk').hidden = !selecting;
   const here = gifShown.filter(g => picked.has(g.id)).length;
   $('#gselcount').textContent = picked.size
-    ? `${picked.size} selected` + (here < picked.size ? ` (${here} on this page)` : '') : 'Click GIFs to pick them';
+    ? `${picked.size} selected` + (here < picked.size ? ` (${here} on this page)` : '') : `${touch ? 'Tap' : 'Click'} GIFs to pick them`;
   const whole = gifShown.length && here === gifShown.length;
   setLabel($('#gselall'), whole ? 'Unselect page' : 'Select page');
   $('#gmove').disabled = $('#gclear').disabled = !picked.size;
+}
+
+// Every page number on a computer; on a phone the current page ±2 plus the first and last
+// (the rest are .far, hidden by CSS), with a … where pages are left out.
+function drawPageNumbers(pages) {
+  const nums = [];
+  for (let i = 0; i < pages && pages > 1; i++) {
+    const far = Math.abs(i - gifPage) > 2 && i !== 0 && i !== pages - 1;
+    if (far && !nums.at(-1)?.classList.contains('far')) nums.push(el('span', {className: 'far gap', ariaHidden: 'true', textContent: '…'}));
+    const b = btn(String(i + 1), () => { gifPage = i; drawGifs(); $('#gpages [aria-current]').focus(); }, far ? 'far' : '');
+    if (i === gifPage) b.setAttribute('aria-current', 'page');
+    nums.push(b);
+  }
+  $('#gpages').replaceChildren(...nums);
+}
+
+// Dialogs grow out of the button that opened them.
+function showModalFrom(dlg, trigger) {
+  dlg.showModal();
+  const r = dlg.getBoundingClientRect(), t = trigger.getBoundingClientRect();   // scaled about its center, so the center is exact
+  const left = r.left + r.width / 2 - dlg.offsetWidth / 2, top = r.top + r.height / 2 - dlg.offsetHeight / 2;
+  dlg.style.transformOrigin = `${t.left + t.width / 2 - left}px ${t.top + t.height / 2 - top}px`;
 }
 
 function themeOptions(keep) {
@@ -136,7 +166,7 @@ function themeOptions(keep) {
 }
 
 // Move one GIF, or every selected one, to another category and/or theme.
-function openClassify(gs) {
+function openClassify(gs, trigger) {
   const dlg = $('#gdlg'), one = gs.length === 1 ? gs[0] : null;
   $('#gdlgtitle').textContent = one ? 'Move ' + one.name.replace(/\.gif$/i, '') : `Move ${gs.length} GIFs`;
   $('#gdlgabout').textContent = one
@@ -159,27 +189,28 @@ function openClassify(gs) {
     done({...(category ? {category} : {}), ...(theme ? {theme} : {})}, one ? 'Moved' : `Moved ${gs.length} GIFs`);
   };
   $('#gdlgreset').onclick = () => done({reset: true}, 'Back to where the file is');
-  $('#gdlgcancel').onclick = () => dlg.close();
-  dlg.showModal();
+  showModalFrom(dlg, trigger);
 }
 
 $('#gselect').onclick = () => {
   selecting = !selecting; if (!selecting) { picked.clear(); lastPick = null; }
-  setLabel($('#gselect'), selecting ? 'Done' : 'Select');
-  $('#gselect').setAttribute('aria-pressed', selecting); loadGifs();
+  setLabel($('#gselect'), selecting ? 'Done' : 'Select'); drawGifs();
 };
 $('#gselall').onclick = () => {
   const whole = gifShown.every(g => picked.has(g.id));
-  gifShown.forEach(g => whole ? picked.delete(g.id) : picked.add(g.id)); loadGifs();
+  gifShown.forEach(g => whole ? picked.delete(g.id) : picked.add(g.id)); drawGifs();
 };
-$('#gclear').onclick = () => { picked.clear(); lastPick = null; loadGifs(); };
-$('#gmove').onclick = () => openClassify(gifList.filter(g => picked.has(g.id)));
-$('#grename').onclick = () => {
+$('#gclear').onclick = () => { picked.clear(); lastPick = null; drawGifs(); };
+$('#gmove').onclick = e => openClassify(gifList.filter(g => picked.has(g.id)), e.currentTarget);
+// Cancel buttons close their dialog with command="close"; browsers without it get a click.
+if (!('command' in HTMLButtonElement.prototype)) {
+  document.querySelectorAll('button[command="close"]').forEach(b => { b.onclick = () => document.getElementById(b.getAttribute('commandfor')).close(); });
+}
+$('#grename').onclick = e => {
   const old = gifFilter.slice(4), dlg = $('#rdlg');
   $('#rdlgabout').textContent = `Renames "${old}" on every GIF in it.`;
   $('#rdlgname').value = old;
   $('#rdlgerr').textContent = '';
-  $('#rdlgcancel').onclick = () => dlg.close();
   $('#rdlgform').onsubmit = async e => {
     e.preventDefault();
     let r;
@@ -188,7 +219,7 @@ $('#grename').onclick = () => {
     toast(`Renamed ${r.changed} GIFs`); dlg.close();
     gifFilter = 'cat:' + $('#rdlgname').value.trim().toLowerCase().replace(/[-\s]+/g, '_'); init();
   };
-  dlg.showModal();
+  showModalFrom(dlg, e.currentTarget);
 };
 
 // Make a GIF: the board asks the model for a draft; you look at it and then save it,
@@ -234,7 +265,8 @@ function showDraft(d) {
   draft = d;
   $('#sdraft').hidden = !d;
   if (!d) return;
-  $('#sdimg').src = `/draft/${d.id}.gif`;
+  $('#sdimg').src = `/draft/${d.id}.gif${stillGifs()}`;
+  $('#sdimg').alt = stillGifs() ? 'the draft, first frame' : 'the draft, animated';
   $('#sdtitle').textContent = d.title;
   const asked = d.prompt ? `"${d.prompt}"` : 'its own idea';
   $('#sdmeta').textContent = `${asked}${d.change ? `, changed: ${d.change}` : ''}. ${d.frames} frames, ${d.seconds}s loop. `
@@ -304,8 +336,8 @@ function confirmDelete(g, b) {
   api('/api/gifs/' + encodeURI(g.id), 'DELETE').then(() => { toast('Deleted ' + g.name); loadGifs(); });
 }
 
-$('#gfilter').onchange = e => { gifFilter = e.target.value; gifPage = 0; loadGifs(); };
-$('#gsize').onchange = () => { gifPage = 0; loadGifs(); };
+$('#gfilter').onchange = e => { gifFilter = e.target.value; gifPage = 0; drawGifs(); };
+$('#gsize').onchange = () => { gifPage = 0; drawGifs(); };
 try {
   $('#gsort').value = localStorage.getItem('pixelpane-sort') || 'newest';
   $('#gthumb').value = localStorage.getItem('pixelpane-thumb') || '64';
@@ -314,13 +346,19 @@ const thumbSize = () => document.documentElement.style.setProperty('--thumb', $(
 thumbSize();
 $('#gthumb').onchange = () => { try { localStorage.setItem('pixelpane-thumb', $('#gthumb').value); } catch (e) { /* private */ } thumbSize(); };
 let searchTimer;
-$('#gsearch').oninput = () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { gifPage = 0; loadGifs(); }, 200); };
+$('#gsearch').oninput = () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { gifPage = 0; drawGifs(); }, 200); };
 $('#gsort').onchange = () => {
   try { localStorage.setItem('pixelpane-sort', $('#gsort').value); } catch (e) { /* private window */ }
-  gifPage = 0; loadGifs();
+  gifPage = 0; drawGifs();
 };
-$('#gprev').onclick = () => { gifPage = Math.max(0, gifPage - 1); loadGifs(); };
-$('#gnext').onclick = () => { gifPage += 1; loadGifs(); };
+$('#gprev').onclick = () => { gifPage = Math.max(0, gifPage - 1); drawGifs(); };
+$('#gnext').onclick = () => { gifPage += 1; drawGifs(); };
+// Still previews: GIFs show their first frame here and on Control's Play now buttons (stillGifs, common.js).
+$('#gstill').checked = stillPreviews();
+$('#gstill').onchange = () => {
+  try { localStorage.setItem('pixelpane-still', $('#gstill').checked ? '1' : ''); } catch (e) { toast("This browser won't remember that"); }
+  drawGifs(); loadDrafts(); if (draft) showDraft(draft);
+};
 $('#gup').onclick = async () => {
   const files = $('#gfile').files; if (!files.length) return toast('Pick a file first');
   const fd = new FormData(); for (const f of files) fd.append('file', f);
@@ -332,4 +370,8 @@ $('#gup').onclick = async () => {
 // The status pill only needs /api/health (under 1 KB), not the whole state (36 KB).
 setInterval(() => { if (!document.hidden) api('/api/health').then(showStatus).catch(() => {}); }, 10000);
 init().catch(e => $('#stat').textContent = 'error: ' + e.message)
-  .finally(() => $('main').removeAttribute('aria-busy'));   // reveal once drafts and GIFs are in: nothing shifts
+  .finally(() => {
+    $('main').removeAttribute('aria-busy');   // reveal once drafts and GIFs are in: nothing shifts
+    // state set at init (Prev disabled...) appears without a transition: one layout read commits it first
+    document.documentElement.getBoundingClientRect(); document.documentElement.classList.remove('preload');
+  });
