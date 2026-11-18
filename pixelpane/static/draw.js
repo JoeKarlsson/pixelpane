@@ -150,7 +150,7 @@ cv.addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;   // Shift+arrows still move frames
   const step = STEPS[e.key.toLowerCase()];
   if (step) { e.preventDefault(); moveCursor(kx + step[0], ky + step[1]); }
-  else if (e.key === ' ') { e.preventDefault(); use(kx, ky); }
+  else if (e.key === ' ') { e.preventDefault(); if (!e.repeat) use(kx, ky); }   // a held Space doesn't fill the undo list
 });
 
 // --- undo -------------------------------------------------------------------------
