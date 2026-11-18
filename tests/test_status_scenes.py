@@ -12,7 +12,7 @@ support.load_plugins()
 from pixelpane import gfx, kit  # noqa: E402
 from pixelpane.plugin import SCENES  # noqa: E402
 from pixelpane.plugins.homelab import lab_pages  # noqa: E402
-from pixelpane.plugins.now_playing import ArtCache, album_art  # noqa: E402
+from pixelpane.plugins.now_playing import ArtCache, album_art, cd_frame  # noqa: E402
 from pixelpane.plugins.weather import WEATHER_ICON  # noqa: E402
 
 LAB = {"alerts": 0, "warnings": 0, "checks_total": 159, "checks_passing": 158,
@@ -144,7 +144,7 @@ class AlbumArtTest(unittest.TestCase):
         album_art(ctx, self.URL)
         self.wait(ctx, self.URL)
         first, _ = next(SCENES["now_playing"](ctx, 10))
-        self.assertEqual(first.getpixel((5, 5)), album_art(ctx, self.URL).getpixel((5, 5)))
+        self.assertEqual(first.getpixel((8, 8)), cd_frame(album_art(ctx, self.URL), 0).getpixel((8, 8)))
 
     def test_cache_is_bounded(self):
         cache = ArtCache(lambda: ["http://homeassistant.local:8123/"], fetch=lambda url: self.png)

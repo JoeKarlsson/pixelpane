@@ -8,7 +8,7 @@ import urllib.request
 from collections import OrderedDict
 from urllib.parse import urlsplit
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 from .. import gfx
 from ..kit import animated_icon, scroll_seconds, scroll_text, ticks
@@ -21,7 +21,7 @@ plugin = Plugin(
     data={"now_playing": 360},
     defaults={"art_hosts": [], "art_seconds": 6, "equalizer": True, "show_room": True,
               "title_color": "#50dcff", "artist_color": "#dcdcdc", "art_colors": True, "boost": True},
-    about="Shows the album art full screen for a few seconds, then the title and artist "
+    about="Shows the album art spinning on a CD for a few seconds, then the title and artist "
           "beside dancing equalizer bars, in colors taken from the album art. While music "
           "plays it comes round every few minutes, not just at its turn in the playlist. "
           "Paused, it shows dimmed with a pause sign for a quarter of an hour, then skips "
@@ -30,9 +30,9 @@ plugin = Plugin(
     fields=[{"key": "art_hosts", "label": "Album art may come from", "type": "list",
              "placeholder": "http://homeassistant.local:8123/",
              "help": "One URL prefix per line. Anything else is never fetched."},
-            {"key": "art_seconds", "label": "Full-screen album art (seconds)", "type": "number",
+            {"key": "art_seconds", "label": "Album art on a CD (seconds)", "type": "number",
              "min": 0, "max": 60, "step": 1,
-             "help": "How long the cover fills the panel first, up to 40% of the scene. 0: never."},
+             "help": "How long the cover spins on a CD first, up to 40% of the scene. 0: never."},
             {"key": "equalizer", "label": "Equalizer", "type": "toggle", "text": "Dancing bars"},
             {"key": "show_room", "label": "Room", "type": "toggle", "text": "Show which player it's on"},
             {"key": "title_color", "label": "Title color", "type": "color"},
@@ -196,12 +196,14 @@ def now_playing(ctx, secs):
             for b in range(5):
                 levels[b] = max(1, min(8, levels[b] + rng.uniform(-2, 2)))
         if art is not None and t < art_secs:
-            img = art.copy() if not paused else Image.eval(art, lambda v: int(v * dim))
+            img = cd_frame(art, 0 if paused else -t * CD_DEGREES_PER_SECOND)
+            if paused:
+                img = Image.eval(img, lambda v: int(v * dim))
             d = ImageDraw.Draw(img)
             if paused:
                 _pause_sign(d, 13, 12)
             elif eq:
-                d.rectangle((19, 23, 31, 31), fill=(0, 0, 0))  # mini equalizer over the art
+                # mini equalizer in the corner beside the disc (no box: it would clip the round edge)
                 for b in range(4):
                     h = int(levels[b] * 0.8)
                     d.rectangle((20 + b * 3, 30 - h, 21 + b * 3, 30), fill=bars[b])
@@ -230,6 +232,53 @@ def now_playing(ctx, secs):
         if room:
             gfx.text_center(img, 27, room[:8], (90, 90, 110), "tom-thumb")
         yield img, 0.1
+
+
+CD_DEGREES_PER_SECOND = 120   # one turn every 3 seconds
+_CD_SS = 8                    # drawn 8x bigger, then shrunk, so the round edges come out smooth
+_cd_layers = None
+
+
+def _cd_overlay():
+    """The parts of the CD that don't turn, drawn once at 8x: the disc mask with its center
+    hole, and an overlay with the hub ring, silver rim and a still glint so the spin reads."""
+    global _cd_layers
+    if _cd_layers is None:
+        big, ss = gfx.W * _CD_SS, _CD_SS
+        c, rim, hub, hole = big / 2, 15.5 * ss, 4.6 * ss, 2.2 * ss
+
+        def ring(r_out, r_in=0.0):
+            m = Image.new("L", (big, big), 0)
+            d = ImageDraw.Draw(m)
+            d.ellipse((c - r_out, c - r_out, c + r_out, c + r_out), fill=255)
+            if r_in:
+                d.ellipse((c - r_in, c - r_in, c + r_in, c + r_in), fill=0)
+            return m
+
+        disc = ring(rim, hole)
+        over = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+        over.paste((170, 180, 195, 255), (0, 0), ring(hub, hole))
+        d = ImageDraw.Draw(over)
+        d.ellipse((c - hub, c - hub, c + hub, c + hub), outline=(90, 95, 110, 255), width=ss // 2)
+        d.ellipse((c - rim, c - rim, c + rim, c + rim), outline=(200, 205, 215, 255), width=ss // 2)
+        glint = Image.new("L", (big, big), 0)
+        gd = ImageDraw.Draw(glint)
+        gd.pieslice((c - rim, c - rim, c + rim, c + rim), 300, 318, fill=110)
+        gd.pieslice((c - rim, c - rim, c + rim, c + rim), 120, 135, fill=70)
+        glint = Image.composite(glint, Image.new("L", (big, big), 0), ring(rim - ss, hub))
+        shine = Image.new("RGBA", (big, big), (255, 255, 255, 0))
+        shine.putalpha(glint.filter(ImageFilter.GaussianBlur(ss)))
+        _cd_layers = disc, Image.alpha_composite(over, shine)
+    return _cd_layers
+
+
+def cd_frame(art, angle):
+    """The 32x32 cover on a CD, turned `angle` degrees, on black."""
+    disc, overlay = _cd_overlay()
+    big = art.resize(disc.size, Image.BICUBIC).rotate(angle, resample=Image.BICUBIC)
+    out = Image.new("RGBA", disc.size, (0, 0, 0, 255))
+    out.paste(big, (0, 0), disc)
+    return Image.alpha_composite(out, overlay).convert("RGB").resize(art.size, Image.LANCZOS)
 
 
 def _pause_sign(d, x, y):

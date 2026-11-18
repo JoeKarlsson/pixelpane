@@ -102,6 +102,15 @@ class NowPlayingTest(unittest.TestCase):
         self.assertTrue(any(c[0] > c[2] for c in colors) and any(c[2] > c[0] for c in colors))
         self.assertIsNone(now_playing.art_palette(Image.new("RGB", (32, 32), (128, 128, 128))))
 
+    def test_cover_spins_on_a_cd(self):
+        art = Image.new("RGB", (32, 32), (200, 30, 40))
+        art.paste((20, 60, 200), (0, 0, 32, 16))
+        still, turned = now_playing.cd_frame(art, 0), now_playing.cd_frame(art, 90)
+        self.assertEqual(still.getpixel((0, 0)), (0, 0, 0))       # round: corners stay dark
+        self.assertLess(max(still.getpixel((16, 16))), 10)        # hole in the middle
+        self.assertGreater(still.getpixel((16, 9))[2], 150)       # blue top half...
+        self.assertGreater(turned.getpixel((16, 9))[0], 150)      # ...turned away, red there now
+
     def test_paused_shows_dimmed_for_a_while_then_skips(self):
         ctx = support.ctx_with({"now_playing": PLAYING})
         playing = list(plugin.SCENES["now_playing"](ctx, 1))

@@ -183,6 +183,8 @@ and the project uses [semantic versioning](https://semver.org/).
   your uploads and saved GIFs, a Hidden filter, and three thumbnail sizes.
 
 ### Changed
+- Now Playing shows the album cover spinning on a CD (center hole, hub ring, a still
+  glint) instead of flat and full screen. Paused, the disc stops and dims.
 - Draw and Animate have one board button beside the preview: Show on board puts
   your drawing on the board and turns into Stop showing, which takes it off. The
   separate Show on board button under the frames is gone.
