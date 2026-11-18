@@ -110,17 +110,23 @@ function cell(e) {
           Math.min(H - 1, Math.max(0, Math.floor((e.clientY - r.top) / r.height * H)))];
 }
 
-let last = null;
-cv.addEventListener('pointerdown', e => {
-  e.preventDefault();
+// One click, tap or Space: the current tool at one cell. Pen and eraser start a stroke there.
+function use(x, y) {
   stopPlaying();
-  const [x, y] = cell(e);
   if (tool === 'picker') return pick(x, y);
   snapshot();
   painted = new Set();
-  if (tool === 'fill') { fill(x, y); return changed(); }
-  cv.setPointerCapture(e.pointerId);
-  last = [x, y]; dab(x, y); changed();
+  if (tool === 'fill') fill(x, y); else dab(x, y);
+  changed();
+}
+
+let last = null;
+cv.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  const [x, y] = cell(e);
+  moveCursor(x, y, true);
+  use(x, y);
+  if (tool === 'pen' || tool === 'eraser') { cv.setPointerCapture(e.pointerId); last = [x, y]; }
 });
 cv.addEventListener('pointermove', e => {
   if (!last) return;
@@ -131,6 +137,21 @@ cv.addEventListener('pointermove', e => {
 const endStroke = () => { last = null; };
 cv.addEventListener('pointerup', endStroke);
 cv.addEventListener('pointercancel', endStroke);
+
+// Keyboard drawing: the arrow keys move a cursor cell, Space uses the tool there.
+let kx = 0, ky = 0;
+function moveCursor(x, y, quiet) {
+  kx = Math.min(W - 1, Math.max(0, x)); ky = Math.min(H - 1, Math.max(0, y));
+  $('#wrap').style.setProperty('--kx', kx); $('#wrap').style.setProperty('--ky', ky);
+  if (!quiet) $('#cursorpos').textContent = `Column ${kx + 1}, row ${ky + 1}`;
+}
+const STEPS = {arrowleft: [-1, 0], arrowright: [1, 0], arrowup: [0, -1], arrowdown: [0, 1]};
+cv.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;   // Shift+arrows still move frames
+  const step = STEPS[e.key.toLowerCase()];
+  if (step) { e.preventDefault(); moveCursor(kx + step[0], ky + step[1]); }
+  else if (e.key === ' ') { e.preventDefault(); if (!e.repeat) use(kx, ky); }   // a held Space doesn't fill the undo list
+});
 
 // --- undo -------------------------------------------------------------------------
 
@@ -173,6 +194,7 @@ $('#alpha').oninput = () => { $('#alphav').textContent = $('#alpha').value + '%'
 $('#grid').onchange = () => $('#wrap').classList.toggle('grid', $('#grid').checked);
 
 document.addEventListener('keydown', e => {
+  if (e.defaultPrevented) return;   // the canvas used it
   if (e.target.matches('input:not([type=checkbox]):not([type=range]), select, textarea')) return;
   // Space and Enter belong to the focused control (tick a checkbox, press a button), not to Play
   if ((e.key === ' ' || e.key === 'Enter') && e.target.closest('button, input, select, textarea, summary, a[href]')) return;
@@ -183,6 +205,8 @@ document.addEventListener('keydown', e => {
   }
   if ((e.metaKey || e.ctrlKey) && k === 'z') { e.preventDefault(); return (e.shiftKey ? $('#redo') : $('#undo')).click(); }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
+  // one-key shortcuts only on the canvas, the tools, the frames or nothing focused (WCAG 2.1.4)
+  if (e.target !== document.body && !e.target.closest('#canvas, .tools, #framebox')) return;
   const keys = {b: () => setTool('pen'), e: () => setTool('eraser'), f: () => setTool('fill'), i: () => setTool('picker')};
   if (ANIM) Object.assign(keys, {n: () => $('#fadd').click(), d: () => $('#fdup').click(),
     ',': () => $('#fprev').click(), '.': () => $('#fnext').click(), ' ': () => $('#play').click()});
@@ -370,7 +394,7 @@ $('#board').onclick = async () => {
 $('#live').onchange = () => { if ($('#live').checked) { dirty = true; pump(); } else showing(onBoard); };
 function status(t) { $('#livestat').textContent = t; }
 function showing(on) {
-  status(on ? '● Showing on the board' : $('#live').checked ? 'Not on the board yet: your next stroke shows it' : 'Not on the board');
+  status(on ? 'Showing on the board' : $('#live').checked ? 'Not on the board yet: your next stroke shows it' : 'Not on the board');
   $('#livestat').classList.toggle('live', on);
   onBoard = on;
   setLabel($('#board'), on ? 'Stop showing' : 'Show on board');
@@ -404,12 +428,12 @@ async function init() {
       btn(name, () => useExample(name), '', 'example-' + name.toLowerCase().replace(/ /g, '-'))));
     $('#hint').textContent = 'Each frame is one step of the loop; the faint picture is the frame before. ' +
       'The examples above are good to pull apart: step through their frames to see what changes. ' +
-      '← and → step through them (Shift moves this one), N adds a frame, D copies this one, space plays. With Live on, the board plays your loop as you edit it.';
+      'The left and right arrow keys step through them (Shift moves this one), N adds a frame, D copies this one, Space plays. ' +
+      'On the canvas, the arrow keys move a cursor and Space paints. With Live on, the board plays your loop as you edit it.';
   } else {
     $('#hint').textContent = 'With Live on, the board shows your drawing while you draw it, and stays on it until you press Stop showing. Show on board puts it back. ' +
-      'B pen, E eraser, F fill, I picks a color, Ctrl+Z undoes.';
+      'B pen, E eraser, F fill, I picks a color, Ctrl+Z undoes. On the canvas, the arrow keys move a cursor and Space paints.';
   }
-  document.querySelector(`[data-testid=${ANIM ? 'animate' : 'draw'}-link]`).setAttribute('aria-current', 'page');
   const sk = await api('/api/sketch');
   [W, H] = sk.size;
   cv.width = W; cv.height = H;
@@ -428,6 +452,8 @@ async function init() {
   $('#fps').value = Math.max(1, Math.min(24, Math.round(1000 / ms))); showFps();
   setColor(color); setTool('pen');
   render(); drawStrip(); showing(sk.showing);
+  cv.getBoundingClientRect();   // the first look is laid out, so nothing transitions into it
+  document.documentElement.classList.remove('preload');
   const h = await api('/api/health');
   showStatus(h);
   // Live would replace a pin (ON AIR, a message) with the first stroke, so start with it off then
@@ -437,5 +463,11 @@ async function init() {
   }
 }
 
-startPreview('#preview');
+// The preview streams only while it's on screen.
+let previewOnScreen = true;
+new IntersectionObserver(([e]) => {
+  previewOnScreen = e.isIntersecting;
+  if (previewOnScreen) streamPreview(); else stopPreview();
+}).observe($('#preview'));
+startPreview('#preview', () => previewOnScreen);
 init().catch(e => $('#stat').textContent = 'error: ' + e.message);

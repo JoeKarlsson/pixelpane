@@ -24,6 +24,17 @@
 
   <section id="content" tabindex="-1" class="studio-draw">
     <h2 id="drawtitle">Draw</h2>
+    <div class="easel">
+      <div class="canvaswrap grid" id="wrap"><canvas id="canvas" width="32" height="32" data-testid="draw-canvas" tabindex="0" role="application" aria-label="Drawing canvas: draw with a mouse, pen or finger, or move with the arrow keys and press Space to paint"></canvas><div class="kcursor" aria-hidden="true"></div></div>
+      <span class="sr-only" id="cursorpos" role="status" data-testid="cursor-pos"></span>
+      <div class="side">
+        <div class="stat">On the board now</div>
+        <div class="panel"><canvas id="preview" width="32" height="32" role="img" aria-label="live panel preview" data-testid="preview"></canvas></div>
+        <label class="toggle"><input type="checkbox" id="live" checked data-testid="draw-live"> Live on the board</label>
+        <div class="row"><button id="board" class="on" data-testid="board-toggle" title="Put it on the board, or take it off">Show on board</button></div>
+        <div class="stat" id="livestat" role="status" data-testid="draw-status"></div>
+      </div>
+    </div>
     <div class="tools" role="group" aria-label="Drawing tools">
       <div class="row" id="toolrow">
         <button data-tool="pen" data-testid="tool-pen" class="on" title="Pen (B)">Pen</button>
@@ -45,16 +56,6 @@
         <button id="clear" data-testid="draw-clear">Clear</button></div>
     </div>
     <div class="row examples" id="examples" hidden data-testid="examples"><span class="stat">Start from an example:</span></div>
-    <div class="easel">
-      <div class="canvaswrap grid" id="wrap"><canvas id="canvas" width="32" height="32" data-testid="draw-canvas" role="img" aria-label="Drawing canvas: draw with a mouse, pen or finger"></canvas></div>
-      <div class="side">
-        <div class="stat">On the board now</div>
-        <div class="panel"><canvas id="preview" width="32" height="32" role="img" aria-label="live panel preview" data-testid="preview"></canvas></div>
-        <label class="toggle"><input type="checkbox" id="live" checked data-testid="draw-live"> Live on the board</label>
-        <div class="row"><button id="board" class="on" data-testid="board-toggle" title="Put it on the board, or take it off">Show on board</button></div>
-        <div class="stat" id="livestat" role="status" data-testid="draw-status"></div>
-      </div>
-    </div>
 
     <div class="frames" id="framebox" hidden data-testid="frames">
       <h2>Frames</h2>
@@ -78,8 +79,8 @@
     </div>
 
     <div class="row savebar">
-      <input id="gname" placeholder="name" maxlength="40" aria-label="GIF name" data-testid="draw-name">
-      <input id="gcat" placeholder="category (drawn)" maxlength="24" aria-label="Category" data-testid="draw-category">
+      <label for="gname">Name <input id="gname" maxlength="40" data-testid="draw-name"></label>
+      <label for="gcat">Category <input id="gcat" placeholder="drawn" maxlength="24" autocapitalize="none" spellcheck="false" autocorrect="off" data-testid="draw-category"></label>
       <button id="save" class="on" data-testid="draw-save">Save to GIF library</button>
     </div>
     <p class="stat" id="hint"></p>
