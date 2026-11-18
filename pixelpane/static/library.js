@@ -62,7 +62,7 @@ async function loadGifs() {
     }
     const cap = document.createElement('div'); cap.className = 'stat'; cap.style.fontSize = '11px';
     cap.style.overflowWrap = 'anywhere'; cap.textContent = g.name.replace(/\.gif$/i, '');
-    const img = document.createElement('img'); img.loading = 'lazy'; img.src = '/gif/' + encodeURI(g.id); img.alt = '';   // the caption names it
+    const img = document.createElement('img'); img.loading = 'lazy'; img.src = '/gif/' + encodeURI(g.id) + stillGifs(); img.alt = '';   // the caption names it
     const r = document.createElement('div'); r.className = 'row';
     const title = g.name.replace(/\.gif$/i, '');
     r.append(btn('▶', () => api('/api/play', 'POST', {scene:'gif', params:{id:g.id}}).then(() => toast('Up next')), '', '', `Play next: ${title}`),
@@ -248,7 +248,7 @@ async function loadDrafts() {
   $('#sdrafts').replaceChildren(...list.map(d => {
     const t = el('button', {className: 'draft-thumb' + (d.saved ? ' saved' : '') + (draft && draft.id === d.id ? ' current' : ''),
       title: `${d.title}${d.prompt ? ` · "${d.prompt}"` : ''}${d.saved ? ' · saved' : ''}`},
-      el('img', {src: `/draft/${d.id}.gif`, alt: d.title, loading: 'lazy'}));
+      el('img', {src: `/draft/${d.id}.gif${stillGifs()}`, alt: d.title, loading: 'lazy'}));
     t.dataset.id = d.id; t.dataset.testid = 'draft-thumb';
     t.onclick = () => showDraft(d);
     return t;
@@ -323,5 +323,6 @@ $('#gup').onclick = async () => {
   toast('Uploaded'); $('#gfile').value = ''; loadGifs();
 };
 
-setInterval(() => { if (!document.hidden) refresh().catch(() => {}); }, 10000);
+// The status pill only needs /api/health (under 1 KB), not the whole state (36 KB).
+setInterval(() => { if (!document.hidden) api('/api/health').then(showStatus).catch(() => {}); }, 10000);
 init().catch(e => $('#stat').textContent = 'error: ' + e.message);

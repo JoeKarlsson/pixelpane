@@ -211,9 +211,9 @@ function pluginForm(p, prefix = 'pf-') {
 // Live preview: the board streams every frame as it shows it (see /api/frames) and we
 // draw them on a canvas, so the preview runs at the panel's own speed.
 let stream = null;
-let previewSel = null;
+let previewSel = null, previewWanted = () => true;
 async function streamPreview() {
-  if (stream || document.hidden || !previewSel) return;
+  if (stream || document.hidden || !previewSel || !previewWanted()) return;
   const ctl = stream = new AbortController(), cv = $(previewSel), g = cv.getContext('2d');
   try {
     const r = await fetch('/api/frames', {signal: ctl.signal, cache: 'no-store'});
@@ -234,7 +234,7 @@ async function streamPreview() {
     }
   } catch (e) { if (ctl.signal.aborted) return; }
   if (stream === ctl) stream = null;
-  if (!document.hidden) setTimeout(streamPreview, 2000);   // the board restarted or the stream timed out
+  if (!document.hidden && previewWanted()) setTimeout(streamPreview, 2000);   // the board restarted or the stream timed out
 }
 function drawFrame(cv, g, cols, rows, rgb) {
   if (cv.width !== cols || cv.height !== rows) { cv.width = cols; cv.height = rows; }
@@ -245,21 +245,23 @@ function drawFrame(cv, g, cols, rows, rgb) {
   g.putImageData(img, 0, 0);
 }
 
-// Start the live preview on a canvas; it pauses while the tab is in the background.
-function startPreview(sel) {
-  previewSel = sel;
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { stream?.abort(); stream = null; } else streamPreview();
-  });
+// Start the live preview on a canvas; it pauses while the tab is in the background, and
+// while wanted() says nobody can see it (each stream costs the Pi CPU).
+function stopPreview() { stream?.abort(); stream = null; }
+function startPreview(sel, wanted = () => true) {
+  previewSel = sel; previewWanted = wanted;
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stopPreview(); else streamPreview(); });
   streamPreview();
 }
 
+// Asked the device for less motion: GIF previews show their first frame only.
+const stillGifs = () => calmMotion.matches ? '?still=1' : '';
 // A Play now button's little animated preview of its scene (see /api/scenes/<name>/thumb.gif).
 // Scenes with nothing to show yet get an icon (GIF categories share the GIF one).
 function sceneThumb(scene) {
   if (scene?.startsWith('gif:')) scene = 'gif';   // GIF categories share the GIF icon
   if (!scene || scene.includes(':')) return [];
-  const img = el('img', {className: 'thumb', src: `/api/scenes/${encodeURIComponent(scene)}/thumb.gif`, alt: '', loading: 'lazy',
+  const img = el('img', {className: 'thumb', src: `/api/scenes/${encodeURIComponent(scene)}/thumb.gif${stillGifs()}`, alt: '', loading: 'lazy',
     width: 32, height: 32});
   img.onerror = () => img.remove();
   return [img];

@@ -214,6 +214,16 @@ and the project uses [semantic versioning](https://semver.org/).
 - The homelab dashboard skips its Plex page while nobody is streaming.
 
 ### Fixed
+- A wrong address gets a not-found page with the nav instead of the server's bare
+  error, and a trailing slash (/library/) opens the page.
+- Less work for the Pi: /api/state is gzipped (36 KB down to a few), the GIFs page
+  polls the small health call for its status, the Settings preview streams only while
+  it's open, and page files and fonts are cached for a year (each page asks for its
+  files with a cache key that changes when they do). The main font is preloaded.
+- With reduced motion on, scene previews, library GIFs and draft thumbnails show their
+  first frame instead of animating.
+- The browser's bar and form controls follow the light or dark theme, and pages send
+  Permissions-Policy and cross-origin isolation headers.
 - Keyboard focus shows in Windows high-contrast mode, and on peach buttons, where the
   teal ring used to vanish. The current page's nav link no longer turns invisible on
   hover, and the selected palette color has a whole ring instead of a broken one.

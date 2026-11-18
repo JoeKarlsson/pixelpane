@@ -1,9 +1,11 @@
 """HTTP API + control page. LAN only (the board lives on the IoT VLAN)."""
+import gzip
 import hmac
 import io
 import ipaddress
 import json
 import os
+import re
 import socket
 import threading
 import time
@@ -21,7 +23,10 @@ from .state import VAR, _read, convert_upload
 from .state import now as local_now
 from .thumbs import Thumbs
 
-PAGES = {name: Path(__file__).with_name(f"{name}.html") for name in ("index", "library", "settings", "draw")}
+PAGES = {name: Path(__file__).with_name(f"{name}.html") for name in ("index", "library", "settings", "draw", "404")}
+STATIC = Path(__file__).with_name("static")
+ASSET = re.compile(r'"/static/([\w./-]+\.(?:css|js|svg|png))"')   # page assets that get a ?v= cache key
+THEME_COLOR = {"dark": "#0a0a0a", "light": "#f4f4f2"}
 NOTIFY_STYLES = ["classic", "banner", "burst", "ticker"]   # pixelpane.plugins.alerts.STYLES
 MAX_STREAMS = 6   # live previews at once; each one costs the Pi a little CPU
 # Reads that give away more than the board's status: when a token is set they need it too.
@@ -29,6 +34,7 @@ PRIVATE_READS = {"/api/logs", "/api/backup"}
 CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
        "connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; "
        "frame-ancestors 'none'")
+PERMISSIONS = "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
 
 
 MODE_PIN_MINUTES = 180  # how long ON AIR or a message stays pinned when the caller gives no minutes
@@ -75,6 +81,16 @@ def on_accent(hex_color):
     return "#0a0a0a" if 0.2126 * r + 0.7152 * g + 0.0722 * b > 140 else "#ffffff"
 
 
+def still_gif(data):
+    """The first frame of a GIF, as a GIF: what animated previews show to people who
+    asked their device for less motion."""
+    with Image.open(io.BytesIO(data) if isinstance(data, bytes) else data) as im:
+        im.seek(0)
+        buf = io.BytesIO()
+        im.convert("RGB").save(buf, "GIF")
+    return buf.getvalue()
+
+
 def _exit_soon():
     """Restart: exit and let systemd (Restart=always) start the service again."""
     threading.Timer(0.5, os._exit, args=(0,)).start()
@@ -97,6 +113,7 @@ def _request_poweroff():
 def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_poweroff):
     app = Flask(__name__)
     app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
+    app.url_map.strict_slashes = False   # /library/ is /library, not a 404
     thumbs = Thumbs(state, gifs)   # the Play now buttons' little previews
     streams = {}   # stream -> when it last ran; the dev server never closes a dropped
     streams_lock = threading.Lock()   # stream, so a stream that stops running is gone
@@ -143,20 +160,56 @@ def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_powero
         response.headers.setdefault("Referrer-Policy", "same-origin")
         if response.mimetype == "text/html":
             response.headers.setdefault("Content-Security-Policy", CSP)
+            response.headers.setdefault("Permissions-Policy", PERMISSIONS)
+            response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+            response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+        # Page assets carry ?v=<file time> and fonts never change: the browser keeps them a
+        # year instead of asking the Pi again on every page load.
+        if request.path.startswith("/static/") and response.status_code == 200 and (
+                request.args.get("v") or request.path.startswith("/static/fonts/")):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        # /api/state is about 36 KB of JSON, polled every few seconds: gzip it for the phone.
+        if (response.mimetype == "application/json" and not response.direct_passthrough
+                and "gzip" in request.headers.get("Accept-Encoding", "")
+                and "Content-Encoding" not in response.headers):
+            data = response.get_data()
+            if len(data) > 1024:
+                response.set_data(gzip.compress(data, 5))
+                response.headers["Content-Encoding"] = "gzip"
+                response.vary.add("Accept-Encoding")
         return response
 
     def body():
         return request.get_json(silent=True) or {}
 
-    def page(name):
+    def page(name, status=200):
         """A page with the look from config["ui"] on <html>, so it paints in the right
         colors at once. Both values were validated (a theme name, a #rrggbb color)."""
         ui = state.config.get("ui") or {}
         accent = ui.get("accent") or "#fdae84"
+        theme = ui.get("theme") or "dark"
         html = PAGES[name].read_text().replace(
-            '<html lang="en">', f'<html lang="en" data-theme="{ui.get("theme") or "dark"}" '
+            '<html lang="en">', f'<html lang="en" data-theme="{theme}" '
                                 f'style="--accent:{accent};--on-accent:{on_accent(accent)}">', 1)
-        return html, 200, {"Content-Type": "text/html; charset=utf-8"}
+        # the browser's own bar and form controls follow the theme too
+        metas = (f'<meta name="color-scheme" content="light dark">'
+                 f'<meta name="theme-color" content="{THEME_COLOR["light"]}" media="(prefers-color-scheme: light)">'
+                 f'<meta name="theme-color" content="{THEME_COLOR["dark"]}" media="(prefers-color-scheme: dark)">'
+                 if theme == "auto" else
+                 f'<meta name="color-scheme" content="{theme}"><meta name="theme-color" content="{THEME_COLOR[theme]}">')
+        html = html.replace('<meta name="theme-color" content="#0a0a0a">', metas, 1)
+
+        def versioned(m):
+            f = STATIC / m.group(1)
+            return f'"/static/{m.group(1)}?v={int(f.stat().st_mtime)}"' if f.is_file() else m.group(0)
+        return ASSET.sub(versioned, html), status, {"Content-Type": "text/html; charset=utf-8"}
+
+    @app.errorhandler(404)
+    def not_found(e):
+        """A wrong address gets a page with the nav, so there's a way back (API calls get JSON)."""
+        if request.path.startswith("/api/"):
+            return jsonify(error=e.description), 404
+        return page("404", 404)
 
     @app.get("/")
     def index():
@@ -249,6 +302,8 @@ def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_powero
         data = thumbs.get(name)
         if not data:
             return Response(status=204)
+        if request.args.get("still"):
+            data = still_gif(data)
         return Response(data, mimetype="image/gif", headers={"Cache-Control": "max-age=300"})
 
     @app.post("/api/notify")
@@ -352,6 +407,8 @@ def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_powero
         p = gifs.resolve(gid)
         if not p:
             abort(404)
+        if request.args.get("still"):
+            return Response(still_gif(p), mimetype="image/gif", headers={"Cache-Control": "max-age=3600"})
         return send_file(p, mimetype="image/gif", max_age=3600)
 
     @app.post("/api/gifs")
@@ -481,6 +538,8 @@ def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_powero
         p = drafts.gif(did)
         if not p:
             abort(404)
+        if request.args.get("still"):
+            return Response(still_gif(p), mimetype="image/gif", headers={"Cache-Control": "max-age=3600"})
         return send_file(p, mimetype="image/gif", max_age=3600)
 
     @app.post("/api/drafts/<did>/save")

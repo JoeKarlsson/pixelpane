@@ -192,11 +192,22 @@ test('plugins can be switched off and on', async ({ page, request }) => {
   await expect(page.getByTestId('play-fire')).toHaveCount(1);
 });
 
+test('a wrong address shows a not-found page with the nav, and a trailing slash still works', async ({ page }) => {
+  const r = await page.goto('/drw');
+  expect(r.status()).toBe(404);
+  await expect(page.getByRole('heading', { name: 'Not found' })).toBeVisible();
+  await page.getByTestId('library-link').click();
+  await expect(page).toHaveURL(/\/library$/);
+  expect((await page.goto('/settings/')).status()).toBe(200);
+  await expect(page.getByTestId('schedule')).toBeVisible();
+  page.errors = page.errors.filter((e) => !e.includes('404'));   // the missing page itself
+});
+
 test('favicon is served', async ({ page, request }) => {
   for (const url of ['/favicon.ico', '/static/favicon.svg', '/static/apple-touch-icon.png']) {
     expect((await request.get(url)).ok(), url).toBeTruthy();
   }
-  await expect(page.locator('link[rel="icon"][type="image/svg+xml"]')).toHaveAttribute('href', '/static/favicon.svg');
+  await expect(page.locator('link[rel="icon"][type="image/svg+xml"]')).toHaveAttribute('href', /^\/static\/favicon\.svg\?v=\d+$/);   // cache key: kept a year
 });
 
 test('live view shows what is on, where it came from, and highlights the playlist', async ({ page, request }) => {

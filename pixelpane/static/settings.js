@@ -458,4 +458,6 @@ load().then(() => {
 setInterval(() => { if (!document.hidden) api('/api/state').then(s => { S = s; drawStatus(); drawSystem(); }).catch(() => {}); }, 15000);
 // open only where it fits beside the 1040px column; narrower, it would cover the controls
 $('.minipreview').open = matchMedia('(min-width: 1360px)').matches;
-startPreview('#livepreview');
+// streams only while it's open: a closed preview costs the Pi nothing
+startPreview('#livepreview', () => $('.minipreview').open);
+$('.minipreview').addEventListener('toggle', () => { if ($('.minipreview').open) streamPreview(); else stopPreview(); });

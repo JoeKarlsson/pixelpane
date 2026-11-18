@@ -1,5 +1,8 @@
+import gzip
 import io
+import json
 import random
+import re
 import time
 import unittest
 
@@ -60,6 +63,40 @@ class WebTest(unittest.TestCase):
         r = self.client.get("/")
         self.assertEqual(r.status_code, 200)
         self.assertIn(b"<title>PixelPane</title>", r.data)
+
+    def test_pages_have_headers_cache_keys_and_theme_color(self):
+        r = self.client.get("/")
+        self.assertEqual(r.headers["Cross-Origin-Opener-Policy"], "same-origin")
+        self.assertIn("camera=()", r.headers["Permissions-Policy"])
+        html = r.get_data(as_text=True)
+        self.assertIn('<meta name="color-scheme" content="dark">', html)
+        css = re.search(r'"(/static/app\.css\?v=\d+)"', html).group(1)
+        def cache(url):
+            with self.client.get(url) as r:
+                return r.headers.get("Cache-Control", "")
+        self.assertIn("max-age=31536000", cache(css))
+        self.assertNotIn("max-age=31536000", cache("/static/app.css"))      # no cache key: ask each time
+        self.assertIn("max-age=31536000", cache("/static/fonts/inter-latin.woff2"))
+
+    def test_state_is_gzipped_when_asked(self):
+        r = self.client.get("/api/state", headers={"Accept-Encoding": "gzip"})
+        self.assertEqual(r.headers["Content-Encoding"], "gzip")
+        self.assertIn("plugins", json.loads(gzip.decompress(r.data)))
+        self.assertNotIn("Content-Encoding", self.client.get("/api/state").headers)
+
+    def test_wrong_address_gets_a_page_with_the_nav(self):
+        r = self.client.get("/drw")
+        self.assertEqual(r.status_code, 404)
+        self.assertIn(b"Not found", r.data)
+        self.assertIn(b'href="/settings"', r.data)
+        r = self.client.get("/api/nope")
+        self.assertEqual((r.status_code, r.is_json), (404, True))          # the API answers in JSON
+        self.assertEqual(self.client.get("/library/").status_code, 200)    # a trailing slash is fine
+
+    def test_still_gif_is_one_frame(self):
+        gid = next(g["id"] for g in self.client.get("/api/gifs").get_json())
+        with Image.open(io.BytesIO(self.client.get(f"/gif/{gid}?still=1").data)) as im:
+            self.assertEqual(getattr(im, "n_frames", 1), 1)
 
     def test_health_and_state(self):
         h = self.client.get("/api/health").get_json()
