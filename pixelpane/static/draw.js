@@ -153,14 +153,14 @@ $('#clear').onclick = () => { snapshot(); frames[cur] = blank(); changed(); };
 
 function setTool(t) {
   tool = t;
-  document.querySelectorAll('[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
+  document.querySelectorAll('[data-tool]').forEach(b => setPressed(b, b.dataset.tool === t));
   cv.dataset.tool = t;
 }
 document.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => setTool(b.dataset.tool));
 
 function setColor(c) {
   color = c; $('#color').value = hex(c);
-  document.querySelectorAll('.swatch').forEach(s => s.classList.toggle('on', s.dataset.color === hex(c)));
+  document.querySelectorAll('.swatch').forEach(s => setPressed(s, s.dataset.color === hex(c)));
   if (tool === 'eraser') setTool('pen');
 }
 $('#color').oninput = e => setColor(unhex(e.target.value));
@@ -204,6 +204,7 @@ function drawStrip() {
   if (!ANIM) return;
   $('#strip').replaceChildren(...frames.map((_, i) => {
     const b = btn('', () => select(i), i === cur ? 'frame on' : 'frame', 'frame-' + i, `Frame ${i + 1}`);
+    if (i === cur) b.setAttribute('aria-current', 'true');
     b.append(thumb(i), el('span', {textContent: i + 1}));
     return b;
   }));

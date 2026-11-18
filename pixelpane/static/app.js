@@ -72,20 +72,18 @@ function drawPlugins() {
   $('#pluginerrs').replaceChildren(...errs.map(e => el('div', {textContent: `⚠ ${e.source} didn't load: ${e.error}`})));
   $('#plugins').replaceChildren(...S.plugins.map(p => {
     const row = document.createElement('div'); row.className = 'plugin'; row.dataset.testid = 'plugin-' + p.name;
-    const go = () => { location.href = '/settings#plugin-' + p.name; };
-    row.title = 'Settings and details'; row.onclick = e => { if (!e.target.closest('button')) go(); };
-    row.tabIndex = 0; row.setAttribute('role', 'link'); row.setAttribute('aria-label', `${p.name} settings and details`);
-    row.onkeydown = e => { if (e.target === row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); go(); } };
-    const info = document.createElement('div');
-    const name = document.createElement('strong'); name.textContent = p.name;
-    const desc = document.createElement('small'); desc.textContent = p.description;
-    info.append(name, desc);
+    const nice = p.name.replace(/_/g, ' ');
+    const link = el('a', {className: 'plugin-link', href: '/settings#plugin-' + p.name, title: 'Settings and details'},
+      el('strong', {textContent: nice}));
+    const info = el('div', {}, link, el('small', {textContent: p.description}));
     const crashed = (p.tasks || []).filter(t => t.crashes);
     if (p.source !== 'built-in' || p.version) info.append(el('small', {textContent: [p.source, p.version && 'v' + p.version].filter(Boolean).join(' · ')}));
     if (crashed.length) info.append(el('small', {className: 'warn', textContent: `⚠ task crashed: ${crashed[0].last_error}`}));
-    row.append(info, btn(p.enabled ? 'On' : 'Off', () =>
+    const toggle = btn(p.enabled ? 'On' : 'Off', () =>
       api('/api/config', 'PUT', {plugins: {[p.name]: {enabled: !p.enabled}}})
-        .then(() => init()).then(() => toast(`${p.name} ${p.enabled ? 'off' : 'on'}`)), p.enabled ? 'on' : ''));
+        .then(() => init()).then(() => toast(`${nice} ${p.enabled ? 'off' : 'on'}`)));
+    setPressed(toggle, p.enabled); toggle.setAttribute('aria-label', nice);   // "weather, toggle button, pressed"
+    row.append(info, toggle);
     return row;
   }));
 }
@@ -94,8 +92,8 @@ function drawPlugins() {
 function moveRot(from, to) {
   if (from === to || to < 0 || to >= rotation.length) return;
   rotation.splice(to, 0, ...rotation.splice(from, 1)); rotIds.splice(to, 0, ...rotIds.splice(from, 1));
-  const label = document.activeElement?.getAttribute('aria-label');   // redraw replaces the button you pressed
-  const redraw = () => { drawRot(); if (label) $(`#rot li[data-index="${to}"] [aria-label="${label}"]`)?.focus(); };
+  const label = document.activeElement?.getAttribute('aria-label')?.split(':')[0];   // redraw replaces the button you pressed
+  const redraw = () => { drawRot(); if (label) $(`#rot li[data-index="${to}"] [aria-label^="${label}:"]`)?.focus(); };
   document.startViewTransition && !calmMotion.matches ? document.startViewTransition(redraw) : redraw();
 }
 
@@ -110,9 +108,9 @@ function drawRot() {
     li.ondrop = e => { e.preventDefault(); moveRot(+e.dataTransfer.getData('text/plain'), i); };
     const grip = el('span', {className: 'grip', textContent: '⠿', ariaHidden: 'true'});
     const span = el('span', {className: 'name', textContent: `${i+1}. ${s}`});
-    li.append(grip, span, btn('↑', () => moveRot(i, i - 1), '', '', 'Move up'),
-      btn('↓', () => moveRot(i, i + 1), '', '', 'Move down'),
-      btn('✕', () => { rotation.splice(i, 1); rotIds.splice(i, 1); drawRot(); }, '', '', 'Remove'));
+    li.append(grip, span, btn('↑', () => moveRot(i, i - 1), '', '', `Move up: ${s}`),
+      btn('↓', () => moveRot(i, i + 1), '', '', `Move down: ${s}`),
+      btn('✕', () => { rotation.splice(i, 1); rotIds.splice(i, 1); drawRot(); }, '', '', `Remove ${s}`));
     return li;
   }));
   // Edits stay in the page until Save playlist, so say when there are some.

@@ -214,6 +214,16 @@ and the project uses [semantic versioning](https://semver.org/).
 - The homelab dashboard skips its Plex page while nobody is streaming.
 
 ### Fixed
+- Keyboard focus shows in Windows high-contrast mode, and on peach buttons, where the
+  teal ring used to vanish. The current page's nav link no longer turns invisible on
+  hover, and the selected palette color has a whole ring instead of a broken one.
+- Screen readers hear which tool, color, day and plugin is on (toggle buttons say
+  pressed), and repeated buttons say what they act on ("Remove clock", "Hide
+  retro-coin", "Save weather settings") instead of 18 identical "On" and 15 "Remove".
+- Plugin cards are real links with the On/Off button beside them, form fields that
+  only had a placeholder have labels, the built-in holidays are a labelled group,
+  library images no longer read their file name twice, and every page has a skip link.
+  The logo links home.
 - On Animate, Space ticks the focused checkbox (mirror, grid, onion skin, Live) or
   presses the focused button again, instead of always starting playback.
 - Esc (or a click outside) on the token prompt no longer leaves the button that asked

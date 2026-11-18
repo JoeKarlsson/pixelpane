@@ -62,12 +62,14 @@ async function loadGifs() {
     }
     const cap = document.createElement('div'); cap.className = 'stat'; cap.style.fontSize = '11px';
     cap.style.overflowWrap = 'anywhere'; cap.textContent = g.name.replace(/\.gif$/i, '');
-    const img = document.createElement('img'); img.loading = 'lazy'; img.src = '/gif/' + encodeURI(g.id); img.title = g.name;
+    const img = document.createElement('img'); img.loading = 'lazy'; img.src = '/gif/' + encodeURI(g.id); img.alt = '';   // the caption names it
     const r = document.createElement('div'); r.className = 'row';
-    r.append(btn('▶', () => api('/api/play', 'POST', {scene:'gif', params:{id:g.id}}).then(() => toast('Up next')), '', '', 'Play next'),
-      btn(g.hidden ? 'show' : 'hide', () => api('/api/gifs/hide', 'POST', {id:g.id, hidden:!g.hidden}).then(loadGifs)),
-      btn('✎', () => openClassify([g]), '', 'classify', 'Move to a category or theme'));
-    if (g.upload) r.append(btn('🗑', e => confirmDelete(g, e.currentTarget), '', 'delete', 'Delete'));
+    const title = g.name.replace(/\.gif$/i, '');
+    r.append(btn('▶', () => api('/api/play', 'POST', {scene:'gif', params:{id:g.id}}).then(() => toast('Up next')), '', '', `Play next: ${title}`),
+      btn(g.hidden ? 'show' : 'hide', () => api('/api/gifs/hide', 'POST', {id:g.id, hidden:!g.hidden}).then(loadGifs), '', '',
+        `${g.hidden ? 'Show' : 'Hide'} ${title}`),
+      btn('✎', () => openClassify([g]), '', 'classify', `Move ${title} to a category or theme`));
+    if (g.upload) r.append(btn('🗑', e => confirmDelete(g, e.currentTarget), '', 'delete', `Delete ${title}`));
     d.append(img, cap, el('span', {className: 'cat' + (g.moved ? ' moved' : ''),
       textContent: g.category + (g.plays ? ` · ▶${g.plays}` : ''),
       title: g.moved ? `moved here from ${g.default_category}, ${g.default_theme.replace('_', ' ')}` : 'category'}));
@@ -288,8 +290,9 @@ $('#sddiscard').onclick = async () => {
 // Deleting can't be undone, so the first click arms the button and a second one deletes.
 function confirmDelete(g, b) {
   if (!b.classList.contains('armed')) {
-    b.classList.add('armed'); setLabel(b, 'Delete?'); b.setAttribute('aria-label', 'Confirm delete');
-    setTimeout(() => { b.classList.remove('armed'); setLabel(b, '🗑'); b.setAttribute('aria-label', 'Delete'); }, 3000);
+    const name = b.getAttribute('aria-label');
+    b.classList.add('armed'); setLabel(b, 'Delete?'); b.setAttribute('aria-label', `Confirm ${name.toLowerCase()}`);
+    setTimeout(() => { b.classList.remove('armed'); setLabel(b, '🗑'); b.setAttribute('aria-label', name); }, 3000);
     return;
   }
   api('/api/gifs/' + encodeURI(g.id), 'DELETE').then(() => { toast('Deleted ' + g.name); loadGifs(); });

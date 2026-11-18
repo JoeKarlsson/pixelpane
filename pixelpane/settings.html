@@ -11,9 +11,10 @@
 <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
+<a class="skip" href="#schedule">Skip to content</a>
 <main aria-busy="true">
   <header>
-    <h1 class="brand"><img src="/static/favicon.svg" alt=""><span class="px">PIXEL</span><span class="pn">settings</span></h1>
+    <h1 class="brand"><a href="/" aria-label="PixelPane home"><img src="/static/favicon.svg" alt=""><span class="px">PIXEL</span><span class="pn">settings</span></a></h1>
     <div class="row">
       <span class="pill" id="stat">connecting…</span>
       <nav class="row" aria-label="Pages"><a class="navlink" href="/" data-testid="home-link">Control</a><a class="navlink" href="/draw" data-testid="draw-link">Draw</a><a class="navlink" href="/animate" data-testid="animate-link">Animate</a><a class="navlink" href="/library" data-testid="library-link">GIFs</a><a class="navlink" href="/settings" data-testid="settings-link" aria-current="page">Settings</a></nav>
@@ -83,8 +84,8 @@
       <div class="field"><label for="hemi">Seasons</label>
         <select id="hemi" data-testid="hemisphere"><option value="north">Northern hemisphere</option>
           <option value="south">Southern hemisphere</option></select></div>
-      <div class="field wide"><label>Built-in holidays</label><div class="checks" id="builtins" data-testid="builtin-holidays"></div>
-        <small>Untick one to skip it: no scene and no GIFs from its folder.</small></div>
+      <fieldset class="field wide"><legend>Built-in holidays</legend><div class="checks" id="builtins" data-testid="builtin-holidays"></div>
+        <small>Untick one to skip it: no scene and no GIFs from its folder.</small></fieldset>
     </div>
     <h2 style="margin-top:16px">Your holidays</h2>
     <p class="stat">Add Diwali, Lunar New Year, an anniversary, a team's game days. Upload GIFs to one on the GIFs
@@ -108,7 +109,7 @@
           <button id="uidefault" data-testid="ui-default">Default</button></div>
         <small>Buttons, links and highlights. Text on it turns dark or light to stay readable.</small></div>
     </div>
-    <div class="row" style="margin-top:12px"><button id="saveui" class="on" data-testid="save-appearance">Save</button></div>
+    <div class="row" style="margin-top:12px"><button id="saveui" class="on" data-testid="save-appearance" aria-label="Save appearance">Save</button></div>
   </section>
 
   <section id="display" data-testid="display">
@@ -116,7 +117,7 @@
     <p class="stat">These take effect after a restart.</p>
     <div class="form" id="hw"></div>
     <div class="row" style="margin-top:12px">
-      <button id="savehw" class="on" data-testid="save-display">Save</button>
+      <button id="savehw" class="on" data-testid="save-display" aria-label="Save display hardware">Save</button>
       <button id="restart2" data-testid="restart-display">Save and restart</button>
     </div>
   </section>

@@ -67,6 +67,8 @@ function btn(label, fn, cls, testid, name) {
   if (name) { b.setAttribute('aria-label', name); b.title = name; }
   return b;
 }
+// A toggle's state for screen readers and its look: aria-pressed plus the .on fill.
+function setPressed(b, on) { b.setAttribute('aria-pressed', on); b.classList.toggle('on', on); }
 // A button whose label changes (Play/Stop, Select/Done) crossfades between two labels
 // stacked in one grid cell, so the button keeps its width and doesn't jump. The hidden
 // one is aria-hidden, so the button's accessible name is only the shown label.

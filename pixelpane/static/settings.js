@@ -100,7 +100,8 @@ function pluginSection(p, open) {
   const toggle = btn(p.enabled ? 'On' : 'Off', async () => {
     await api('/api/config', 'PUT', {plugins: {[p.name]: {enabled: !p.enabled}}});
     toast(`${title} ${p.enabled ? 'off' : 'on'}`); await load();
-  }, p.enabled ? 'on' : '', `toggle-${p.name}`, `Switch ${title} ${p.enabled ? 'off' : 'on'}`);
+  }, '', `toggle-${p.name}`, title);
+  setPressed(toggle, p.enabled);
   if (!p.enabled) kids.push(el('p', {className: 'stat warn', textContent: `${title} is switched off: its scenes don't play and its settings do nothing until it's on.`}));
   kids.push(el('p', {className: 'stat', textContent: p.about || ''}));
   if (p.scenes.length && p.enabled) {   // a switched-off plugin's scenes can't play
@@ -125,7 +126,7 @@ function pluginSection(p, open) {
       C = await api('/api/config', 'PUT', {plugins: {[p.name]: read()}});
       S = await api('/api/state');
       toast(`${title} saved`);
-    }, 'on', `save-plugin-${p.name}`));
+    }, 'on', `save-plugin-${p.name}`, `Save ${title} settings`));
   }
   foot.push(...(EXTRAS[p.name] ? EXTRAS[p.name](p, read) : []));
   if (foot.length) kids.push(el('div', {className: 'foot'}, ...foot));
@@ -163,28 +164,26 @@ function ruleRow(r, i, live) {
   const row = el('div', {className: 'rule' + (r.enabled === false ? ' off' : '')
     + (live.has(r.label || `rule ${i + 1}`) ? ' live' : '')});
   row.dataset.testid = 'rule';
-  const label = el('input', {className: 'label', value: r.label || '', placeholder: 'Name (optional)', maxLength: 40});
+  const label = el('input', {className: 'label', value: r.label || '', placeholder: 'Name (optional)', maxLength: 40, ariaLabel: 'Rule name'});
   label.oninput = () => r.label = label.value;
   const on = el('label', {}, el('input', {type: 'checkbox', checked: r.enabled !== false}), ' on');
   on.firstChild.onchange = () => { r.enabled = on.firstChild.checked; row.classList.toggle('off', !r.enabled); };
-  const del = btn('✕', () => { rules.splice(i, 1); drawRules(); }, '', 'delete-rule');
-  del.title = 'Delete this rule';
+  const del = btn('✕', () => { rules.splice(i, 1); drawRules(); }, '', 'delete-rule', `Delete rule ${r.label || i + 1}`);
 
   const days = el('div', {className: 'days'}, ...DAYS.map((d, n) => {
     const b = btn(d, () => {
       const set = new Set(r.days || ALL);
       set.has(n) ? set.delete(n) : set.add(n);
       if (!set.size) return toast('A rule needs at least one day');
-      r.days = [...set].sort(); b.className = set.has(n) ? 'on' : '';
-      b.setAttribute('aria-label', `${d} ${set.has(n) ? 'on' : 'off'}`);
-    }, (r.days || ALL).includes(n) ? 'on' : '');
-    b.setAttribute('aria-label', `${d} ${(r.days || ALL).includes(n) ? 'on' : 'off'}`);
+      r.days = [...set].sort(); setPressed(b, set.has(n));
+    });
+    setPressed(b, (r.days || ALL).includes(n));
     return b;
   }));
 
-  const from = el('input', {type: 'time', value: r.from, required: true}), to = el('input', {type: 'time', value: r.to, required: true});
+  const uid = 'rule' + i + '-' + Math.random().toString(36).slice(2, 6);
+  const from = el('input', {type: 'time', value: r.from, required: true, id: uid + '-from'}), to = el('input', {type: 'time', value: r.to, required: true, id: uid + '-to'});
   from.onchange = () => r.from = from.value; to.onchange = () => r.to = to.value;
-  from.setAttribute('aria-label', 'From'); to.setAttribute('aria-label', 'To');
   const action = el('select', {}, new Option('Turn off', 'off'), new Option('Dim to', 'dim'), new Option('Play a playlist', 'playlist'));
   action.value = r.action; action.setAttribute('aria-label', 'What it does');
   const extra = el('span', {className: 'row extra'});
@@ -206,7 +205,7 @@ function ruleRow(r, i, live) {
   action.onchange = () => { r.action = action.value; delete r.brightness; delete r.rotation; drawExtra(); };
   drawExtra();
   row.append(el('div', {className: 'row'}, label, on, del), days,
-    el('div', {className: 'row'}, el('label', {textContent: 'from'}), from, el('label', {textContent: 'to'}), to, action, extra));
+    el('div', {className: 'row'}, el('label', {textContent: 'from', htmlFor: from.id}), from, el('label', {textContent: 'to', htmlFor: to.id}), to, action, extra));
   return row;
 }
 
@@ -413,9 +412,9 @@ const parseRanges = text => text.split('\n').map(l => l.trim()).filter(Boolean)
 
 function drawCustoms() {
   $('#customs').replaceChildren(...(customs.length ? customs.map((c, i) => {
-    const name = el('input', {value: c.name || '', placeholder: 'Name, like Diwali', maxLength: 40, className: 'label'});
+    const name = el('input', {value: c.name || '', placeholder: 'Name, like Diwali', maxLength: 40, className: 'label', ariaLabel: 'Holiday name'});
     name.oninput = () => c.name = name.value;
-    const dates = el('textarea', {rows: 2, value: rangesText(c.dates || []), placeholder: '11-08 to 11-12'});
+    const dates = el('textarea', {rows: 2, value: rangesText(c.dates || []), placeholder: '11-08 to 11-12', ariaLabel: 'Dates, one range per line'});
     dates.oninput = () => c.text = dates.value;
     const row = el('div', {className: 'rule'}, el('div', {className: 'row'}, name,
       btn('✕', () => { customs.splice(i, 1); drawCustoms(); }, '', 'delete-holiday', 'Delete this holiday')), dates);

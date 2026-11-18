@@ -11,16 +11,17 @@
 <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
+<a class="skip" href="#content">Skip to content</a>
 <main aria-busy="true">
   <header>
-    <h1 class="brand"><img src="/static/favicon.svg" alt=""><span class="px">PIXEL</span><span class="pn">pane</span></h1>
+    <h1 class="brand"><a href="/" aria-label="PixelPane home"><img src="/static/favicon.svg" alt=""><span class="px">PIXEL</span><span class="pn">pane</span></a></h1>
     <div class="row">
       <span class="pill" id="stat">connecting…</span>
       <nav class="row" aria-label="Pages"><a class="navlink" href="/" data-testid="home-link" aria-current="page">Control</a><a class="navlink" href="/draw" data-testid="draw-link">Draw</a><a class="navlink" href="/animate" data-testid="animate-link">Animate</a><a class="navlink" href="/library" data-testid="library-link">GIFs</a><a class="navlink" href="/settings" data-testid="settings-link">Settings</a></nav>
     </div>
   </header>
 
-  <section class="grid2">
+  <section id="content" tabindex="-1" class="grid2">
     <div class="titlebar">pixelpane@board: live</div>
     <div class="panel"><canvas id="preview" width="32" height="32" role="img" aria-label="live panel preview" data-testid="preview"></canvas></div>
     <div style="display:grid;gap:12px">

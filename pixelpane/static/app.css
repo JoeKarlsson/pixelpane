@@ -48,6 +48,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 18px 16px 40px; display: grid
 header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
   padding-bottom: 16px; border-bottom: 2px solid var(--accent); position: relative; }
 .brand { display: flex; align-items: center; gap: 12px; margin: 0; font-weight: 300; }
+.brand a { display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit; }
 .brand img { width: 38px; height: 38px; border-radius: 9px; }
 .brand .px { font: 700 21px/1 Silkscreen, monospace; letter-spacing: 1px; background: var(--grad);
   -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -89,7 +90,19 @@ button.on { background: var(--accent); color: var(--on-accent); font-weight: 600
 button.on:hover { background: color-mix(in srgb, var(--accent) 75%, white); color: var(--on-accent); }
 /* clip-path cuts off outlines, so keyboard focus shows as an inset ring instead */
 button:focus-visible, select:focus-visible, input:focus-visible, .navlink:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--teal); }
-.plugin:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+/* on an accent fill the teal ring alone vanishes (about 1:1), so it gets a dark inner edge */
+button.on:focus-visible, .navlink[aria-current="page"]:focus-visible, .frame.on:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--on-accent), inset 0 0 0 4px var(--teal); }
+.plugin:has(.plugin-link:focus-visible) { outline: 2px solid var(--teal); outline-offset: 2px; }
+.plugin-link:focus-visible { outline: none; }
+/* Windows high contrast drops box-shadow: give focus a real outline there */
+@media (forced-colors: active) {
+  button, select, input, .navlink, .toc a { clip-path: none; }
+  :focus-visible { outline: 2px solid CanvasText !important; outline-offset: 2px; }
+}
+.skip { position: absolute; left: 8px; top: -60px; z-index: 10; padding: 8px 14px; background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.skip:focus { top: 8px; }
+[tabindex="-1"]:focus { outline: none; }
 button.armed { background: var(--red); color: var(--bg); }
 .stat.warn { color: var(--amber); }
 input[type=checkbox] { clip-path: none; accent-color: var(--accent-ink); }
@@ -132,6 +145,8 @@ code { font-family: var(--mono); color: var(--teal); }
 .checks label { display: flex; gap: 4px; align-items: center; color: var(--text); }
 .checks input[type=checkbox] { padding: 0; width: 16px; height: 16px; margin: 0; }
 .form .field.wide { grid-column: span 2; }
+fieldset.field { border: 0; margin: 0; padding: 0; min-width: 0; }
+fieldset.field legend { color: var(--dim); font-size: 13px; padding: 0; margin-bottom: 4px; }
 .form select { min-width: 0; max-width: 100%; }
 @media (max-width: 560px) { .form .field.wide { grid-column: auto; } }
 .rule textarea { font: 13px var(--mono); color: var(--text); background: var(--bar); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
@@ -141,8 +156,12 @@ nav.row { gap: 6px; }
 .rot li.current .name { color: var(--bright); }
 .rot li.current .name::before { content: "❯ "; color: var(--accent-ink); }
 .plugins { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
-.plugin { display: flex; gap: 8px; align-items: center; justify-content: space-between; background: var(--bg); border: 1px solid var(--line);
-  border-radius: 8px; padding: 10px 12px; cursor: pointer; transition: border-color .15s, transform .15s; }
+.plugin { position: relative; display: flex; gap: 8px; align-items: center; justify-content: space-between; background: var(--bg); border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px 12px; transition: border-color .15s; }
+/* the whole card follows the plugin's link; its On/Off button sits above that */
+.plugin-link { text-decoration: none; }
+.plugin-link::after { content: ""; position: absolute; inset: 0; border-radius: 8px; }
+.plugin button { position: relative; z-index: 1; }
 .plugin:hover { border-color: var(--accent-ink); }
 .plugin strong { font: 500 13px var(--mono); color: var(--accent-ink); }
 .plugin small { display: block; color: var(--dim); }
@@ -250,6 +269,7 @@ dialog:modal { overscroll-behavior: contain; }
 /* header link to the settings page, schedule status, problems */
 .navlink { font: 13px var(--mono); color: var(--text); text-decoration: none; padding: 5px 12px; background: var(--raise); clip-path: var(--px); }
 .navlink:hover { color: var(--accent-ink); }
+.navlink[aria-current="page"]:hover { color: var(--on-accent); }
 a.pill.sched { color: var(--teal); border-color: color-mix(in srgb, var(--teal) 35%, transparent); text-decoration: none; }
 .errors { margin-bottom: 10px; padding: 8px 10px; border: 1px solid var(--red); border-radius: 8px; color: var(--red); font: 12.5px var(--mono); }
 .plugin small.warn { color: var(--amber); }
@@ -333,8 +353,10 @@ button.scenebtn .thumb { width: 22px; height: 22px; image-rendering: pixelated; 
 /* Draw and Animate: a big pixel canvas, tools above, the live board beside it */
 .studio-draw .tools { display: grid; gap: 10px; margin-bottom: 14px; }
 .palette { gap: 4px; }
-button.swatch, button.swatch:hover, button.swatch.on { width: 26px; height: 26px; padding: 0; background: var(--sw); }
-.swatch.on { box-shadow: inset 0 0 0 2px var(--bright), inset 0 0 0 4px #000; }
+button.swatch, button.swatch:hover, button.swatch.on { width: 26px; height: 26px; padding: 0; background: var(--sw); clip-path: none; border-radius: 3px; }
+/* the stepped clip would chop a ring into pieces, so swatches are square-cornered with a real outline */
+.swatch.on { outline: 2px solid var(--bright); outline-offset: 2px; }
+button.swatch:focus-visible { box-shadow: none; outline: 2px solid var(--teal); outline-offset: 2px; }
 .easel { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 22px; align-items: start; }
 @media (max-width: 680px) { .easel { grid-template-columns: minmax(0, 1fr); } }
 .canvaswrap { position: relative; width: min(100%, 560px); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #000; }
