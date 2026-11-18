@@ -13,6 +13,9 @@
   --accent: #fdae84; --on-accent: #0a0a0a; --accent-ink: var(--accent);   /* ink: accent used as text */
   --teal: #8bcbc8; --lav: #c4b5fd; --pink: #f9a8d4; --amber: #fbbf24; --green: #4ade80; --red: #f87171;
   --grad: linear-gradient(100deg, var(--accent), var(--pink) 35%, var(--lav) 65%, var(--teal));
+  /* motion: one set of curves and durations for every transition */
+  --ease-enter: cubic-bezier(.22, 1, .36, 1); --ease-exit: cubic-bezier(.3, 0, .6, .6); --ease-move: cubic-bezier(.65, 0, .35, 1);
+  --dur-enter: .22s; --dur-exit: .16s;
   --mono: "JetBrains Mono", "Fira Code", Menlo, Monaco, monospace;
   --sans: Inter, system-ui, -apple-system, sans-serif;
   /* stepped pixel corners for buttons and inputs */
@@ -130,6 +133,7 @@ code { font-family: var(--mono); color: var(--teal); }
 .rot { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
 .rot li { display: flex; gap: 6px; align-items: center; padding: 4px 8px; border-radius: 6px; font-family: var(--mono); font-size: 13.5px;
   transition: background-color .2s ease-out, box-shadow .2s ease-out; }
+.rot li.over { transition: none; }   /* dragleave fires on child elements: a fade would flicker */
 .rot li .name { flex: 1; }
 .rot li button { padding: 4px 10px; }
 .rot li[draggable="true"] { cursor: grab; }
@@ -203,11 +207,11 @@ dialog { width: min(580px, calc(100vw - 32px)); max-height: calc(100vh - 48px); 
   background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 0 22px 20px; }
 dialog::backdrop { background: rgba(0,0,0,.65); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
 /* dialogs fade in (0.95 to 1 from centre, unless reduced motion) and leave a little faster */
-dialog { opacity: 0; transition: opacity .16s ease-in, overlay .16s allow-discrete, display .16s allow-discrete; }
-dialog[open] { opacity: 1; transition-duration: .2s; transition-timing-function: cubic-bezier(.22, 1, .36, 1); }
+dialog { opacity: 0; transition: opacity var(--dur-exit) var(--ease-exit), overlay var(--dur-exit) allow-discrete, display var(--dur-exit) allow-discrete; }
+dialog[open] { opacity: 1; transition-duration: .2s; transition-timing-function: var(--ease-enter); }
 @starting-style { dialog[open] { opacity: 0; } }
-dialog::backdrop { opacity: 0; transition: opacity .16s ease-in, overlay .16s allow-discrete, display .16s allow-discrete; }
-dialog[open]::backdrop { opacity: 1; transition-duration: .2s; }
+dialog::backdrop { opacity: 0; transition: opacity var(--dur-exit) var(--ease-exit), overlay var(--dur-exit) allow-discrete, display var(--dur-exit) allow-discrete; }
+dialog[open]::backdrop { opacity: 1; transition-duration: .2s; transition-timing-function: var(--ease-enter); }   /* the dim arrives with the window */
 @starting-style { dialog[open]::backdrop { opacity: 0; } }
 dialog h3 { margin: 0 -22px 14px; padding: 12px 22px 12px 76px; position: relative; background: var(--bar); border-bottom: 1px solid var(--line);
   font: 700 15px/1.2 Silkscreen, monospace; color: var(--accent-ink); }
@@ -231,8 +235,8 @@ dialog:modal { overscroll-behavior: contain; }
 
 #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--bar); border: 1px solid var(--line);
   color: var(--bright); font: 13px var(--mono); padding: 9px 16px; border-radius: 8px;
-  opacity: 0; pointer-events: none; transition: opacity .16s ease-in, translate .16s ease-in; }
-#toast.show { opacity: 1; transition-duration: .22s; transition-timing-function: cubic-bezier(.22, 1, .36, 1); }
+  opacity: 0; pointer-events: none; transition: opacity var(--dur-exit) var(--ease-exit), translate var(--dur-exit) var(--ease-exit); z-index: 20; }
+#toast.show { opacity: 1; transition-duration: var(--dur-enter); transition-timing-function: var(--ease-enter); }
 
 /* footer: the site's teal rule */
 .foot-bar { display: flex; justify-content: center; align-items: center; gap: 14px; padding: 12px 0 4px; color: var(--dim); font-size: 13px; }
@@ -377,30 +381,37 @@ button.swatch:focus-visible { box-shadow: none; outline: 2px solid var(--teal); 
 
 /* Settings help text: a readable line length on wide screens */
 .psection p, section > p.stat { max-width: 75ch; }
-.bulk, .draft { transition: opacity .2s ease-out, display .2s allow-discrete; }
+.bulk, .draft { transition: opacity .2s var(--ease-enter), display .2s allow-discrete; }
 @starting-style { .bulk, .draft { opacity: 0; } }
+/* leaving: fade out (a little faster) instead of holding for 200ms and then snapping away */
+.bulk[hidden], .draft[hidden] { opacity: 0; transition-duration: var(--dur-exit); transition-timing-function: var(--ease-exit); }
+/* a request on its way: the button dims (after 150ms, so fast replies don't flicker) */
+button[aria-busy="true"] { cursor: progress; opacity: .6; transition: opacity .15s .15s; }
 
 /* folds open and close instead of snapping (Chromium; elsewhere they stay instant) */
 @supports (interpolate-size: allow-keywords) {
   :root { interpolate-size: allow-keywords; }
   details::details-content { block-size: 0; overflow: hidden; opacity: 0;
-    transition: block-size .18s ease-in, opacity .14s ease-in, content-visibility .18s allow-discrete; }
-  details[open]::details-content { block-size: auto; opacity: 1; transition-duration: .22s; transition-timing-function: cubic-bezier(.22, 1, .36, 1); }
+    transition: block-size .18s var(--ease-move), opacity .14s var(--ease-exit), content-visibility .18s allow-discrete; }
+  details[open]::details-content { block-size: auto; opacity: 1; transition-duration: var(--dur-enter); transition-timing-function: var(--ease-enter); }
 }
 
 /* movement only for people who haven't asked for less of it */
 @media (prefers-reduced-motion: no-preference) {
-  button { transition: background .15s, color .15s, scale .14s cubic-bezier(.22, 1, .36, 1); }
+  button { transition: background .15s, color .15s, scale .14s var(--ease-enter); }
   button:active:not(:disabled) { scale: .97; transition-duration: .06s; }
-  .plugin:hover, .swatch:hover { transform: translateY(-1px); }
   #toast { translate: 0 8px; }
   #toast.show { translate: 0 0; }
-  dialog { scale: .95; transition: opacity .16s ease-in, scale .16s ease-in, overlay .16s allow-discrete, display .16s allow-discrete; }
+  dialog { scale: .95; transition: opacity var(--dur-exit) var(--ease-exit), scale var(--dur-exit) var(--ease-exit), overlay var(--dur-exit) allow-discrete, display var(--dur-exit) allow-discrete; }
   dialog[open] { scale: 1; }
   @starting-style { dialog[open] { scale: .95; } }
 }
 @media (prefers-reduced-motion: reduce) {
   details::details-content { transition: none !important; }
+}
+/* reduced motion with a mouse: changes are instant (a finger keeps the short fade, so a tap still shows something happened) */
+@media (prefers-reduced-motion: reduce) and (pointer: fine) {
+  dialog, dialog::backdrop, #toast, .bulk, .draft { transition-duration: 0s !important; }
 }
 
 /* phones: 44px thumb targets, and 16px inputs so iOS doesn't zoom on focus */
@@ -442,13 +453,7 @@ button:has(> .icon), button:has(> .swap .icon) { display: inline-flex; align-ite
 main[aria-busy="true"] > section ~ section { visibility: hidden; }   /* the top card (live preview) shows at once */
 /* Library: the empty grid holds its space while GIFs load, so the pager doesn't jump */
 #gifs:empty { min-height: 100vh; }
-/* playlist rows glide to their new place; the rest of the page (and the live preview) doesn't crossfade */
-:root { view-transition-name: none; }
-::view-transition-group(*) { animation-duration: .22s; animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
 @media (prefers-reduced-motion: no-preference) {
   .swap > span { transition: opacity .15s ease-out, filter .15s ease-out, scale .15s ease-out; }
   .swap > span[aria-hidden="true"] { scale: .9; }
-}
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }

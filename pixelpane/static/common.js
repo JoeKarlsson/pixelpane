@@ -52,7 +52,7 @@ const calmMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const toast = t => {
   const e = $('#toast'), again = e.classList.contains('show');
   e.textContent = t; e.classList.add('show');
-  if (again && !calmMotion.matches) e.animate([{scale: .97}, {scale: 1}], {duration: 180, easing: 'cubic-bezier(.22, 1, .36, 1)'});
+  if (again && !calmMotion.matches) e.animate([{scale: .97}, {scale: 1}], {duration: 180, easing: 'cubic-bezier(.22, 1, .36, 1)'});   // = --ease-enter
   clearTimeout(toastTimer); toastTimer = setTimeout(() => e.classList.remove('show'), t.length > 60 ? 4000 : 1800);
 };
 

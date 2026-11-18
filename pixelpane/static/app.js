@@ -1,12 +1,12 @@
 // PixelPane control page. Talks to the board's HTTP API (see README).
 // $, api, send, toast, el, btn, ago and showStatus come from common.js. The GIF maker
 // and library are on /library (library.js).
-let S = {}, C = {}, rotation = [], rotIds = [], nextRotId = 0;   // ids: each entry's view-transition name
+let S = {}, C = {}, rotation = [], rotIds = [], nextRotId = 0;   // ids: follow each entry as it moves (flipRot)
 
 async function refresh() {
   S = await api('/api/state');
   const sch = S.schedule || {};
-  $('#power').textContent = !S.power ? 'Power: OFF' : sch.off ? 'Power: OFF (schedule)' : 'Power: ON';
+  setLabel($('#power'), !S.power ? 'Power: OFF' : sch.off ? 'Power: OFF (schedule)' : 'Power: ON');   // keeps its width
   $('#power').className = S.on ? 'on' : '';
   $('#power').title = sch.off ? 'Quiet hours: press to turn on anyway until they end' : '';
   $('#sched').hidden = !(sch.rules || []).length;
@@ -93,14 +93,27 @@ function moveRot(from, to) {
   if (from === to || to < 0 || to >= rotation.length) return;
   rotation.splice(to, 0, ...rotation.splice(from, 1)); rotIds.splice(to, 0, ...rotIds.splice(from, 1));
   const label = document.activeElement?.getAttribute('aria-label')?.split(':')[0];   // redraw replaces the button you pressed
-  const redraw = () => { drawRot(); if (label) $(`#rot li[data-index="${to}"] [aria-label^="${label}:"]`)?.focus(); };
-  document.startViewTransition && !calmMotion.matches ? document.startViewTransition(redraw) : redraw();
+  flipRot(() => { drawRot(); if (label) $(`#rot li[data-index="${to}"] [aria-label^="${label}:"]`)?.focus(); });
+}
+
+// Rows glide from where they were to where they are now (FLIP). Unlike a view transition
+// the rows stay clickable while they move, so a quick second press isn't lost, and it
+// starts from wherever the row is on screen. New rows fade in.
+function flipRot(change) {
+  const top = li => li.getBoundingClientRect().top;
+  const was = new Map([...$('#rot').children].map(li => [li.dataset.rotId, top(li)]));
+  change();
+  if (calmMotion.matches) return;
+  for (const li of $('#rot').children) {
+    const from = was.get(li.dataset.rotId);
+    if (from == null) li.animate([{opacity: .001}, {opacity: 1}], {duration: 200, easing: 'cubic-bezier(.22, 1, .36, 1)'});
+    else if (from !== top(li)) li.animate([{translate: `0 ${from - top(li)}px`}, {translate: '0 0'}], {duration: 220, easing: 'cubic-bezier(.65, 0, .35, 1)'});
+  }
 }
 
 function drawRot() {
   $('#rot').replaceChildren(...rotation.map((s, i) => {
-    const li = document.createElement('li'); li.dataset.index = i; li.draggable = true;
-    li.style.viewTransitionName = 'rot-' + rotIds[i];
+    const li = document.createElement('li'); li.dataset.index = i; li.dataset.rotId = rotIds[i]; li.draggable = true;
     li.ondragstart = e => { e.dataTransfer.setData('text/plain', String(i)); e.dataTransfer.effectAllowed = 'move'; li.classList.add('dragging'); };
     li.ondragend = () => li.classList.remove('dragging');
     li.ondragover = e => { e.preventDefault(); li.classList.add('over'); };
@@ -110,7 +123,7 @@ function drawRot() {
     const nice = sceneLabel(s), span = el('span', {className: 'name', textContent: `${i+1}. ${nice}`});
     li.append(grip, span, btn(icon('up'), () => moveRot(i, i - 1), '', '', `Move up: ${nice}`),
       btn(icon('down'), () => moveRot(i, i + 1), '', '', `Move down: ${nice}`),
-      btn(icon('x'), () => { rotation.splice(i, 1); rotIds.splice(i, 1); drawRot(); }, '', '', `Remove ${nice}`));
+      btn(icon('x'), () => flipRot(() => { rotation.splice(i, 1); rotIds.splice(i, 1); drawRot(); }), '', '', `Remove ${nice}`));
     return li;
   }));
   // Edits stay in the page until Save playlist, so say when there are some.
@@ -132,7 +145,7 @@ $('#unpin').onclick = busy(() => api('/api/pin', 'DELETE').then(refresh).then(()
 $('#nsend').onclick = busy(() => api('/api/notify', 'POST', {text: $('#ntext').value, icon: $('#nicon').value,
   color: $('#ncolor').value, flash: $('#nflash').checked, style: $('#nstyle').value}).then(() => toast('Sent')));
 $('#skip').onclick = busy(() => api('/api/skip', 'POST').then(() => toast('Skipped')));
-$('#add').onclick = () => { rotation.push($('#addsel').value); rotIds.push(nextRotId++); drawRot(); };
+$('#add').onclick = () => flipRot(() => { rotation.push($('#addsel').value); rotIds.push(nextRotId++); drawRot(); });
 $('#saverot').onclick = busy(() => api('/api/config', 'PUT', {rotation}).then(c => { C = c; drawRot(); toast('Playlist saved'); }));
 window.addEventListener('beforeunload', e => {
   if (C.rotation && JSON.stringify(rotation) !== JSON.stringify(C.rotation)) e.preventDefault();
@@ -162,9 +175,10 @@ async function pollNow() {
   const n = h.now || {};
   $('#nowsrc').textContent = (SOURCE[n.source] || (() => n.source || '…'))(n);
   const name = n.source === 'notification' ? `Notification · ${n.text || ''}` : prettyScene(h.scene, n.entry);
-  if ($('#nowscene').textContent !== name) {   // a new scene fades in (opacity only: fine under reduced motion)
+  const shown = $('#nowscene').textContent;
+  if (shown !== name) {   // a new scene fades in (opacity only: fine under reduced motion), not the first fill on load
     $('#nowscene').textContent = name; $('#nowscene').title = name;
-    $('#nowscene').animate([{opacity: 0}, {opacity: 1}], {duration: 180, easing: 'ease-out'});
+    if (shown !== '…') $('#nowscene').animate([{opacity: .001}, {opacity: 1}], {duration: 180, easing: 'cubic-bezier(.22, 1, .36, 1)'});
   }
   const pct = n.seconds ? Math.min(100, 100 * (n.elapsed || 0) / n.seconds) : (n.source === 'pinned' ? 100 : 0);
   setBar(n, pct);

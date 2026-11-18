@@ -43,7 +43,7 @@ test('quiet hours: add, save, and the board follows them', async ({ page, reques
   // the control page shows it, and Power turns the board on anyway
   await page.goto('/');
   await expect(page.getByTestId('schedule-status')).toContainText('Scheduled off until');
-  await expect(page.locator('#power')).toHaveText('Power: OFF (schedule)');
+  await expect(page.locator('#power')).toHaveAccessibleName('Power: OFF (schedule)');
   await page.locator('#power').click();
   await expect.poll(async () => (await health(request)).on).toBe(true);
   await expect(page.getByTestId('schedule-status')).toContainText('On anyway');

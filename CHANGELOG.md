@@ -214,6 +214,13 @@ and the project uses [semantic versioning](https://semver.org/).
 - The homelab dashboard skips its Plex page while nobody is streaming.
 
 ### Fixed
+- Motion: a quick second press on a playlist arrow is no longer lost while rows move,
+  and removing or adding a row animates like moving one. The bulk bar and draft card
+  fade out instead of holding for 200ms and snapping away. A button waiting on the
+  board dims, so it's clear the press registered. Power keeps its width when it
+  changes, the drop marker no longer flickers while dragging, the scene name doesn't
+  fade in on page load, and folds close smoothly. With reduced motion and a mouse,
+  dialogs and the toast change instantly. Hover no longer lifts cards and swatches.
 - Phones: Draw and Animate put the canvas first with the tools under it (it used to
   start below the first screen), playlist arrows, palette colors, Undo/Redo, weekday
   buttons and checkboxes are full 44px targets, the Settings preview docks bottom-left

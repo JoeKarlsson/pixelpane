@@ -96,10 +96,10 @@ test('nothing playing just skips instead of showing a blank screen', async ({ pa
 
 test('power button turns the panel off and on', async ({ page, request }) => {
   await page.locator('#power').click();
-  await expect(page.locator('#power')).toHaveText('Power: OFF');
+  await expect(page.locator('#power')).toHaveAccessibleName('Power: OFF');
   await sceneIs(request, /^off$/);
   await page.locator('#power').click();
-  await expect(page.locator('#power')).toHaveText('Power: ON');
+  await expect(page.locator('#power')).toHaveAccessibleName('Power: ON');
   await expect.poll(async () => (await health(request)).power).toBe(true);
 });
 
@@ -305,9 +305,9 @@ test('with a token set, the page asks for it once and then works', async ({ page
   await expect(dlg).toBeVisible();
   await page.locator('#tokinput').fill('correct-horse');
   await page.locator('#toksave').click();
-  await expect(page.locator('#power')).toHaveText('Power: OFF');
+  await expect(page.locator('#power')).toHaveAccessibleName('Power: OFF');
   await page.locator('#power').click();                 // remembered: no second prompt
-  await expect(page.locator('#power')).toHaveText('Power: ON');
+  await expect(page.locator('#power')).toHaveAccessibleName('Power: ON');
   await expect(dlg).toBeHidden();
   await request.put('/api/config', { data: { api_token: null }, headers: { 'X-PixelPane-Token': 'correct-horse' } });
   await page.evaluate(() => localStorage.removeItem('pixelpane-token'));
@@ -408,6 +408,20 @@ test('a notification sends its style and color', async ({ page, request }) => {
   expect((await sent).postDataJSON()).toMatchObject({ text: 'Styled', style: 'banner', color: '#ff8800' });
   await expect(page.locator('#toast')).toContainText('Sent');
   await sceneIs(request, /^notify$/);
+});
+
+test('two quick presses on Move up move the entry up twice', async ({ page, request }) => {
+  const original = (await config(request)).rotation;
+  const rows = page.locator('#rot li');
+  await expect(rows).toHaveCount(original.length);
+  // press the same spot twice, 40ms apart, like a thumb would: the second press must not be lost
+  await rows.nth(3).scrollIntoViewIfNeeded();
+  const box = await rows.nth(3).getByRole('button', { name: 'Move up' }).boundingBox();
+  const x = box.x + box.width / 2, y = box.y + box.height / 2;
+  await page.mouse.click(x, y);
+  await page.waitForTimeout(40);
+  await page.mouse.click(x, y);
+  await expect(rows.nth(1)).toContainText(label(original[3]));
 });
 
 test('playlist Move down moves an entry later', async ({ page, request }) => {
