@@ -420,7 +420,6 @@ function loadSaved(d) {
 
 async function init() {
   if (ANIM) {
-    document.title = 'PixelPane Animate';
     $('#drawtitle').textContent = 'Animate';
     $('#framebox').hidden = false;
     $('#examples').hidden = false;
