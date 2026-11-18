@@ -227,35 +227,19 @@ test('notifications: a reminder saves, the style saves and test buttons send', a
     expect((await config(request)).plugins.triggers.reminders[0].time).toBe('19:30');
     page.errors = [];   // that refused save logged its 400 on purpose
 
-    await page.getByTestId('composer').getByLabel('Message').fill('Hi');   // the preview shows what you're writing
     const preview = page.waitForRequest((r) => r.url().endsWith('/api/notify') && r.method() === 'POST');
     await page.getByTestId('test-notification').click();
-    expect((await preview).postDataJSON()).toMatchObject({ text: 'Hi', style: 'banner' });
+    expect((await preview).postDataJSON()).toMatchObject({ text: 'This is how it looks', style: 'banner' });
     await expect(page.locator('#toast')).toContainText('Sent');
   } finally {
     await request.put('/api/config', { data: reset });
   }
 });
 
-test('notifications: write a message and send it, keep one on screen, clear it', async ({ page, request }) => {
-  const box = page.getByTestId('composer');
-  await expect(box).toBeVisible();
-  await box.getByTestId('compose-send').click();
-  await expect(page.locator('#toast')).toContainText('Write a message first');
-  await box.getByLabel('Message').fill('Food')   // short enough not to scroll;
-  await box.getByLabel('Second line').fill('come down');
-  await box.getByLabel('Icon').selectOption('heart');
-  await box.getByLabel('Style').selectOption('banner');
-  const sent = page.waitForRequest(r => r.url().endsWith('/api/notify') && r.method() === 'POST');
-  await box.getByTestId('compose-send').click();
-  const body = (await sent).postDataJSON();
-  expect([body.text, body.sub, body.icon, body.style]).toEqual(['Food', 'come down', 'heart', 'banner']);
-  await expect.poll(async () => (await health(request)).scene).toBe('notify');
-
-  await box.getByTestId('compose-pin').click();
-  await expect.poll(async () => (await health(request)).pinned?.scene).toBe('message');
-  await box.getByTestId('compose-clear').click();
-  await expect.poll(async () => (await health(request)).pinned).toBeNull();
+test('notifications are written on the Control page: Settings links there', async ({ page }) => {
+  await page.getByTestId('composer').getByRole('link', { name: 'Control page' }).click();
+  await expect(page).toHaveURL(/\/#notify$/);
+  await expect(page.locator('#ntext')).toBeVisible();
 });
 
 test('every section link jumps to its section', async ({ page }) => {

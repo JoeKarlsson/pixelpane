@@ -2,15 +2,19 @@
 // $, api, send, toast, el, btn, ago and showStatus come from common.js. The GIF maker
 // and library are on /library (library.js).
 let S = {}, C = {}, rotation = [], rotIds = [], nextRotId = 0;   // ids: follow each entry as it moves (flipRot)
+const rootStyle = getComputedStyle(document.documentElement);   // the motion tokens in app.css
+const EASE_ENTER = rootStyle.getPropertyValue('--ease-enter'), EASE_MOVE = rootStyle.getPropertyValue('--ease-move');
+const DUR_ENTER = parseFloat(rootStyle.getPropertyValue('--dur-enter')) * 1000, DUR_EXIT = parseFloat(rootStyle.getPropertyValue('--dur-exit')) * 1000;
+const coarsePointer = matchMedia('(pointer: coarse)');
+ICONS.grip = 'F ' + [3, 8, 13].map(y => `M5 ${y}a1.25 1.25 0 1 0 2.5 0a1.25 1.25 0 1 0-2.5 0M8.5 ${y}a1.25 1.25 0 1 0 2.5 0a1.25 1.25 0 1 0-2.5 0`).join('');
 
 async function refresh() {
   S = await api('/api/state');
   const sch = S.schedule || {};
-  setLabel($('#power'), !S.power ? 'Power: OFF' : sch.off ? 'Power: OFF (schedule)' : 'Power: ON');   // keeps its width
-  setPressed($('#power'), S.on);   // a switch: lit outline when on
-  $('#power').title = sch.off ? 'Quiet hours: press to turn on anyway until they end' : '';
+  // the label is the state (no aria-pressed as well, or screen readers say it twice); keeps its width
+  setLabel($('#power'), !S.power ? 'Power: OFF' : sch.off ? 'Power: OFF (schedule)' : 'Power: ON');
   $('#sched').hidden = !(sch.rules || []).length;
-  $('#sched').textContent = sch.off ? `Scheduled off until ${clockTime(sch.until)}`
+  $('#sched').textContent = sch.off ? `Scheduled off until ${clockTime(sch.until)}: Power turns it on anyway`
     : sch.overridden ? `On anyway, quiet hours end ${clockTime(sch.until)}`
     : [sch.brightness != null ? `Dimmed to ${sch.brightness}` : null, sch.playlist ? 'Scheduled playlist' : null]
         .filter(Boolean).join(', ') || `Schedule: ${sch.rules?.join(', ')}`;
@@ -33,6 +37,9 @@ async function init() {
   const cats = S.categories.map(c => 'gif:' + c);
   drawPlayNow(cats);
   $('#nicon').replaceChildren(...S.icons.map(i => new Option(i, i)));
+  const alerts = S.plugins.find(p => p.name === 'alerts')?.settings || {};   // what a notification uses unless you change it
+  $('#ncolor').value = alerts.color || '#ffffff'; $('#nflash').checked = !!alerts.flash;
+  if (alerts.seconds) $('#nsecs').placeholder = alerts.seconds;
   $('#addsel').replaceChildren(...[...(S.scenes.widget||[]), 'gif', ...cats, 'seasonal', 'generative', 'ambient'].map(s => new Option(sceneLabel(s), s)));
   drawRot(); drawPlugins(); pollNow(); pluginFromHash();
 }
@@ -52,7 +59,7 @@ function drawPlayNow(cats) {
     if (!list.length) return null;
     const row = el('div', {className: 'row'}, ...list.map(play));
     return fold ? el('details', {className: 'group'}, el('summary', {textContent: `${title} (${list.length})`}), row)
-      : el('div', {className: 'group'}, el('div', {className: 'stat', textContent: title}), row);
+      : el('div', {className: 'group'}, el('h4', {className: 'stat', textContent: title}), row);
   };
   $('#playnow').replaceChildren(...[
     group('Scenes', [...(S.scenes.widget || []), 'gif', 'seasonal', 'generative', 'ambient']),
@@ -65,20 +72,21 @@ function drawPlayNow(cats) {
 function drawPlugins() {
   const errs = S.plugin_errors || [];
   $('#pluginerrs').hidden = !errs.length;
-  $('#pluginerrs').replaceChildren(...errs.map(e => el('div', {textContent: `⚠ ${e.source} didn't load: ${e.error}`})));
+  $('#pluginerrs').replaceChildren(...errs.map(e => el('div', {textContent: `${e.source} didn't load: ${e.error}`})));
   $('#plugins').replaceChildren(...S.plugins.map(p => {
     const row = document.createElement('div'); row.className = 'plugin'; row.dataset.testid = 'plugin-' + p.name;
     const nice = p.name.replace(/_/g, ' ');
     const link = el('a', {className: 'plugin-link', href: '/settings#plugin-' + p.name, title: 'Settings and details'},
-      el('strong', {textContent: nice}));
+      el('strong', {textContent: nice, id: 'pname-' + p.name}));
     const info = el('div', {}, link, el('small', {textContent: p.description}));
     const crashed = (p.tasks || []).filter(t => t.crashes);
     if (p.source !== 'built-in' || p.version) info.append(el('small', {textContent: [p.source, p.version && 'v' + p.version].filter(Boolean).join(' ')}));
-    if (crashed.length) info.append(el('small', {className: 'warn', textContent: `⚠ task crashed: ${crashed[0].last_error}`}));
+    if (crashed.length) info.append(el('small', {className: 'warn', textContent: `task crashed: ${crashed[0].last_error}`}));
     const toggle = btn(p.enabled ? 'On' : 'Off', () =>
       api('/api/config', 'PUT', {plugins: {[p.name]: {enabled: !p.enabled}}})
         .then(() => init()).then(() => toast(`${nice} ${p.enabled ? 'off' : 'on'}`)));
-    setPressed(toggle, p.enabled); toggle.setAttribute('aria-label', nice);   // "weather, toggle button, pressed"
+    toggle.id = 'ptoggle-' + p.name;
+    setPressed(toggle, p.enabled); toggle.setAttribute('aria-labelledby', `pname-${p.name} ${toggle.id}`);   // "weather On": its name and what it shows
     row.append(info, toggle);
     return row;
   }));
@@ -90,20 +98,24 @@ function moveRot(from, to) {
   rotation.splice(to, 0, ...rotation.splice(from, 1)); rotIds.splice(to, 0, ...rotIds.splice(from, 1));
   const label = document.activeElement?.getAttribute('aria-label')?.split(':')[0];   // redraw replaces the button you pressed
   flipRot(() => { drawRot(); if (label) $(`#rot li[data-index="${to}"] [aria-label^="${label}:"]`)?.focus(); });
+  toast(`${sceneLabel(rotation[to])} moved to ${to + 1} of ${rotation.length}`);
 }
 
 // Rows glide from where they were to where they are now (FLIP). Unlike a view transition
 // the rows stay clickable while they move, so a quick second press isn't lost, and it
-// starts from wherever the row is on screen. New rows fade in.
+// starts from wherever the row is on screen. New rows fade in. Positions are in page
+// coordinates: focusing the moved button can scroll the page, and that isn't a move.
+// Asked for less motion: no glide; on a touch screen moved and new rows still fade in briefly.
 function flipRot(change) {
-  const top = li => li.getBoundingClientRect().top;
+  const top = li => li.getBoundingClientRect().top + scrollY;
   const was = new Map([...$('#rot').children].map(li => [li.dataset.rotId, top(li)]));
   change();
-  if (calmMotion.matches) return;
+  if (calmMotion.matches && !coarsePointer.matches) return;
   for (const li of $('#rot').children) {
     const from = was.get(li.dataset.rotId);
-    if (from == null) li.animate([{opacity: .001}, {opacity: 1}], {duration: 200, easing: 'cubic-bezier(.22, 1, .36, 1)'});
-    else if (from !== top(li)) li.animate([{translate: `0 ${from - top(li)}px`}, {translate: '0 0'}], {duration: 220, easing: 'cubic-bezier(.65, 0, .35, 1)'});
+    if (from != null && from === top(li)) continue;
+    if (from == null || calmMotion.matches) li.animate([{opacity: .001}, {opacity: 1}], {duration: calmMotion.matches ? DUR_EXIT : DUR_ENTER, easing: EASE_ENTER});
+    else li.animate([{translate: `0 ${from - top(li)}px`}, {translate: '0 0'}], {duration: DUR_ENTER, easing: EASE_MOVE});
   }
 }
 
@@ -115,7 +127,7 @@ function drawRot() {
     li.ondragover = e => { e.preventDefault(); li.classList.add('over'); };
     li.ondragleave = () => li.classList.remove('over');
     li.ondrop = e => { e.preventDefault(); moveRot(+e.dataTransfer.getData('text/plain'), i); };
-    const grip = el('span', {className: 'grip', textContent: '⠿', ariaHidden: 'true'});
+    const grip = el('span', {className: 'grip'}, icon('grip'));
     const nice = sceneLabel(s), span = el('span', {className: 'name', textContent: `${i+1}. ${nice}`});
     li.append(grip, span, btn(icon('up'), () => moveRot(i, i - 1), '', '', `Move up: ${nice}`),
       btn(icon('down'), () => moveRot(i, i + 1), '', '', `Move down: ${nice}`),
@@ -124,7 +136,6 @@ function drawRot() {
   }));
   // Edits stay in the page until Save playlist, so say when there are some.
   const dirty = JSON.stringify(rotation) !== JSON.stringify(C.rotation);
-  setLabel($('#saverot'), dirty ? 'Save playlist •' : 'Save playlist');
   $('#rotdirty').hidden = !dirty;
 }
 
@@ -132,14 +143,16 @@ function drawRot() {
 $('#power').onclick = busy(() => api('/api/state', 'POST', {power: !S.on}).then(refresh).then(() => toast(S.on ? 'Power on' : 'Power off')));
 $('#bright').oninput = e => $('#bv').textContent = e.target.value;
 $('#bright').onchange = e => api('/api/state', 'POST', {brightness: +e.target.value}).then(refresh);
+// Enter in a field presses that form's main button (its click handler below); the form itself never submits.
+document.querySelectorAll('form').forEach(f => f.onsubmit = e => e.preventDefault());
 document.querySelectorAll('[data-pin]').forEach(b => b.onclick = busy(() =>
   api('/api/pin', 'POST', {scene: b.dataset.pin, minutes: +$('#mins').value || null}).then(refresh)
     .then(() => toast(`${b.textContent} on`))));
 $('#pinmsg').onclick = busy(() => api('/api/pin', 'POST', {scene:'message', params:{text: $('#msg').value || 'HELLO'}, minutes: +$('#mins').value || null})
   .then(refresh).then(() => toast('Showing your message')));
 $('#unpin').onclick = busy(() => api('/api/pin', 'DELETE').then(refresh).then(() => toast('Cleared')));
-$('#nsend').onclick = busy(() => api('/api/notify', 'POST', {text: $('#ntext').value, icon: $('#nicon').value,
-  color: $('#ncolor').value, flash: $('#nflash').checked, style: $('#nstyle').value}).then(() => toast('Sent')));
+$('#nsend').onclick = busy(() => api('/api/notify', 'POST', {text: $('#ntext').value, sub: $('#nsub').value, icon: $('#nicon').value,
+  color: $('#ncolor').value, flash: $('#nflash').checked, style: $('#nstyle').value, seconds: +$('#nsecs').value || null}).then(() => toast('Sent')));
 $('#skip').onclick = busy(() => api('/api/skip', 'POST').then(() => toast('Skipped')));
 $('#add').onclick = () => flipRot(() => { rotation.push($('#addsel').value); rotIds.push(nextRotId++); drawRot(); });
 $('#saverot').onclick = busy(() => api('/api/config', 'PUT', {rotation}).then(c => { C = c; drawRot(); toast('Playlist saved'); }));
@@ -173,12 +186,11 @@ async function pollNow() {
   const name = n.source === 'notification' ? `Notification · ${n.text || ''}` : prettyScene(h.scene, n.entry);
   const shown = $('#nowscene').textContent;
   applyLive(h.live_color);
-  if (shown !== name) {   // a new scene fades in (opacity only: fine under reduced motion), not the first fill on load
+  if (shown !== name) {   // swaps at once, like the board itself
     const parts = name.split(' · ');   // the name itself in the board's dots; what kind of scene it is underneath
     $('#nowscene').textContent = name;
     drawLed($('#nowdots'), parts.at(-1));
     $('#nowkind').textContent = parts.slice(0, -1).join(', ');
-    if (shown !== '…') $('#nowdots').animate([{opacity: .001}, {opacity: 1}], {duration: 180, easing: 'cubic-bezier(.22, 1, .36, 1)'});
   }
   const pct = n.seconds ? Math.min(100, 100 * (n.elapsed || 0) / n.seconds) : (n.source === 'pinned' ? 100 : 0);
   setBar(n, pct);
@@ -189,7 +201,8 @@ async function pollNow() {
 
 // A title drawn the way the panel draws text: the board's own 5x7 font (led5x7.js) as
 // round lamps, lit in --live. Words wrap onto a second line; past that it's cut with "...".
-// The dots grow to fill the width but stop at 10px, so a short name doesn't turn huge.
+// The box is always two lines of 14 letters (its viewBox is in index.html), so a new name
+// never changes its height and the controls around it stay put.
 function drawLed(svg, text, perLine = 14) {
   const lines = [];
   for (const word of String(text).split(/\s+/).filter(Boolean)) {
@@ -199,7 +212,7 @@ function drawLed(svg, text, perLine = 14) {
   }
   if (lines.length > 2) { lines.length = 2; lines[1] = lines[1].slice(0, perLine - 3) + '...'; }
   if (!lines.length) lines.push(' ');
-  const cell = 8, cols = Math.max(...lines.map(l => l.length)) * 5, rows = lines.length * 8 - 1;
+  const cell = 8;
   const ns = 'http://www.w3.org/2000/svg', dots = [];
   lines.forEach((line, li) => [...line].forEach((ch, ci) => {
     const g = LED_FONT[ch] || LED_FONT['?'];
@@ -211,8 +224,6 @@ function drawLed(svg, text, perLine = 14) {
       dots.push(c);
     }
   }));
-  svg.setAttribute('viewBox', `0 0 ${cols * cell} ${rows * cell}`);
-  svg.style.width = `min(100%, ${cols * 10}px)`;
   svg.replaceChildren(...dots);
 }
 
@@ -222,9 +233,9 @@ let barKey = null;
 function setBar(n, pct) {
   const bar = $('#nowbar'), left = n.seconds ? Math.max(0, n.seconds - (n.elapsed || 0)) : 0;
   const shown = 100 * (parseFloat(getComputedStyle(bar).scale) || 0);
+  bar.parentElement.ariaValueNow = Math.round(pct);
   if (!calmMotion.matches && n.started === barKey && Math.abs(shown - pct) < 3) return;
   barKey = n.started;
-  bar.dataset.pct = Math.round(pct);
   bar.style.transition = 'none'; bar.style.scale = `${pct / 100} 1`;   // a new scene starts where it is, no rewind
   if (left && !calmMotion.matches) { bar.offsetWidth; bar.style.transition = `scale ${left}s linear`; bar.style.scale = '1 1'; }
 }
@@ -236,6 +247,13 @@ setInterval(live(refresh), 10000);
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) { refresh(); pollNow().catch(() => {}); }
 });
-startPreview('#preview');
+// The preview streams only while it's on screen (each stream costs the Pi CPU).
+let previewOnScreen = true;
+new IntersectionObserver(([e]) => { previewOnScreen = e.isIntersecting; if (previewOnScreen) streamPreview(); else stopPreview(); }).observe($('#preview'));
+startPreview('#preview', () => previewOnScreen);
 init().catch(e => $('#stat').textContent = 'error: ' + e.message)
-  .finally(() => $('main').removeAttribute('aria-busy'));   // reveal once Play now is drawn: no jump
+  .finally(() => {
+    $('main').removeAttribute('aria-busy');   // reveal once Play now is drawn: no jump
+    document.body.getBoundingClientRect();   // lay out the first render before transitions are allowed, so it doesn't animate in
+    document.documentElement.classList.remove('preload');
+  });
