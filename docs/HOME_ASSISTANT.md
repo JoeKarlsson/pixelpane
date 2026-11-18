@@ -73,11 +73,11 @@ template:
 
 ## 2. A script so routines never wait on the board
 
-`scripts.yaml`. Call it with `script.turn_on` (not `script.pixelpane_command`
+`scripts.yaml`. Call it with `script.turn_on` (not `script.pixelpane_send_command`
 directly) and a board that's unplugged costs your routines nothing:
 
 ```yaml
-pixelpane_command:
+pixelpane_send_command:
   alias: PixelPane - Send Command
   mode: parallel
   max: 10
@@ -100,7 +100,7 @@ of day), a reminder or watch on the Settings page needs no automation at all.
 ```yaml
 # doorbell
 - action: script.turn_on
-  target: {entity_id: script.pixelpane_command}
+  target: {entity_id: script.pixelpane_send_command}
   data:
     variables:
       path: notify
@@ -108,15 +108,15 @@ of day), a reminder or watch on the Settings page needs no automation at all.
 
 # meeting starts / ends
 - action: script.turn_on
-  target: {entity_id: script.pixelpane_command}
+  target: {entity_id: script.pixelpane_send_command}
   data: {variables: {path: pin, body: {scene: on_air}}}
 - action: script.turn_on
-  target: {entity_id: script.pixelpane_command}
+  target: {entity_id: script.pixelpane_send_command}
   data: {variables: {unpin: true}}
 
 # bedtime / morning
 - action: script.turn_on
-  target: {entity_id: script.pixelpane_command}
+  target: {entity_id: script.pixelpane_send_command}
   data: {variables: {path: state, body: {power: false}}}
 ```
 
