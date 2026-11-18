@@ -300,7 +300,7 @@ test('footer links to the project on GitHub', async ({ page }) => {
   const link = page.getByTestId('github-link');
   await expect(link).toHaveAttribute('href', 'https://github.com/JoeKarlsson/pixelpane');
   await expect(link).toHaveAttribute('rel', /noopener/);
-  await expect(page.locator('#footver')).toHaveText('version dev');
+  await expect(page.locator('#footver')).toHaveText('dev');
   const maker = page.getByTestId('maker');
   await expect(maker).toHaveText('Made by Joe Karlsson');
   await expect(maker.getByRole('link', { name: 'Joe Karlsson' })).toHaveAttribute('href', 'https://www.joekarlsson.com');

@@ -4,7 +4,7 @@ const $ = s => document.querySelector(s);
 function showError(target, msg) {
   const box = typeof target === 'string' ? $(target) : target;
   box.textContent = msg || '';
-  if (msg) toast(msg);
+  if (msg) toast(msg, true);
 }
 async function send(path, opts) {
   const r = await fetch(path, opts);
@@ -15,10 +15,14 @@ const api = (path, method = 'GET', body) => send(path, {method, headers: body ? 
   body: body ? JSON.stringify(body) : undefined}).then(r => r.json());
 let toastTimer = null;
 const calmMotion = matchMedia('(prefers-reduced-motion: reduce)');
-const toast = t => {
+// app.css's motion curves, read once, so JS animations use the same ones
+const EASE_ENTER = getComputedStyle(document.documentElement).getPropertyValue('--ease-enter').trim();
+// failed: true for errors, which are announced at once (assertive) instead of politely
+const toast = (t, failed = false) => {
   const e = $('#toast'), again = e.classList.contains('show');
+  e.ariaLive = failed ? 'assertive' : 'polite';
   e.textContent = t; e.classList.add('show');
-  if (again && !calmMotion.matches) e.animate([{scale: .97}, {scale: 1}], {duration: 180, easing: 'cubic-bezier(.22, 1, .36, 1)'});   // = --ease-enter
+  if (again && !calmMotion.matches) e.animate([{scale: .97}, {scale: 1}], {duration: 180, easing: EASE_ENTER});
   clearTimeout(toastTimer); toastTimer = setTimeout(() => e.classList.remove('show'), t.length > 60 ? 4000 : 1800);
 };
 
@@ -65,6 +69,7 @@ function setLabel(b, label) {
   if (!a) {
     a = el('span', {}, ...b.childNodes); z = el('span'); z.setAttribute('aria-hidden', 'true');
     b.append(el('span', {className: 'swap'}, a, z));
+    getComputedStyle(z).opacity;   // style the new cell before flipping it, so the first swap fades too
   }
   const shown = a.hasAttribute('aria-hidden') ? z : a, other = shown === a ? z : a;
   const same = typeof label === 'string' ? shown.textContent === label && !shown.querySelector('svg')
@@ -73,17 +78,25 @@ function setLabel(b, label) {
   other.replaceChildren(label);
   other.removeAttribute('aria-hidden'); shown.setAttribute('aria-hidden', 'true');
 }
-// Wraps a click handler: while the promise it returns runs, its button is disabled, so a
-// double tap can't send the request twice (two skips).
+// Wraps a click handler: while the promise it returns runs, its button ignores clicks, so a
+// double tap can't send the request twice (two skips). aria-disabled, not disabled, so focus
+// stays on the button.
 function busy(fn) {
   return function (e) {
-    const b = e?.currentTarget, r = fn.call(this, e);
-    if (b && r && typeof r.finally === 'function') { b.disabled = true; b.ariaBusy = 'true'; r.finally(() => { b.disabled = false; b.ariaBusy = null; }); }
+    const b = e?.currentTarget;
+    if (b?.ariaBusy === 'true') return;
+    const r = fn.call(this, e);
+    if (b && r && typeof r.finally === 'function') {
+      b.ariaDisabled = b.ariaBusy = 'true';
+      r.finally(() => { b.ariaDisabled = b.ariaBusy = null; });
+    }
     return r;
   };
 }
 // A click whose API call fails says why instead of failing silently.
-window.addEventListener('unhandledrejection', e => toast(e.reason?.message || 'Something went wrong'));
+window.addEventListener('unhandledrejection', e => toast(e.reason?.message || 'Something went wrong', true));
+// How long the board has been up: "42m" under an hour, then "5h 12m".
+const upFor = s => s < 3600 ? `${Math.floor(s / 60)}m` : `${Math.floor(s / 3600)}h ${Math.floor(s % 3600 / 60)}m`;
 const ago = s => s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)}m ago` : `${Math.round(s / 3600)}h ago`;
 // "until" from the API is local wall time, "2026-10-16T07:00": show it as 7:00 AM
 const clockTime = iso => iso ? new Date(iso).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}) : '';
@@ -94,9 +107,9 @@ function applyLive(color) { if (color) document.documentElement.style.setPropert
 function showStatus(S) {
   applyLive(S.live_color);
   $('#stat').textContent = [S.temp_c ? S.temp_c.toFixed(0) + '°C' : null, S.throttled && S.throttled !== '0x0' ? `throttled ${S.throttled}` : null,
-    `up ${Math.round(S.uptime_s / 3600)}h`].filter(Boolean).join(', ');   // the version is in the footer
+    `up ${upFor(S.uptime_s)}`].filter(Boolean).join(', ');   // the version is in the footer
   const v = document.getElementById('footver');
-  if (v) v.textContent = S.version ? `version ${S.version}` : '';
+  if (v) v.textContent = S.version || '';
 }
 
 // --- plugin settings forms (control page dialogs and the Settings page) ---------
