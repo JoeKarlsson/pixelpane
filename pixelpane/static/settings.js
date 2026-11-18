@@ -100,7 +100,9 @@ function pluginSection(p, open) {
   const toggle = btn(p.enabled ? 'On' : 'Off', async () => {
     await api('/api/config', 'PUT', {plugins: {[p.name]: {enabled: !p.enabled}}});
     toast(`${title} ${p.enabled ? 'off' : 'on'}`); await load();
-  }, '', `toggle-${p.name}`, title);
+  }, '', `toggle-${p.name}`);
+  toggle.id = `toggle-${p.name}`;
+  toggle.setAttribute('aria-labelledby', `ptitle-${p.name} ${toggle.id}`);   // "weather On": the plugin's name and the shown word
   setPressed(toggle, p.enabled);
   if (!p.enabled) kids.push(el('p', {className: 'stat warn', textContent: `${title} is switched off: its scenes don't play and its settings do nothing until it's on.`}));
   kids.push(el('p', {className: 'stat', textContent: p.about || ''}));
@@ -115,7 +117,7 @@ function pluginSection(p, open) {
         `POST /api/data/${k}: ` + (k in (S.data || {}) ? `last received ${ago(S.data[k])}` : 'nothing received yet') + `, fresh for ${p.data[k]} min`})))));
   }
   const crashed = (p.tasks || []).filter(t => t.crashes);
-  if (crashed.length) kids.push(el('p', {className: 'stat warn', textContent: `⚠ task ${crashed[0].name} crashed: ${crashed[0].last_error}`}));
+  if (crashed.length) kids.push(el('p', {className: 'stat warn', textContent: `task ${crashed[0].name} crashed: ${crashed[0].last_error}`}));
   const foot = [];
   let read = () => ({});
   if (p.fields.length) {
@@ -130,7 +132,7 @@ function pluginSection(p, open) {
   }
   foot.push(...(EXTRAS[p.name] ? EXTRAS[p.name](p, read) : []));
   if (foot.length) kids.push(el('div', {className: 'foot'}, ...foot));
-  const summary = el('summary', {}, title, el('small', {textContent: p.description}),
+  const summary = el('summary', {}, el('span', {id: `ptitle-${p.name}`, textContent: title}), el('small', {textContent: p.description}),
     ...(p.source !== 'built-in' || p.version ? [el('small', {textContent: [p.source, p.version && 'v' + p.version].filter(Boolean).join(' ')})] : []));
   return el('details', {className: 'psection' + (p.enabled ? '' : ' off'), open, id: 'plugin-' + p.name},
     summary, el('div', {className: 'ptoggle'}, toggle), ...kids);
@@ -140,6 +142,7 @@ function pluginSection(p, open) {
 function drawStatus() {
   showStatus(S);
   const sch = S.schedule || {};
+  $('#schednow').hidden = !(C.schedule || []).length;   // no rules: the list below says so
   $('#schednow').textContent = !(sch.rules || []).length ? 'No rule is on right now.'
     : `On now: ${sch.rules.join(', ')}.` + (sch.off ? ` The board is off until ${clockTime(sch.until)}.` : '')
       + (sch.overridden ? ` Turned on anyway until ${clockTime(sch.until)}.` : '')
@@ -164,7 +167,8 @@ function ruleRow(r, i, live) {
   const row = el('div', {className: 'rule' + (r.enabled === false ? ' off' : '')
     + (live.has(r.label || `rule ${i + 1}`) ? ' live' : '')});
   row.dataset.testid = 'rule';
-  const label = el('input', {className: 'label', value: r.label || '', placeholder: 'Name (optional)', maxLength: 40, ariaLabel: 'Rule name'});
+  const uid = 'rule' + i + '-' + Math.random().toString(36).slice(2, 6);
+  const label = el('input', {className: 'label', id: uid + '-name', value: r.label || '', placeholder: 'optional', maxLength: 40});
   label.oninput = () => r.label = label.value;
   const on = el('label', {}, el('input', {type: 'checkbox', checked: r.enabled !== false}), ' on');
   on.firstChild.onchange = () => { r.enabled = on.firstChild.checked; row.classList.toggle('off', !r.enabled); };
@@ -181,7 +185,6 @@ function ruleRow(r, i, live) {
     return b;
   }));
 
-  const uid = 'rule' + i + '-' + Math.random().toString(36).slice(2, 6);
   const from = el('input', {type: 'time', value: r.from, required: true, id: uid + '-from'}), to = el('input', {type: 'time', value: r.to, required: true, id: uid + '-to'});
   from.onchange = () => r.from = from.value; to.onchange = () => r.to = to.value;
   const action = el('select', {}, new Option('Turn off', 'off'), new Option('Dim to', 'dim'), new Option('Play a playlist', 'playlist'));
@@ -204,7 +207,7 @@ function ruleRow(r, i, live) {
   };
   action.onchange = () => { r.action = action.value; delete r.brightness; delete r.rotation; drawExtra(); };
   drawExtra();
-  row.append(el('div', {className: 'row'}, label, on, del), days,
+  row.append(el('div', {className: 'row'}, el('label', {textContent: 'Name', htmlFor: label.id}), label, on, del), days,
     el('div', {className: 'row'}, el('label', {textContent: 'from', htmlFor: from.id}), from, el('label', {textContent: 'to', htmlFor: to.id}), to, action, extra));
   return row;
 }
@@ -223,25 +226,28 @@ $('#saverules').onclick = async () => {
 
 // --- playback --------------------------------------------------------------------
 
-function numberGrid(target, entries, onSave) {
+function numberGrid(target, entries) {
   $(target).replaceChildren(...entries.map(([k, v, placeholder]) => {
     const inp = el('input', {type: 'number', min: 1, value: v ?? '', placeholder: placeholder ?? ''});
-    inp.onchange = () => onSave(k, inp.value === '' ? null : +inp.value);
-    inp.dataset.testid = `${target.slice(1)}-${k}`;
+    inp.dataset.testid = `${target.slice(1)}-${k}`; inp.dataset.key = k;
     return el('label', {}, k.replace(/_/g, ' ') + ' ', inp);
   }));
 }
+// {key: number or null (empty)} from a numberGrid
+const gridValues = target => Object.fromEntries([...document.querySelectorAll(target + ' input')]
+  .map(i => [i.dataset.key, i.value === '' ? null : +i.value]));
 
 function drawPlayback() {
-  numberGrid('#dwell', Object.entries(C.dwell), (k, v) => v && api('/api/config', 'PUT', {dwell: {[k]: v}})
-    .then(c => { C = c; toast('Saved'); }, e => toast(e.message)));
-  const ttl = S.plugins.flatMap(p => Object.entries(p.data).map(([k, mins]) => [k, (C.data_ttl_minutes || {})[k], mins]));
-  numberGrid('#ttl', ttl, (k, v) => {
-    const all = {...(C.data_ttl_minutes || {})};
-    if (v == null) delete all[k]; else all[k] = v;
-    api('/api/config', 'PUT', {data_ttl_minutes: all}).then(c => { C = c; toast('Saved'); }, e => toast(e.message));
-  });
+  numberGrid('#dwell', Object.entries(C.dwell));
+  numberGrid('#ttl', S.plugins.flatMap(p => Object.entries(p.data).map(([k, mins]) => [k, (C.data_ttl_minutes || {})[k], mins])));
 }
+$('#saveplayback').onclick = async () => {
+  const dwell = Object.fromEntries(Object.entries(gridValues('#dwell')).filter(([, v]) => v != null));   // an empty one keeps its time
+  const ttl = {...(C.data_ttl_minutes || {}), ...gridValues('#ttl')};   // empty: back to the plugin's default
+  for (const k in ttl) if (ttl[k] == null) delete ttl[k];
+  try { C = await api('/api/config', 'PUT', {dwell, data_ttl_minutes: ttl}); } catch (e) { return showError('#playerr', e.message); }
+  showError('#playerr', ''); toast('Playback saved');
+};
 
 // --- display hardware ---------------------------------------------------------------
 
@@ -273,8 +279,9 @@ function drawHardware() {
     } else if (f.type === 'number') {
       inp = el('input', {id, type: 'number', min: f.min, max: f.max, value: v ?? ''});
       hwRead[f.key] = () => inp.value === '' ? null : +inp.value;
-    } else {
-      inp = el('input', {id, value: v ?? ''});
+    } else {   // the one text field is an identifier: no autocorrect
+      inp = el('input', {id, value: v ?? '', autocapitalize: 'none', spellcheck: false});
+      inp.setAttribute('autocorrect', 'off');
       hwRead[f.key] = () => inp.value.trim();
     }
     return el('div', {className: 'field'}, el('label', {htmlFor: id, textContent: f.label}), inp,
@@ -289,8 +296,8 @@ async function saveHardware() {
   }
   C = await api('/api/config', 'PUT', out);
 }
-$('#savehw').onclick = () => saveHardware().then(() => toast('Saved: restart to apply'), e => toast(e.message));
-$('#restart2').onclick = () => saveHardware().then(restart, e => toast(e.message));
+$('#savehw').onclick = () => saveHardware().then(() => toast('Saved: restart to apply'), e => toast(e.message, true));
+$('#restart2').onclick = () => saveHardware().then(restart, e => toast(e.message, true));
 
 // --- access -----------------------------------------------------------------------------
 
@@ -306,7 +313,7 @@ $('#savehosts').onclick = () => api('/api/config', 'PUT', {allowed_hosts: $('#ho
 
 $('#download').onclick = async () => {
   let r;
-  try { r = await send('/api/backup', {method: 'GET'}); } catch (e) { return toast(e.message); }
+  try { r = await send('/api/backup', {method: 'GET'}); } catch (e) { return toast(e.message, true); }
   const name = (r.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'pixelpane-settings.json';
   const a = el('a', {href: URL.createObjectURL(await r.blob()), download: name});
   document.body.append(a); a.click(); a.remove();
@@ -335,7 +342,7 @@ function throttleText(v) {
 
 function drawSystem() {
   const [thr, bad] = throttleText(S.throttled);
-  const facts = [['Version', S.version], ['Up for', `${Math.floor(S.uptime_s / 3600)}h ${Math.round(S.uptime_s % 3600 / 60)}m`],
+  const facts = [['Version', S.version], ['Up for', upFor(S.uptime_s)],
     ['Temperature', S.temp_c != null ? `${S.temp_c.toFixed(1)}°C` : 'unknown', S.temp_c > 75],
     ['Power and heat', thr, bad], ['Panel', (S.panel || []).join(' x ') + ' LEDs'],
     ['Plugins on', `${S.plugins.filter(p => p.enabled).length} of ${S.plugins.length}`]];
@@ -344,17 +351,17 @@ function drawSystem() {
     ...S.plugins.flatMap(p => (p.tasks || []).filter(t => t.crashes).map(t =>
       `${p.name}: task ${t.name} crashed ${t.crashes}x (${t.last_error})${t.running ? ', running again' : ''}`))];
   $('#problems').hidden = !problems.length;
-  $('#problems').replaceChildren(...problems.map(t => el('div', {textContent: '⚠ ' + t})));
+  $('#problems').replaceChildren(...problems.map(t => el('div', {textContent: t})));
 }
 
 async function restart() {
-  try { await api('/api/system/restart', 'POST'); } catch (e) { return toast(e.message); }
+  try { await api('/api/system/restart', 'POST'); } catch (e) { return toast(e.message, true); }
   toast('Restarting…');
   const began = Date.now();
   await new Promise(r => setTimeout(r, 2500));
   for (;;) {
     try { await api('/api/health'); break; } catch (e) { /* still down */ }
-    if (Date.now() - began > 120000) return toast('It hasn\'t come back yet: check the Pi');
+    if (Date.now() - began > 120000) return toast('It hasn\'t come back yet: check the Pi', true);
     await new Promise(r => setTimeout(r, 1500));
   }
   toast('Back up'); load();
@@ -363,7 +370,7 @@ $('#restart').onclick = restart;
 
 async function loadLogs() {
   let lines;
-  try { lines = await api('/api/logs'); } catch (e) { return toast(e.message); }
+  try { lines = await api('/api/logs'); } catch (e) { return toast(e.message, true); }
   if ($('#onlyproblems').checked) lines = lines.filter(l => l.level !== 'INFO' && l.level !== 'DEBUG');
   const pre = $('#logs');
   pre.hidden = false;
@@ -397,11 +404,11 @@ const parseRanges = text => text.split('\n').map(l => l.trim()).filter(Boolean)
 
 function drawCustoms() {
   $('#customs').replaceChildren(...(customs.length ? customs.map((c, i) => {
-    const name = el('input', {value: c.name || '', placeholder: 'Name, like Diwali', maxLength: 40, className: 'label', ariaLabel: 'Holiday name'});
+    const name = el('input', {id: `holiday${i}-name`, value: c.name || '', placeholder: 'like Diwali', maxLength: 40, className: 'label'});
     name.oninput = () => c.name = name.value;
     const dates = el('textarea', {rows: 2, value: rangesText(c.dates || []), placeholder: '11-08 to 11-12', ariaLabel: 'Dates, one range per line'});
     dates.oninput = () => c.text = dates.value;
-    const row = el('div', {className: 'rule'}, el('div', {className: 'row'}, name,
+    const row = el('div', {className: 'rule'}, el('div', {className: 'row'}, el('label', {textContent: 'Name', htmlFor: name.id}), name,
       btn(icon('x'), () => { customs.splice(i, 1); drawCustoms(); }, '', 'delete-holiday', `Delete holiday ${c.name || i + 1}`)), dates);
     row.dataset.testid = 'holiday';
     return row;
@@ -430,7 +437,7 @@ function drawAppearance() {
 $('#uidefault').onclick = () => { $('#uiaccent').value = DEFAULT_ACCENT; };
 $('#saveui').onclick = async () => {
   try { await api('/api/config', 'PUT', {ui: {theme: $('#uitheme').value, accent: $('#uiaccent').value}}); }
-  catch (e) { return toast(e.message); }
+  catch (e) { return toast(e.message, true); }
   location.hash = '#appearance';
   location.reload();   // the board paints the page in the new colors
 };
@@ -440,9 +447,13 @@ load().then(() => {
   document.body.append(el('datalist', {id: 'scenelist'}, ...scenesList().map(s => new Option(s))));
   if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
 }).catch(e => $('#stat').textContent = 'error: ' + e.message)
-  .finally(() => $('main').removeAttribute('aria-busy'));   // reveal once filled: no sections jumping
+  .finally(() => {
+    $('main').removeAttribute('aria-busy');   // reveal once filled: no sections jumping
+    document.body.getBoundingClientRect();   // lay out the filled page, then let transitions run
+    document.documentElement.classList.remove('preload');
+  });
 setInterval(() => { if (!document.hidden) api('/api/state').then(s => { S = s; drawStatus(); drawSystem(); }).catch(() => {}); }, 15000);
-// open only where it fits beside the 1040px column; narrower, it would cover the controls
+// settings.html opens it (no flash on wide screens); close it where it doesn't fit beside the 1040px column
 $('.minipreview').open = matchMedia('(min-width: 1360px)').matches;
 // streams only while it's open: a closed preview costs the Pi nothing
 startPreview('#livepreview', () => $('.minipreview').open);

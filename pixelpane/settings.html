@@ -14,7 +14,6 @@
 </head>
 <body>
 <a class="skip" href="#schedule">Skip to content</a>
-<main aria-busy="true">
   <header>
     <h1 class="brand"><a href="/" aria-label="PixelPane home">PixelPane</a></h1>
     <span class="pill" id="stat">connecting…</span>
@@ -22,6 +21,7 @@
       <nav class="row" aria-label="Pages"><a class="navlink" href="/" data-testid="home-link">Control</a><a class="navlink" href="/draw" data-testid="draw-link">Draw</a><a class="navlink" href="/animate" data-testid="animate-link">Animate</a><a class="navlink" href="/library" data-testid="library-link">GIFs</a><a class="navlink" href="/settings" data-testid="settings-link" aria-current="page">Settings</a></nav>
     </div>
   </header>
+<main aria-busy="true">
   <nav class="toc" aria-label="Sections">
     <a href="#schedule">Schedule</a><a href="#playback">Playback</a><a href="#onscreen">On screen</a>
     <a href="#notifications">Notifications</a><a href="#pluginsettings">Plugins</a><a href="#holidays">Holidays</a>
@@ -52,11 +52,13 @@
 
   <section id="playback" data-testid="playback">
     <h2>Playback</h2>
-    <h2>Seconds per scene</h2>
+    <h3>Seconds per scene</h3>
     <div class="dwell" id="dwell"></div>
-    <h2 style="margin-top:16px">Data stays fresh for (minutes)</h2>
+    <h3 style="margin-top:16px">Data stays fresh for (minutes)</h3>
     <p class="stat">How long pushed data (POST /api/data/&lt;key&gt;) is shown before a scene treats it as stale. Empty uses the plugin's default.</p>
     <div class="dwell" id="ttl"></div>
+    <div class="row" style="margin-top:12px"><button id="saveplayback" class="on" data-testid="save-playback" aria-label="Save playback">Save</button></div>
+    <small class="err" id="playerr" role="alert" data-testid="playback-error"></small>
   </section>
 
   <section id="onscreen" data-testid="onscreen">
@@ -90,7 +92,7 @@
       <fieldset class="field wide"><legend>Built-in holidays</legend><div class="checks" id="builtins" data-testid="builtin-holidays"></div>
         <small>Untick one to skip it: no scene and no GIFs from its folder.</small></fieldset>
     </div>
-    <h2 style="margin-top:16px">Your holidays</h2>
+    <h3 style="margin-top:16px">Your holidays</h3>
     <p class="stat">Add Diwali, Lunar New Year, an anniversary, a team's game days. Upload GIFs to one on the GIFs
       page and they play while it's on. Dates go one range per line: <code>11-08 to 11-12</code> every year, or
       <code>2027-02-06 to 2027-02-10</code> for that year only. A single date is one day.</p>
@@ -132,7 +134,7 @@
     <div class="form">
       <div class="field">
         <label for="hosts">Allowed host names</label>
-        <textarea id="hosts" rows="4" placeholder="pixelpane.example.com" data-testid="allowed-hosts"></textarea>
+        <textarea id="hosts" rows="4" placeholder="pixelpane.example.com" autocapitalize="none" spellcheck="false" autocorrect="off" data-testid="allowed-hosts"></textarea>
         <small>The board only answers to its IP addresses and its own names (<span id="ownnames"></span>).
           Add any other name you open it by, like a reverse proxy's. This blocks DNS rebinding attacks.</small>
         <div class="row"><button id="savehosts" data-testid="save-hosts">Save names</button></div>
@@ -162,14 +164,15 @@
       <button id="loadlogs" data-testid="load-logs">Show recent log</button>
       <label><input type="checkbox" id="onlyproblems"> warnings and errors only</label>
     </div>
-    <pre class="logs" id="logs" hidden data-testid="logs"></pre>
+    <pre class="logs" id="logs" tabindex="0" aria-label="Recent log" hidden data-testid="logs"></pre>
   </section>
 
-  <details class="minipreview" data-testid="mini-preview">
+  <details class="minipreview" open data-testid="mini-preview">
     <summary>Live</summary>
     <div class="panel"><canvas id="livepreview" width="32" height="32" role="img" aria-label="live panel preview"></canvas></div>
   </details>
 
+</main>
   <footer class="foot-bar" data-testid="footer">
     <a href="https://github.com/JoeKarlsson/pixelpane" target="_blank" rel="noopener" data-testid="github-link">
       <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
@@ -177,7 +180,6 @@
     <span data-testid="maker">Made by <a href="https://www.joekarlsson.com" target="_blank" rel="noopener">Joe Karlsson</a></span>
     <span class="stat" id="footver"></span>
   </footer>
-</main>
 <div id="toast" role="status" aria-live="polite"></div>
 <script src="/static/common.js"></script>
 <script src="/static/settings.js"></script>

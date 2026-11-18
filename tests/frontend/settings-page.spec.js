@@ -74,8 +74,9 @@ test('a dim rule and a playlist rule round-trip', async ({ page, request }) => {
 test('seconds per scene and display settings save', async ({ page, request }) => {
   const clock = page.getByTestId('dwell-clock');
   await clock.fill('7');
-  await clock.dispatchEvent('change');
-  await expect.poll(async () => (await config(request)).dwell.clock).toBe(7);
+  await page.getByTestId('save-playback').click();   // one Save, like every other section
+  await expect(page.locator('#toast')).toContainText('Playback saved');
+  expect((await config(request)).dwell.clock).toBe(7);
   await page.locator('#hw-gpio_slowdown').fill('2');
   await page.getByTestId('save-display').click();
   await expect(page.locator('#toast')).toContainText('restart to apply');
@@ -384,7 +385,7 @@ test('a rule keeps its name and can be switched off', async ({ page, request }) 
   await page.getByTestId('rule-preset').selectOption('dim');
   await page.getByTestId('add-rule').click();
   const rule = page.getByTestId('rule');
-  await rule.getByPlaceholder('Name (optional)').fill('Evening dim');
+  await rule.getByLabel('Name', { exact: true }).fill('Evening dim');
   await rule.getByLabel('on', { exact: true }).uncheck();
   await expect(rule).toHaveClass(/off/);
   await page.getByTestId('save-schedule').click();
@@ -412,4 +413,34 @@ test('save errors show next to what failed, not only in a toast', async ({ page 
   await expect(page.getByTestId('hosts-error')).not.toBeEmpty();
   await expect(page.getByTestId('hosts-error')).toHaveAttribute('role', 'alert');
   page.errors = page.errors.filter((e) => !e.includes('400'));     // the refused save
+});
+
+test('a busy Save keeps focus on itself, and ignores a second click', async ({ page }) => {
+  await page.locator('#plugin-generative > summary').click();
+  const save = page.getByTestId('save-plugin-generative');
+  let puts = 0, release;
+  const held = new Promise((r) => { release = r; });
+  await page.route('**/api/config', async (route) => {   // hold the save open while we press again
+    if (route.request().method() === 'PUT') { puts++; await held; }
+    await route.continue();
+  });
+  await save.click();   // waits for the fold to open; a click focuses the button
+  await expect(save).toHaveAttribute('aria-disabled', 'true');
+  await page.keyboard.press('Enter');   // still busy: ignored
+  release();
+  await expect(page.locator('#toast')).toContainText('saved');
+  await expect(save).not.toHaveAttribute('aria-disabled');
+  await expect(save).toBeFocused();     // disabled would have dropped focus to <body>
+  expect(puts).toBe(1);
+});
+
+test('uptime reads in minutes under an hour, then hours and minutes', async ({ page }) => {
+  expect(await page.evaluate(() => [upFor(59), upFor(59 * 60 + 59), upFor(5 * 3600 + 12 * 60 + 59)])).toEqual(['0m', '59m', '5h 12m']);
+  await expect(page.locator('#facts')).toContainText('Up for');
+});
+
+test('with no rules, the schedule says so once', async ({ page }) => {
+  await expect(page.getByTestId('rule')).toHaveCount(0);
+  await expect(page.getByTestId('schedule-now')).toBeHidden();
+  await expect(page.getByTestId('schedule')).toContainText('No rules yet');
 });
