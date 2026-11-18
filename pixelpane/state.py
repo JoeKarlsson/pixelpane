@@ -464,9 +464,12 @@ def content_box(frames, threshold=16):
     return box
 
 
+UPLOAD_FORMATS = ["GIF", "PNG", "JPEG", "WEBP", "BMP"]   # nothing else is opened (EPS would run Ghostscript)
+
+
 def decode_gif(path, smooth=False, limit=400, size=(W, H)):
     raw = []
-    with Image.open(path) as im:
+    with Image.open(path, formats=UPLOAD_FORMATS) as im:
         for i, frame in enumerate(ImageSequence.Iterator(im)):
             if i >= limit:
                 break

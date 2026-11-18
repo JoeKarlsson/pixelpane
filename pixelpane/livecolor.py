@@ -20,12 +20,19 @@ def readable_on_black_text(rgb):
     return rgb
 
 
+def _readable_hex(color):
+    """#rrggbb run through readable_on_black_text."""
+    return "#%02x%02x%02x" % readable_on_black_text(bytes.fromhex(color[1:]))
+
+
 def live_color(frame, on=True, default=LIVE_DEFAULT, scene=None):
     """The web pages' one color: the most vivid color the board is showing, as hex, or
-    `default` (the Appearance setting) when it's off or shows nothing colorful.
+    `default` (the Appearance setting, lightened the same way) when it's off or shows
+    nothing colorful.
     With `scene` (anything that changes when the scene does), the first colorful frame of
     a scene sets the color until the next scene, so an animated scene doesn't re-tint the
     pages on every poll. Otherwise it's cached per frame object."""
+    default = _readable_hex(default)
     if not on or frame is None:
         return default
     if scene is not None and _live["scene"] == scene and _live["color"]:

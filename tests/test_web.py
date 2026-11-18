@@ -1,4 +1,5 @@
 import gzip
+import hashlib
 import io
 import json
 import random
@@ -15,6 +16,8 @@ from pixelpane.app import health  # noqa: E402
 from pixelpane.state import GifLibrary, State  # noqa: E402
 from pixelpane import web  # noqa: E402
 from pixelpane.web import create_app  # noqa: E402
+
+FONT = "/static/fonts/mona-sans-latin.0a047cf9.woff2"
 
 
 def gif_bytes(size=(64, 64), frames=2):
@@ -68,21 +71,70 @@ class WebTest(unittest.TestCase):
         r = self.client.get("/")
         self.assertNotIn("Cross-Origin-Opener-Policy", r.headers)   # browsers ignore it over plain http and log an error
         self.assertIn("camera=()", r.headers["Permissions-Policy"])
+        self.assertNotIn("interest-cohort", r.headers["Permissions-Policy"])
+        self.assertIn("require-trusted-types-for 'script'", r.headers["Content-Security-Policy"])
         html = r.get_data(as_text=True)
-        self.assertIn('<meta name="color-scheme" content="dark">', html)
+        self.assertIn('<meta name="color-scheme" content="only dark"><meta name="theme-color" content="#000000">', html)
+        self.assertIn('<html lang="en" class="preload" data-theme="dark"', html)
+        self.state.config["ui"] = {"theme": "light"}
+        html = self.client.get("/settings").get_data(as_text=True)
+        self.assertIn('<meta name="color-scheme" content="light"><meta name="theme-color" content="#ffffff">', html)
+        self.assertNotIn('class="preload"', html)   # Settings sets nothing on load that would animate
+        for url in ("/api/health", "/static/app.css", "/gif/repo/retro-mario-run.gif"):
+            with self.client.get(url) as r:
+                self.assertEqual(r.headers.get("Cross-Origin-Resource-Policy"), "same-origin", url)
         css = re.search(r'"(/static/app\.css\?v=\d+)"', html).group(1)
         def cache(url):
             with self.client.get(url) as r:
                 return r.headers.get("Cache-Control", "")
         self.assertIn("max-age=31536000", cache(css))
         self.assertNotIn("max-age=31536000", cache("/static/app.css"))      # no cache key: ask each time
-        self.assertIn("max-age=31536000", cache("/static/fonts/mona-sans-latin.woff2"))
+        self.assertIn("max-age=31536000", cache(FONT))
+
+    def test_font_url_changes_with_the_font(self):
+        """Fonts are cached a year under their URL: the name carries the file's hash, and
+        every page preloads the very URL app.css loads."""
+        name = FONT.rsplit("/", 1)[1]
+        digest = hashlib.sha256((web.STATIC / "fonts" / name).read_bytes()).hexdigest()[:8]
+        self.assertEqual(name, f"mona-sans-latin.{digest}.woff2")
+        self.assertIn(f"url({FONT})", (web.STATIC / "app.css").read_text())
+        for page, path in web.PAGES.items():
+            self.assertIn(f'<link rel="preload" href="{FONT}"', path.read_text(), page)
 
     def test_state_is_gzipped_when_asked(self):
         r = self.client.get("/api/state", headers={"Accept-Encoding": "gzip"})
         self.assertEqual(r.headers["Content-Encoding"], "gzip")
         self.assertIn("plugins", json.loads(gzip.decompress(r.data)))
         self.assertNotIn("Content-Encoding", self.client.get("/api/state").headers)
+
+    def test_pages_and_scripts_are_gzipped_when_asked(self):
+        for url, text in (("/", "<html"), ("/static/app.css", "@font-face"), ("/static/common.js", "function"),
+                          ("/static/logo-mark.svg", "<svg")):
+            with self.client.get(url, headers={"Accept-Encoding": "gzip, deflate"}) as r:
+                self.assertEqual(r.headers.get("Content-Encoding"), "gzip", url)
+                self.assertIn("Accept-Encoding", r.headers["Vary"], url)
+                self.assertIn(text, gzip.decompress(r.data).decode(), url)
+        with self.client.get("/static/app.css") as r:
+            self.assertNotIn("Content-Encoding", r.headers)
+        with self.client.get("/gif/repo/retro-mario-run.gif", headers={"Accept-Encoding": "gzip"}) as r:
+            self.assertNotIn("Content-Encoding", r.headers)   # already compressed
+
+    def test_page_titles_and_draw_or_animate(self):
+        titles = {"/": "PixelPane", "/library": "GIFs · PixelPane", "/settings": "Settings · PixelPane",
+                  "/draw": "Draw · PixelPane", "/animate": "Animate · PixelPane", "/nope": "Not found · PixelPane"}
+        for url, title in titles.items():
+            self.assertIn(f"<title>{title}</title>", self.client.get(url).get_data(as_text=True), url)
+        for url, mode in (("/draw", "draw"), ("/animate", "animate")):
+            html = self.client.get(url).get_data(as_text=True)
+            self.assertEqual(re.findall(r'data-testid="(\w+)-link" aria-current="page"', html), [mode], url)
+
+    def test_typed_page_addresses_find_the_page(self):
+        for url, to in (("/gifs", "/library"), ("/GIFs/", "/library"), ("/index.html", "/"), ("/Library", "/library"),
+                        ("/SETTINGS", "/settings"), ("/Animate?x=1", "/animate?x=1")):
+            r = self.client.get(url)
+            self.assertEqual((r.status_code, r.headers.get("Location")), (301, to), url)
+        self.assertEqual(self.client.get("/setings").status_code, 404)
+        self.assertEqual(self.client.get("/API/health").status_code, 404)
 
     def test_wrong_address_gets_a_page_with_the_nav(self):
         r = self.client.get("/drw")
@@ -215,7 +267,7 @@ class WebTest(unittest.TestCase):
         self.state.update_config({"panel": {"cols": 64, "rows": 32}})
         with Image.open(io.BytesIO(self.client.get("/preview.png").data)) as im:
             self.assertEqual(im.size, (320, 160))
-        self.assertEqual(self.client.get("/api/state").get_json()["panel"], [64, 32])
+        self.assertEqual(self.client.get("/api/health").get_json()["panel"], [64, 32])   # what the page polls
 
     def test_preview_png(self):
         r = self.client.get("/preview.png?scale=4")

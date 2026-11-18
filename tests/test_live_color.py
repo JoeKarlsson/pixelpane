@@ -26,7 +26,12 @@ class LiveColorTest(unittest.TestCase):
         self.assertEqual(livecolor.live_color(Image.new("RGB", (32, 32))), livecolor.LIVE_DEFAULT)
         self.assertEqual(livecolor.live_color(Image.new("RGB", (32, 32), (128, 128, 128))), livecolor.LIVE_DEFAULT)
         self.assertEqual(livecolor.live_color(Image.new("RGB", (32, 32), (255, 0, 0)), on=False), livecolor.LIVE_DEFAULT)
-        self.assertEqual(livecolor.live_color(Image.new("RGB", (32, 32)), default="#123456"), "#123456")   # the Appearance setting
+        self.assertEqual(livecolor.live_color(Image.new("RGB", (32, 32)), default="#ffc04d"), "#ffc04d")   # the Appearance setting
+
+    def test_a_dark_appearance_color_is_lightened_too(self):
+        rgb = bytes.fromhex(livecolor.live_color(None, default="#1d2b53")[1:])   # 1.5:1 as picked
+        self.assertGreaterEqual((livecolor._luminance(rgb) + 0.05) / 0.05, 4.5)
+        self.assertGreater(rgb[2], rgb[0])   # still reads as navy-ish blue
 
     def test_holds_one_color_per_scene(self):
         red, blue = Image.new("RGB", (32, 32), (255, 0, 0)), Image.new("RGB", (32, 32), (0, 80, 255))

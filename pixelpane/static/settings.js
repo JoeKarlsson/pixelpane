@@ -441,7 +441,8 @@ load().then(() => {
   if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
 }).catch(e => $('#stat').textContent = 'error: ' + e.message)
   .finally(() => $('main').removeAttribute('aria-busy'));   // reveal once filled: no sections jumping
-setInterval(() => { if (!document.hidden) api('/api/state').then(s => { S = s; drawStatus(); drawSystem(); }).catch(() => {}); }, 15000);
+// /api/health (under 1 KB) has everything these redraw except the plugin list, which loads with the page and after saves
+setInterval(() => { if (!document.hidden) api('/api/health').then(h => { S = {...S, ...h}; drawStatus(); drawSystem(); }).catch(() => {}); }, 15000);
 // open only where it fits beside the 1040px column; narrower, it would cover the controls
 $('.minipreview').open = matchMedia('(min-width: 1360px)').matches;
 // streams only while it's open: a closed preview costs the Pi nothing

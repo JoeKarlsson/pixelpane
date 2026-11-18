@@ -3,8 +3,9 @@
 // and library are on /library (library.js).
 let S = {}, C = {}, rotation = [], rotIds = [], nextRotId = 0;   // ids: follow each entry as it moves (flipRot)
 
+// The timer and Power only need /api/health (under 1 KB); the full state (36 KB) loads in init.
 async function refresh() {
-  S = await api('/api/state');
+  S = {...S, ...await api('/api/health')};
   const sch = S.schedule || {};
   setLabel($('#power'), !S.power ? 'Power: OFF' : sch.off ? 'Power: OFF (schedule)' : 'Power: ON');   // keeps its width
   setPressed($('#power'), S.on);   // a switch: lit outline when on
@@ -23,10 +24,11 @@ async function refresh() {
   airBtn.classList.toggle('on', onAir); airBtn.setAttribute('aria-pressed', onAir);
   if (S.panel) $('.panel').style.setProperty('--led', `calc(100% / ${S.panel[0]})`);   // one round lamp per panel pixel
   showStatus(S);
-  $('#themes').replaceChildren(...S.themes.map(t => { const s = document.createElement('span'); s.className = 'pill'; s.textContent = S.theme_names[t] || t; return s; }));
+  $('#themes').replaceChildren(...S.themes.map(t => { const s = document.createElement('span'); s.className = 'pill'; s.textContent = S.theme_names?.[t] || t; return s; }));
 }
 
 async function init() {
+  S = await api('/api/state');
   await refresh();
   C = await api('/api/config');
   rotation = [...C.rotation]; rotIds = rotation.map((_, i) => i); nextRotId = rotation.length;

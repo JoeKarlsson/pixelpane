@@ -2,7 +2,10 @@
    and one color, --live, which is whatever the board is showing right now (the server
    samples it as live_color; the pages follow it on every poll). Every color is a token
    below; the board sets data-theme (dark, light or auto) and the first --live on <html>. */
-@font-face { font-family: "Mona Sans"; src: url(/static/fonts/mona-sans-latin.woff2) format("woff2"); font-weight: 200 900; font-display: swap; }
+/* the file name carries its content hash (tests/test_web.py checks it): a new font gets a new URL */
+@font-face { font-family: "Mona Sans"; src: url(/static/fonts/mona-sans-latin.0a047cf9.woff2) format("woff2"); font-weight: 400 800; font-display: swap; }
+/* Arial sized to Mona Sans's width and line box, so text doesn't move when the font arrives */
+@font-face { font-family: "Mona Sans Fallback"; src: local("Arial"); size-adjust: 102.79%; ascent-override: 106.04%; descent-override: 31.13%; line-gap-override: 0%; }
 
 :root {
   --bg: #000; --surface: #1a1a1a; --line: #6b6b6b; --line-soft: #2e2e2e;
@@ -12,9 +15,9 @@
   /* motion: one set of curves and durations for every transition */
   --ease-enter: cubic-bezier(.22, 1, .36, 1); --ease-exit: cubic-bezier(.3, 0, .6, .6); --ease-move: cubic-bezier(.65, 0, .35, 1);
   --dur-enter: .22s; --dur-exit: .16s;
-  --sans: "Mona Sans", system-ui, -apple-system, sans-serif;
+  --sans: "Mona Sans", "Mona Sans Fallback", system-ui, -apple-system, sans-serif;
   --mono: ui-monospace, Menlo, Consolas, monospace;   /* real code only */
-  --fs-xs: .75rem; --fs-s: .875rem; --fs-m: 1rem; --fs-l: 1.25rem; --fs-xl: 1.625rem;
+  --fs-xs: .75rem; --fs-s: .875rem; --fs-m: 1rem; --fs-l: 1.25rem;
   color-scheme: dark;
 }
 :root[data-theme="light"] {
@@ -36,6 +39,9 @@
 /* the color follows the board: a slow crossfade when the scene changes */
 @property --live { syntax: "<color>"; inherits: true; initial-value: #ff9a2e; }
 @media (prefers-reduced-motion: no-preference) { :root { transition: --live .6s var(--ease-enter); } }
+
+/* class="preload" (from the server) stays until the page has drawn its first state: no transitions into it */
+.preload *:not(#nowbar), .preload *::before, .preload *::after { transition: none !important; }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }

@@ -3,7 +3,7 @@ import random
 import unittest
 from unittest import mock
 
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 from tests import support
 
@@ -168,6 +168,20 @@ class GifLibraryTest(unittest.TestCase):
     def test_convert_upload_rejects_non_images(self):
         with self.assertRaises(Exception):
             st.convert_upload(io.BytesIO(b"hello"), support.VAR / "uploads" / "all" / "y.gif")
+
+    def test_only_the_usual_image_formats_are_opened(self):
+        # EPS would run Ghostscript on the board; TIFF and the rest are attack surface nobody uploads
+        for fmt in ("TIFF", "EPS", "ICO"):
+            src = io.BytesIO()
+            Image.new("RGB", (16, 16), (255, 0, 0)).save(src, fmt)
+            src.seek(0)
+            with self.assertRaises(UnidentifiedImageError, msg=fmt):
+                st.decode_gif(src)
+        for fmt in ("PNG", "JPEG", "WEBP", "BMP"):
+            src = io.BytesIO()
+            Image.new("RGB", (16, 16), (255, 0, 0)).save(src, fmt)
+            src.seek(0)
+            self.assertEqual(len(st.decode_gif(src)), 1, fmt)
 
 
 if __name__ == "__main__":
