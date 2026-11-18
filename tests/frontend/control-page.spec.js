@@ -346,6 +346,7 @@ test('playlist Move down moves an entry later', async ({ page, request }) => {
   const original = (await config(request)).rotation;
   const rows = page.locator('#rot li');
   await rows.first().getByRole('button', { name: 'Move down' }).click();
+  await expect(page.locator('#toast')).toHaveText(`${label(original[0])} moved to 2 of ${original.length}`);
   await expect(rows.nth(0)).toContainText(label(original[1]));
   await expect(rows.nth(1)).toContainText(label(original[0]));
   await page.locator('#saverot').click();
@@ -381,4 +382,43 @@ test('the header links take you round every page', async ({ page }) => {
   // Pages this quick leave the test server's dropped previews counted for a moment, so it can
   // refuse a new one (503) until they lapse; the preview tries again by itself.
   page.errors = page.errors.filter((e) => !e.includes('503'));
+});
+
+test('Move up near the top edge scrolls the page without making the other rows jump', async ({ page }) => {
+  // The moved button gets focus, which scrolls it into view: that scroll is not a move,
+  // so a row that didn't change place must not glide (FLIP measured in page coordinates).
+  const drift = await page.evaluate(async () => {
+    const rows = document.querySelectorAll('#rot li'), list = document.querySelector('#rot');
+    scrollTo(0, rows[3].getBoundingClientRect().top + scrollY - 2);   // row 3 at the top, row 2 above the screen
+    const offset = () => document.querySelectorAll('#rot li')[6].getBoundingClientRect().top - list.getBoundingClientRect().top;
+    const before = offset(), up = rows[3].querySelector('[aria-label^="Move up"]');
+    up.focus({ preventScroll: true }); up.click();
+    await new Promise(requestAnimationFrame);
+    return offset() - before;
+  });
+  expect(drift).toBe(0);
+});
+
+test('Enter in a field sends: a message to show, a notification with every field', async ({ page, request }) => {
+  await page.locator('#msg').fill('BRB');
+  await page.locator('#msg').press('Enter');
+  await expect.poll(async () => (await health(request)).pinned?.params?.text).toBe('BRB');
+
+  await page.locator('#ntext').fill('Food');
+  await page.locator('#nsub').fill('come down');
+  await page.locator('#nsecs').fill('4');
+  const sent = page.waitForRequest((r) => r.url().endsWith('/api/notify') && r.method() === 'POST');
+  await page.locator('#ntext').press('Enter');
+  expect((await sent).postDataJSON()).toMatchObject({ text: 'Food', sub: 'come down', seconds: 4 });
+  await sceneIs(request, /^notify$/);
+});
+
+test('the live preview stops streaming while it is scrolled off screen', async ({ page }) => {
+  await expect.poll(() => page.getByTestId('preview').evaluate((c) => c.width)).toBe(32);   // streaming
+  const stopped = page.waitForEvent('requestfailed', (r) => r.url().endsWith('/api/frames'));
+  await page.locator('footer').scrollIntoViewIfNeeded();
+  await stopped;
+  const again = page.waitForRequest((r) => r.url().endsWith('/api/frames'));
+  await page.evaluate(() => scrollTo(0, 0));
+  await again;
 });

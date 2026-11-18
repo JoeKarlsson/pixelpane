@@ -27,52 +27,54 @@
     <h2 class="sr-only">On the board</h2>
     <div class="panel"><canvas id="preview" width="32" height="32" role="img" aria-label="live panel preview" data-testid="preview"></canvas></div>
     <div class="stack">
-      <div class="now" data-testid="now">
-        <div class="src" id="nowsrc">…</div>
-        <span class="sr-only" id="nowscene">…</span>
-        <svg class="ledtitle" id="nowdots" aria-hidden="true"></svg>
-        <div class="kind" id="nowkind"></div>
-        <div class="bar"><div id="nowbar"></div></div>
-        <div class="stat" id="nownext"></div>
-      </div>
       <div class="row"><button id="skip" class="on" title="Skip to the next scene">Skip</button><button id="power">Power</button>
         <span class="pill" id="scene">…</span>
         <a class="pill sched" id="sched" href="/settings#schedule" hidden data-testid="schedule-status"></a></div>
-      <div><label for="bright">Brightness <span id="bv"></span></label>
+      <div class="now" data-testid="now">
+        <div class="src" id="nowsrc">…</div>
+        <span class="sr-only" id="nowscene">…</span>
+        <svg class="ledtitle" id="nowdots" viewBox="0 0 560 120" aria-hidden="true"></svg>
+        <div class="kind" id="nowkind"></div>
+        <div class="bar" role="progressbar" aria-label="Scene progress" aria-valuemin="0" aria-valuemax="100"><div id="nowbar"></div></div>
+        <div class="stat" id="nownext"></div>
+      </div>
+      <div><label for="bright">Brightness</label> <span id="bv"></span>
         <input type="range" id="bright" min="1" max="100"></div>
-      <div><h2>Today</h2><div class="row" id="themes"></div></div>
-      <div><h2>Play now</h2><div class="row" id="playnow"></div></div>
+      <div><h3>Today</h3><div class="row" id="themes"></div></div>
+      <div><h3>Play now</h3><div class="row" id="playnow"></div></div>
     </div>
   </section>
 
   <section>
     <h2>Modes (stay on until cleared)</h2>
-    <div class="row">
-      <button data-pin="on_air">On Air</button>
-      <input id="msg" placeholder="Message to show" aria-label="Message to show" style="flex:1;min-width:160px">
+    <form class="row fields" id="modes">
+      <div class="lf"><label for="mins">Minutes</label><input id="mins" type="number" min="0" placeholder="no limit"></div>
+      <button type="button" data-pin="on_air">On Air</button>
+      <div class="lf grow"><label for="msg">Message to show</label><input id="msg" placeholder="BRB"></div>
       <button id="pinmsg">Show message</button>
-      <label>for <input id="mins" type="number" min="0" placeholder="∞" style="width:64px"> min</label>
-      <button id="unpin">Clear</button>
-    </div>
+      <button type="button" id="unpin">Clear</button>
+    </form>
   </section>
 
-  <section>
+  <section id="notify">
     <h2>Send a notification</h2>
-    <div class="row">
-      <input id="ntext" placeholder="Laundry is done" aria-label="Notification text" style="flex:1;min-width:160px">
-      <select id="nicon" aria-label="Icon"></select>
-      <select id="nstyle" aria-label="Style" data-testid="notify-style"><option value="default">default style</option>
+    <form class="row fields" id="notifyform">
+      <div class="lf grow"><label for="ntext">Message</label><input id="ntext" placeholder="Laundry is done" maxlength="200"></div>
+      <div class="lf grow"><label for="nsub">Second line</label><input id="nsub" placeholder="optional, smaller" maxlength="80"></div>
+      <div class="lf"><label for="nicon">Icon</label><select id="nicon"></select></div>
+      <div class="lf"><label for="nstyle">Style</label><select id="nstyle" data-testid="notify-style"><option value="default">default style</option>
         <option value="classic">classic</option><option value="banner">banner</option>
-        <option value="burst">burst</option><option value="ticker">ticker</option></select>
-      <input id="ncolor" type="color" value="#ffffff" aria-label="Color">
+        <option value="burst">burst</option><option value="ticker">ticker</option></select></div>
+      <div class="lf"><label for="ncolor">Color</label><input id="ncolor" type="color" value="#ffffff"></div>
+      <div class="lf"><label for="nsecs">Seconds</label><input id="nsecs" type="number" min="3" max="120" step="1" placeholder="default"></div>
       <label><input id="nflash" type="checkbox"> flash</label>
       <button id="nsend">Send</button>
-    </div>
+    </form>
   </section>
 
   <section>
     <h2>Playlist</h2>
-    <ul class="rot" id="rot"></ul>
+    <ul class="rot" id="rot" role="list"></ul>
     <div class="row" style="margin-top:8px"><select id="addsel" aria-label="Scene to add"></select><button id="add">Add</button>
       <button id="saverot" class="on">Save playlist</button>
       <span class="stat warn" id="rotdirty" hidden data-testid="playlist-unsaved">unsaved changes</span></div>
