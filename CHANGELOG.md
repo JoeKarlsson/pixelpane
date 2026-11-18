@@ -10,6 +10,13 @@ and the project uses [semantic versioning](https://semver.org/).
 - The API token is gone: no more token prompts, no Settings field for it, and a token saved in an old config is dropped on start. The board is LAN only; cross-site writes and other host names are still refused.
 
 ### Security
+- Restoring a settings backup clears the generator's saved API key when the backup changes its
+  server URL, the same as saving does, so a restore can't send the key somewhere else.
+- Uploads only open GIF, PNG, JPEG, WebP and BMP. Before, any format Pillow knows (EPS through
+  Ghostscript, PSD, TIFF) was decoded.
+- Pages allow no inline styles (the first board color comes in a style block with a fresh nonce),
+  require Trusted Types, and every response carries Cross-Origin-Resource-Policy. CI actions are
+  pinned to commit SHAs and Dependabot waits a week before proposing new versions.
 - Nightly auto-updates also install Debian point releases and Raspberry Pi archive
   packages (firmware, mesa, kernel), not only Debian security fixes.
 - GIF ids could name any file on the Pi (`upload//etc/passwd`): the GIF file route
@@ -30,6 +37,11 @@ and the project uses [semantic versioning](https://semver.org/).
 - With a token set, logs and backups need it too.
 
 ### Added
+- Draw and Animate work from the keyboard: the arrow keys move a cursor cell and Space paints,
+  fills or picks there.
+- The GIF library shows page numbers and has a Still previews switch (it also stills Control's
+  Play now thumbnails).
+- Settings' Playback section has a Save button like the others.
 - Holidays build up: in the last days before one (a week by default, the seasonal
   plugin's countdown setting; 0 turns it off) the seasonal slot always shows it, its
   scene comes round every ten minutes or so on top of the playlist, and its GIFs get the
@@ -187,6 +199,17 @@ and the project uses [semantic versioning](https://semver.org/).
   your uploads and saved GIFs, a Hidden filter, and three thumbnail sizes.
 
 ### Changed
+- Skip and Power sit at the top of the Control page's right column, on the first screen on phones,
+  and the scene title keeps one size so they never move when the scene changes.
+- Settings links to the notification composer on Control instead of having its own; Control's
+  gained the second line and seconds fields.
+- Switches that are on use a white outline; the board color is kept for the main action and what
+  is current. Field edges, labels, checkboxes and help text are easier to see and match across
+  pages, and touch targets are at least 44px on phones.
+- Pages, CSS and JS are gzipped, the pages poll the small /api/health instead of the full state,
+  and live previews stop streaming when scrolled off screen. The font is cut to the weights in use
+  and its URL changes when the file does.
+- /gifs and page addresses typed in another case go to the right page.
 - A new look for every page, "lit pixels": the page is the panel. True black like an
   unlit LED, white Mona Sans type, and one color, which is whatever the board is
   showing right now; it fades to the next scene's color as the board changes. The
@@ -229,6 +252,14 @@ and the project uses [semantic versioning](https://semver.org/).
 - The homelab dashboard skips its Plex page while nobody is streaming.
 
 ### Fixed
+- Keyboard focus stays on a button while its request runs; Enter sends the Control page's message
+  and notification; every field has a visible label; headings, landmarks and progress are marked up
+  for screen readers, which hear each switch's state once and errors right away.
+- Moving a playlist row no longer makes the whole list slide when the page scrolls, and the move is
+  announced. Selecting GIFs is instant and the grid no longer shifts.
+- Nothing animates while a page loads, the first label swap crossfades, and reduced motion is
+  respected for every transition.
+- A dark "color when the board is dark" is lightened until text on it is readable.
 - The page color holds steady for each scene instead of re-tinting on every poll while an
   animated scene plays.
 - On phones the Settings live preview is hidden, so it no longer covers fields while you scroll.
