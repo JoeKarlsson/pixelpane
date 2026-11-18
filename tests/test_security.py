@@ -1,6 +1,7 @@
 """The API's defenses: library paths, host names, secrets, params, headers and limits."""
 import json
 import random
+import re
 import unittest
 from unittest import mock
 
@@ -88,6 +89,18 @@ class SecurityTest(unittest.TestCase):
         self.assertEqual(r.headers["X-Content-Type-Options"], "nosniff")
         self.assertIn("frame-ancestors 'none'", r.headers["Content-Security-Policy"])
         self.assertIn("script-src 'self'", self.client.get("/settings").headers["Content-Security-Policy"])
+
+    def test_pages_allow_no_inline_styles_but_their_own_color(self):
+        """The page's first color is a <style> with a fresh nonce; nothing else inline may style the page."""
+        for path in ("/", "/library", "/settings", "/draw", "/nope"):
+            r = self.client.get(path)
+            csp, html = r.headers["Content-Security-Policy"], r.get_data(as_text=True)
+            self.assertNotIn("unsafe-inline", csp, path)
+            nonce = re.search(r"style-src 'self' 'nonce-([\w-]+)'", csp).group(1)
+            self.assertIn(f'<style nonce="{nonce}">:root{{--live:#', html, path)
+            self.assertNotIn(' style="', html, path)
+        self.assertNotEqual(*(re.search(r"nonce-([\w-]+)", self.client.get("/").headers["Content-Security-Policy"])
+                              .group(1) for _ in range(2)))
 
     def test_an_old_token_no_longer_locks_the_board(self):
         """A config saved with the removed api_token loses it on load, and nothing asks for one."""

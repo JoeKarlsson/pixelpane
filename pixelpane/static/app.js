@@ -3,10 +3,9 @@
 // and library are on /library (library.js).
 let S = {}, C = {}, rotation = [], rotIds = [], nextRotId = 0;   // ids: follow each entry as it moves (flipRot)
 const rootStyle = getComputedStyle(document.documentElement);   // the motion tokens in app.css
-const EASE_ENTER = rootStyle.getPropertyValue('--ease-enter'), EASE_MOVE = rootStyle.getPropertyValue('--ease-move');
+const EASE_MOVE = rootStyle.getPropertyValue('--ease-move');   // EASE_ENTER comes from common.js
 const DUR_ENTER = parseFloat(rootStyle.getPropertyValue('--dur-enter')) * 1000, DUR_EXIT = parseFloat(rootStyle.getPropertyValue('--dur-exit')) * 1000;
 const coarsePointer = matchMedia('(pointer: coarse)');
-ICONS.grip = 'F ' + [3, 8, 13].map(y => `M5 ${y}a1.25 1.25 0 1 0 2.5 0a1.25 1.25 0 1 0-2.5 0M8.5 ${y}a1.25 1.25 0 1 0 2.5 0a1.25 1.25 0 1 0-2.5 0`).join('');
 
 // The timer and Power only need /api/health (under 1 KB); the full state (36 KB) loads in init.
 async function refresh() {
@@ -88,7 +87,8 @@ function drawPlugins() {
       api('/api/config', 'PUT', {plugins: {[p.name]: {enabled: !p.enabled}}})
         .then(() => init()).then(() => toast(`${nice} ${p.enabled ? 'off' : 'on'}`)));
     toggle.id = 'ptoggle-' + p.name;
-    setPressed(toggle, p.enabled); toggle.setAttribute('aria-labelledby', `pname-${p.name} ${toggle.id}`);   // "weather On": its name and what it shows
+    toggle.dataset.switch = p.enabled ? 'on' : 'off';   // the On/Off label says the state: no aria-pressed too
+    toggle.setAttribute('aria-labelledby', `pname-${p.name} ${toggle.id}`);   // "weather On": its name and what it shows
     row.append(info, toggle);
     return row;
   }));

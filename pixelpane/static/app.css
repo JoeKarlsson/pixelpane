@@ -94,9 +94,9 @@ button:hover { border-color: var(--text); }
 /* the one primary action in an area: lit */
 button.on { background: var(--live); border-color: var(--live); color: var(--on-live); }
 button.on:hover { background: color-mix(in srgb, var(--live) 80%, white); border-color: transparent; }
-/* switches (aria-pressed): a bright outline when on, grey when off (--live stays for the one primary action) */
-button[aria-pressed] { background: transparent; color: var(--dim); border-color: var(--line); }
-button[aria-pressed="true"], button[aria-pressed="true"]:hover { background: transparent; color: var(--bright); border-color: var(--bright); }
+/* switches (aria-pressed, or data-switch where the On/Off label already says it): a bright outline when on, grey when off (--live stays for the one primary action) */
+button[aria-pressed], button[data-switch] { background: transparent; color: var(--dim); border-color: var(--line); }
+button[aria-pressed="true"], button[aria-pressed="true"]:hover, button[data-switch="on"], button[data-switch="on"]:hover { background: transparent; color: var(--bright); border-color: var(--bright); }
 button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-visible {
   outline: 2px solid var(--focus); outline-offset: 2px; }
 .plugin:has(.plugin-link:focus-visible) { outline: 2px solid var(--focus); outline-offset: 4px; }
@@ -159,7 +159,6 @@ code { font-family: var(--mono); font-size: .9em; color: var(--text); }
 .rot li.current .name { color: var(--live-ink); font-weight: 600; }
 .rot li.current { background: var(--surface); }
 #playnow { display: grid; gap: 14px; }
-h3 { font: 600 var(--fs-m)/1.3 var(--sans); color: var(--bright); margin: 0 0 10px; }
 #playnow h4 { margin: 0 0 8px; font-weight: 400; }
 #playnow summary { margin-bottom: 8px; }
 /* Modes and notification rows: each field has its label above it */
@@ -196,7 +195,7 @@ fieldset.field legend { color: var(--dim); font-size: var(--fs-s); padding: 0; m
 .gifs { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--thumb, 64px) + 32px), 1fr)); gap: 20px 12px; }
 @media (pointer: fine) { .gifs { grid-template-columns: repeat(auto-fill, minmax(calc(var(--thumb, 64px) + 64px), 1fr)); } }
 /* a column, buttons pinned to the bottom: every card's buttons line up across a row */
-.gif { position: relative; padding: 6px; text-align: center; border-radius: 12px; transition: background-color .12s ease-out;
+.gif { position: relative; padding: 6px; text-align: center; border-radius: 12px; transition: background-color var(--dur-quick) var(--ease-enter);
   display: flex; flex-direction: column; align-items: center; }
 .gif img { width: var(--thumb, 64px); height: var(--thumb, 64px); image-rendering: pixelated; background: #000; }
 #gsearch { flex: 1 1 160px; min-width: 0; }
@@ -364,8 +363,7 @@ dialog .pform { grid-template-columns: 1fr; gap: 0; }
 button.scenebtn { display: inline-flex; align-items: center; gap: 8px; padding-left: 8px; }
 button.scenebtn .thumb { width: 24px; height: 24px; image-rendering: pixelated; border-radius: 50%; background: #000; flex: none; }
 .pform .field select, .pform .field input:not([type=checkbox]):not([type=color]):not([type=range]) { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
-.composer { margin-bottom: 24px; }
-.composer .ptitle, .psection .ptitle { font: 600 var(--fs-m) var(--sans); color: var(--bright); margin-bottom: 10px; }
+.psection .ptitle { font: 600 var(--fs-m) var(--sans); color: var(--bright); margin-bottom: 10px; }
 
 /* Draw and Animate: a big pixel canvas, tools above, the live board beside it */
 /* the canvas comes first in the page (phones show it first); wider screens put the tools above it */
@@ -384,7 +382,7 @@ button.scenebtn .thumb { width: 24px; height: 24px; image-rendering: pixelated; 
 #fpsv { min-width: 6ch; }
 #fpos { font-variant-numeric: tabular-nums; }
 .palette { gap: 6px; }
-button.swatch, button.swatch:hover, button.swatch.on { width: 28px; height: 28px; min-height: 0; padding: 0; background: var(--sw); border: 2px solid var(--line-soft); border-radius: 50%; }   /* the ring keeps a black swatch visible on black */
+button.swatch, button.swatch:hover, button.swatch.on { width: 28px; height: 28px; min-height: 0; padding: 0; background: var(--sw); border: 2px solid var(--line); border-radius: 50%; }   /* the ring keeps a black swatch visible on black */
 .swatch.on { outline: 2px solid var(--bright); outline-offset: 2px; }
 button.swatch:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .easel { display: grid; grid-template-columns: minmax(0, 560px) auto; justify-content: start; gap: 24px; align-items: start; }
@@ -504,3 +502,15 @@ main[aria-busy="true"] > section ~ section { visibility: hidden; }   /* each pag
   .swap > span { transition: opacity var(--dur-quick) var(--ease-enter), filter var(--dur-quick) var(--ease-enter), scale var(--dur-quick) var(--ease-enter); }
   .swap > span[aria-hidden="true"] { scale: .9; }
 }
+
+/* spacing that used to sit in style="" attributes (the CSP allows no inline styles) */
+#alpha { width: 110px; }
+#fps { width: 140px; }
+.row:has(> #addsel) { margin-top: 8px; }
+.row.toolbar { margin-bottom: 10px; }
+#schednow { margin-bottom: 10px; }
+.row.actions { margin-top: 12px; }
+h3.sub { margin-top: 16px; }
+/* without scripts, nothing waits to be filled in */
+@media (scripting: none) { main[aria-busy="true"] > section ~ section { visibility: visible; } }
+.rule input.level { width: 70px; }

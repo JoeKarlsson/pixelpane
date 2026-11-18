@@ -286,7 +286,7 @@ async function loadDrafts() {
   $('#sdrafts').replaceChildren(...list.map(d => {
     const t = el('button', {className: 'draft-thumb' + (d.saved ? ' saved' : '') + (draft && draft.id === d.id ? ' current' : ''),
       title: `${d.title}${d.prompt ? ` · "${d.prompt}"` : ''}${d.saved ? ' · saved' : ''}`},
-      el('img', {src: `/draft/${d.id}.gif${stillGifs()}`, alt: d.title, loading: 'lazy'}));
+      el('img', {src: `/draft/${d.id}.gif${stillGifs()}`, alt: d.saved ? `${d.title} (saved)` : d.title, loading: 'lazy'}));
     t.dataset.id = d.id; t.dataset.testid = 'draft-thumb';
     t.onclick = () => showDraft(d);
     return t;
@@ -316,7 +316,7 @@ $('#sdsave').onclick = async () => {
   try {
     r = await api(`/api/drafts/${draft.id}/save`, 'POST',
       {name: $('#sdname').value, category: $('#sdcat').value, theme: $('#sdtheme').value});
-  } catch (e) { return toast(e.message); }
+  } catch (e) { return toast(e.message, true); }
   toast('Saved to the library as ' + r.name);
   draft.saved = r.id; showDraft(draft); loadDrafts(); loadGifs();
 };
@@ -363,7 +363,7 @@ $('#gup').onclick = async () => {
   const files = $('#gfile').files; if (!files.length) return toast('Pick a file first');
   const fd = new FormData(); for (const f of files) fd.append('file', f);
   fd.append('theme', $('#gtheme').value); if ($('#gsmooth').checked) fd.append('smooth', '1');
-  try { await send('/api/gifs', {method: 'POST', body: fd}); } catch (e) { return toast(e.message); }
+  try { await send('/api/gifs', {method: 'POST', body: fd}); } catch (e) { return toast(e.message, true); }
   toast('Uploaded'); $('#gfile').value = ''; loadGifs();
 };
 

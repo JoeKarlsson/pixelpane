@@ -10,7 +10,6 @@
 <meta name="theme-color" content="#000000">
 <link rel="preload" href="/static/fonts/mona-sans-latin.0a047cf9.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/static/app.css">
-<noscript><style>main[aria-busy="true"] > section ~ section { visibility: visible; }</style></noscript>
 </head>
 <body>
 <a class="skip" href="#content">Skip to content</a>
@@ -75,7 +74,7 @@
   <section>
     <h2>Playlist</h2>
     <ul class="rot" id="rot" role="list"></ul>
-    <div class="row" style="margin-top:8px"><select id="addsel" aria-label="Scene to add"></select><button id="add">Add</button>
+    <div class="row"><select id="addsel" aria-label="Scene to add"></select><button id="add">Add</button>
       <button id="saverot" class="on">Save playlist</button>
       <span class="stat warn" id="rotdirty" hidden data-testid="playlist-unsaved">unsaved changes</span></div>
     <p class="stat">Drag entries to reorder them, or use the arrows. Seconds per scene, quiet hours and time-of-day

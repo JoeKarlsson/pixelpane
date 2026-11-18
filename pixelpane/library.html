@@ -10,7 +10,6 @@
 <meta name="theme-color" content="#000000">
 <link rel="preload" href="/static/fonts/mona-sans-latin.0a047cf9.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/static/app.css">
-<noscript><style>main[aria-busy="true"] > section ~ section { visibility: visible; }</style></noscript>
 </head>
 <body>
 <a class="skip" href="#content">Skip to content</a>
@@ -68,13 +67,13 @@
   </section>
   <section>
     <h2>GIF library</h2>
-    <div class="row" style="margin-bottom:10px">
+    <div class="row toolbar">
       <label for="gtheme">Upload to</label><select id="gtheme" data-testid="upload-theme"></select>
       <input type="file" id="gfile" accept="image/*" multiple aria-label="Choose GIF files">
       <label><input type="checkbox" id="gsmooth"> smooth (photos)</label>
       <button id="gup">Upload</button>
     </div>
-    <search class="row" style="margin-bottom:10px">
+    <search class="row toolbar">
       <label for="gfilter">Show</label><select id="gfilter" data-testid="gif-filter"></select>
       <label for="gsort">Sort</label><select id="gsort" data-testid="gif-sort">
         <option value="newest">Recently added</option><option value="oldest">Oldest first</option>

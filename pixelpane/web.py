@@ -5,6 +5,7 @@ import ipaddress
 import json
 import os
 import re
+import secrets
 import socket
 import threading
 import time
@@ -29,7 +30,7 @@ ASSET = re.compile(r'"/static/([\w./-]+\.(?:css|js|svg|png))"')   # page assets 
 THEME_COLOR = {"dark": "#000000", "light": "#ffffff"}
 NOTIFY_STYLES = ["classic", "banner", "burst", "ticker"]   # pixelpane.plugins.alerts.STYLES
 MAX_STREAMS = 6   # live previews at once; each one costs the Pi a little CPU
-CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; "
        "connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; "
        "frame-ancestors 'none'; require-trusted-types-for 'script'")
 PERMISSIONS = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
@@ -177,8 +178,11 @@ def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_powero
         live = board_color(state)
         # until the page script has drawn the state it sets on load, nothing transitions into it
         preload = ' class="preload"' if name in PRELOAD_PAGES else ""
-        html = PAGES[name].read_text().replace(   # the first --live, so the page paints in the board's color at once
-            '<html lang="en">', f'<html lang="en"{preload} data-theme="{theme}" style="--live:{live}">', 1)
+        html = PAGES[name].read_text().replace('<html lang="en">', f'<html lang="en"{preload} data-theme="{theme}">', 1)
+        # the first --live, so the page paints in the board's color at once: a <style> with a fresh
+        # nonce, so the CSP needn't allow inline styles anywhere else
+        nonce = secrets.token_urlsafe(16)
+        html = html.replace("</head>", f'<style nonce="{nonce}">:root{{--live:{live}}}</style>\n</head>', 1)
         # the browser's own bar and form controls follow the theme too
         metas = (f'<meta name="color-scheme" content="light dark">'
                  f'<meta name="theme-color" content="{THEME_COLOR["light"]}" media="(prefers-color-scheme: light)">'
@@ -191,7 +195,9 @@ def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_powero
         def versioned(m):
             f = STATIC / m.group(1)
             return f'"/static/{m.group(1)}?v={int(f.stat().st_mtime)}"' if f.is_file() else m.group(0)
-        return ASSET.sub(versioned, html), status, {"Content-Type": "text/html; charset=utf-8"}
+        return ASSET.sub(versioned, html), status, {
+            "Content-Type": "text/html; charset=utf-8",
+            "Content-Security-Policy": CSP.replace("style-src 'self'", f"style-src 'self' 'nonce-{nonce}'")}
 
     @app.errorhandler(404)
     def not_found(e):

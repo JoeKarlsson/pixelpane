@@ -10,7 +10,6 @@
 <meta name="theme-color" content="#000000">
 <link rel="preload" href="/static/fonts/mona-sans-latin.0a047cf9.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/static/app.css">
-<noscript><style>main[aria-busy="true"] > section ~ section { visibility: visible; }</style></noscript>
 </head>
 <body>
 <a class="skip" href="#schedule">Skip to content</a>
@@ -34,9 +33,9 @@
     <p class="stat">Turn the board off at night, dim it in the evening or play a different playlist at certain
       times. A rule that runs past midnight belongs to the day it starts. Pressing Power on the control page during
       quiet hours turns the board on until they end.</p>
-    <div class="stat" id="schednow" data-testid="schedule-now" style="margin-bottom:10px"></div>
+    <div class="stat" id="schednow" data-testid="schedule-now"></div>
     <div class="rules" id="rules"></div>
-    <div class="row" style="margin-top:12px">
+    <div class="row actions">
       <select id="preset" aria-label="Rule to add" data-testid="rule-preset">
         <option value="quiet">Quiet hours (off 23:00 to 07:00)</option>
         <option value="dim">Dim in the evening (20:00 to 23:00)</option>
@@ -54,10 +53,10 @@
     <h2>Playback</h2>
     <h3>Seconds per scene</h3>
     <div class="dwell" id="dwell"></div>
-    <h3 style="margin-top:16px">Data stays fresh for (minutes)</h3>
+    <h3 class="sub">Data stays fresh for (minutes)</h3>
     <p class="stat">How long pushed data (POST /api/data/&lt;key&gt;) is shown before a scene treats it as stale. Empty uses the plugin's default.</p>
     <div class="dwell" id="ttl"></div>
-    <div class="row" style="margin-top:12px"><button id="saveplayback" class="on" data-testid="save-playback" aria-label="Save playback">Save</button></div>
+    <div class="row actions"><button id="saveplayback" class="on" data-testid="save-playback" aria-label="Save playback">Save</button></div>
     <small class="err" id="playerr" role="alert" data-testid="playback-error"></small>
   </section>
 
@@ -92,12 +91,12 @@
       <fieldset class="field wide"><legend>Built-in holidays</legend><div class="checks" id="builtins" data-testid="builtin-holidays"></div>
         <small>Untick one to skip it: no scene and no GIFs from its folder.</small></fieldset>
     </div>
-    <h3 style="margin-top:16px">Your holidays</h3>
+    <h3 class="sub">Your holidays</h3>
     <p class="stat">Add Diwali, Lunar New Year, an anniversary, a team's game days. Upload GIFs to one on the GIFs
       page and they play while it's on. Dates go one range per line: <code>11-08 to 11-12</code> every year, or
       <code>2027-02-06 to 2027-02-10</code> for that year only. A single date is one day.</p>
     <div class="rules" id="customs"></div>
-    <div class="row" style="margin-top:12px">
+    <div class="row actions">
       <button id="addholiday" data-testid="add-holiday">Add holiday</button>
       <button id="saveholidays" class="on" data-testid="save-holidays">Save holidays</button>
     </div>
@@ -116,14 +115,14 @@
         <small>These pages take their color from whatever the board is showing. When it's off or showing
           nothing colorful, they use this one.</small></div>
     </div>
-    <div class="row" style="margin-top:12px"><button id="saveui" class="on" data-testid="save-appearance" aria-label="Save appearance">Save</button></div>
+    <div class="row actions"><button id="saveui" class="on" data-testid="save-appearance" aria-label="Save appearance">Save</button></div>
   </section>
 
   <section id="display" data-testid="display">
     <h2>Display hardware</h2>
     <p class="stat">These take effect after a restart.</p>
     <div class="form" id="hw"></div>
-    <div class="row" style="margin-top:12px">
+    <div class="row actions">
       <button id="savehw" class="on" data-testid="save-display" aria-label="Save display hardware">Save</button>
       <button id="restart2" data-testid="restart-display">Save and restart</button>
     </div>

@@ -79,7 +79,7 @@ function pluginSection(p, open) {
   }, '', `toggle-${p.name}`);
   toggle.id = `toggle-${p.name}`;
   toggle.setAttribute('aria-labelledby', `ptitle-${p.name} ${toggle.id}`);   // "weather On": the plugin's name and the shown word
-  setPressed(toggle, p.enabled);
+  toggle.dataset.switch = p.enabled ? 'on' : 'off';   // the On/Off label says the state: no aria-pressed too
   if (!p.enabled) kids.push(el('p', {className: 'stat warn', textContent: `${title} is switched off: its scenes don't play and its settings do nothing until it's on.`}));
   kids.push(el('p', {className: 'stat', textContent: p.about || ''}));
   if (p.scenes.length && p.enabled) {   // a switched-off plugin's scenes can't play
@@ -169,7 +169,7 @@ function ruleRow(r, i, live) {
   const drawExtra = () => {
     if (r.action === 'dim') {
       r.brightness = r.brightness || 20;
-      const level = el('input', {type: 'number', min: 1, max: 100, value: r.brightness, style: 'width:70px'});
+      const level = el('input', {type: 'number', min: 1, max: 100, value: r.brightness, className: 'level'});
       level.onchange = () => r.brightness = +level.value;
       level.setAttribute('aria-label', 'Brightness');
       extra.replaceChildren(level, el('span', {className: 'stat', textContent: 'of 100'}));

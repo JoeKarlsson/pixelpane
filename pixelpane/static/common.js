@@ -36,6 +36,7 @@ const ICONS = {
   edit: 'M3 13l1-3.5 7-7 2.5 2.5-7 7z', trash: 'M2.5 4h11M6 4V2h4v2M4 4l1 10h6l1-10',
   undo: 'M4 7h6a3 3 0 010 6H7M6.5 4L3.5 7l3 3', redo: 'M12 7H6a3 3 0 000 6h3M9.5 4l3 3-3 3',
   play: 'F M5 3l8 5-8 5z', prev: 'F M11 3L5 8l6 5z', next: 'F M5 3l6 5-6 5z',
+  grip: 'F ' + [3, 8, 13].map(y => `M5 ${y}a1.25 1.25 0 1 0 2.5 0a1.25 1.25 0 1 0-2.5 0M8.5 ${y}a1.25 1.25 0 1 0 2.5 0a1.25 1.25 0 1 0-2.5 0`).join(''),
 };
 function icon(name) {
   const ns = 'http://www.w3.org/2000/svg', d = ICONS[name], filled = d.startsWith('F ');
