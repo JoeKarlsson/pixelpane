@@ -44,8 +44,8 @@ async function loadGifs() {
   const size = +$('#gsize').value, pages = Math.max(1, Math.ceil(all.length / size));
   gifPage = Math.min(gifPage, pages - 1);
   const shown = gifShown = all.slice(gifPage * size, (gifPage + 1) * size);
-  $('#gcount').textContent = `${all.length} match · ${list.length} in the library`;
-  $('#gpage').textContent = `Page ${gifPage + 1} of ${pages}` + (all.length ? ` · ${gifPage * size + 1}-${gifPage * size + shown.length}` : '');
+  $('#gcount').textContent = all.length === list.length ? `${list.length} GIFs` : `${all.length} of ${list.length} GIFs`;
+  $('#gpage').textContent = `Page ${gifPage + 1} of ${pages}` + (all.length ? `, ${gifPage * size + 1} to ${gifPage * size + shown.length}` : '');
   $('#gprev').disabled = gifPage === 0; $('#gnext').disabled = gifPage >= pages - 1;
   if (!all.length) {   // say why the grid is empty, and offer the way back
     const why = words.length ? `No GIFs match "${$('#gsearch').value.trim()}"` : 'No GIFs here yet';
@@ -77,7 +77,7 @@ async function loadGifs() {
       btn(icon('edit'), () => openClassify([g]), '', 'classify', `Move ${title} to a category or theme`));
     if (g.upload) r.append(btn(icon('trash'), e => confirmDelete(g, e.currentTarget), '', 'delete', `Delete ${title}`));
     d.append(img, cap, el('span', {className: 'cat' + (g.moved ? ' moved' : ''),
-      textContent: g.category.replace(/_/g, ' ') + (g.plays ? ` · ${g.plays} play${g.plays === 1 ? '' : 's'}` : ''),
+      textContent: g.category.replace(/_/g, ' ') + (g.plays ? `, ${g.plays} play${g.plays === 1 ? '' : 's'}` : ''),
       title: g.moved ? `moved here from ${g.default_category}, ${g.default_theme.replace('_', ' ')}` : 'category'}));
     if (g.theme !== 'all') {
       const tag = document.createElement('span'); tag.className = 'pill theme'; tag.textContent = g.theme.replace('_', ' ');
@@ -237,8 +237,8 @@ function showDraft(d) {
   $('#sdimg').src = `/draft/${d.id}.gif`;
   $('#sdtitle').textContent = d.title;
   const asked = d.prompt ? `"${d.prompt}"` : 'its own idea';
-  $('#sdmeta').textContent = `${asked}${d.change ? `, changed: ${d.change}` : ''} · ${d.frames} frames, ${d.seconds}s loop · `
-    + `${d.model}${d.checked ? ', self-checked' : ''} · ${new Date(d.created * 1000).toLocaleString()}`;
+  $('#sdmeta').textContent = `${asked}${d.change ? `, changed: ${d.change}` : ''}. ${d.frames} frames, ${d.seconds}s loop. `
+    + `${d.model}${d.checked ? ', self-checked' : ''}, ${new Date(d.created * 1000).toLocaleString()}`;
   $('#sdname').value = d.title.toLowerCase();
   $('#sdcat').value = d.category;
   $('#sdtheme').replaceChildren(new Option('all year', 'all'), ...Object.entries(S.theme_names).map(([k, v]) => new Option(v, k)));

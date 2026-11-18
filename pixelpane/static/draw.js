@@ -397,8 +397,7 @@ function loadSaved(d) {
 async function init() {
   if (ANIM) {
     document.title = 'PixelPane Animate';
-    $('#brandword').textContent = 'animate';
-    $('#drawtitle').textContent = 'pixelpane@board: animate';
+    $('#drawtitle').textContent = 'Animate';
     $('#framebox').hidden = false;
     $('#examples').hidden = false;
     $('#examples').append(...Object.keys(EXAMPLES).map(name =>

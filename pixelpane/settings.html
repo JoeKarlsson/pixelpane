@@ -8,7 +8,7 @@
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <meta name="theme-color" content="#0a0a0a">
-<link rel="preload" href="/static/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/static/fonts/mona-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/static/app.css">
 <noscript><style>main[aria-busy="true"] > section ~ section { visibility: visible; }</style></noscript>
 </head>
@@ -16,9 +16,9 @@
 <a class="skip" href="#schedule">Skip to content</a>
 <main aria-busy="true">
   <header>
-    <h1 class="brand"><a href="/" aria-label="PixelPane home"><img src="/static/favicon.svg" alt=""><span class="px">PIXEL</span><span class="pn">settings</span></a></h1>
+    <h1 class="brand"><a href="/" aria-label="PixelPane home">PixelPane</a></h1>
+    <span class="pill" id="stat">connecting…</span>
     <div class="row">
-      <span class="pill" id="stat">connecting…</span>
       <nav class="row" aria-label="Pages"><a class="navlink" href="/" data-testid="home-link">Control</a><a class="navlink" href="/draw" data-testid="draw-link">Draw</a><a class="navlink" href="/animate" data-testid="animate-link">Animate</a><a class="navlink" href="/library" data-testid="library-link">GIFs</a><a class="navlink" href="/settings" data-testid="settings-link" aria-current="page">Settings</a></nav>
     </div>
   </header>
@@ -47,6 +47,7 @@
       <button id="addrule" data-testid="add-rule">Add rule</button>
       <button id="saverules" class="on" data-testid="save-schedule">Save schedule</button>
     </div>
+    <small class="err" id="schederr" role="alert" data-testid="schedule-error"></small>
   </section>
 
   <section id="playback" data-testid="playback">
@@ -98,6 +99,7 @@
       <button id="addholiday" data-testid="add-holiday">Add holiday</button>
       <button id="saveholidays" class="on" data-testid="save-holidays">Save holidays</button>
     </div>
+    <small class="err" id="holerr" role="alert" data-testid="holidays-error"></small>
   </section>
 
   <section id="appearance" data-testid="appearance">
@@ -106,10 +108,11 @@
       <div class="field"><label for="uitheme">Theme</label>
         <select id="uitheme" data-testid="ui-theme"><option value="dark">Dark</option><option value="light">Light</option>
           <option value="auto">Match the device</option></select></div>
-      <div class="field"><label for="uiaccent">Accent color</label>
+      <div class="field"><label for="uiaccent">Color when the board is dark</label>
         <div class="row"><input id="uiaccent" type="color" data-testid="ui-accent">
-          <button id="uidefault" data-testid="ui-default">Default</button></div>
-        <small>Buttons, links and highlights. Text on it turns dark or light to stay readable.</small></div>
+          <button id="uidefault" type="button" data-testid="ui-default">Default</button></div>
+        <small>These pages take their color from whatever the board is showing. When it's off or showing
+          nothing colorful, they use this one.</small></div>
     </div>
     <div class="row" style="margin-top:12px"><button id="saveui" class="on" data-testid="save-appearance" aria-label="Save appearance">Save</button></div>
   </section>
@@ -142,6 +145,7 @@
         <small>The board only answers to its IP addresses and its own names (<span id="ownnames"></span>).
           Add any other name you open it by, like a reverse proxy's. This blocks DNS rebinding attacks.</small>
         <div class="row"><button id="savehosts" data-testid="save-hosts">Save names</button></div>
+        <small class="err" id="hostserr" role="alert" data-testid="hosts-error"></small>
       </div>
     </div>
   </section>
@@ -155,6 +159,7 @@
       <label for="restorefile">Restore from</label><input type="file" id="restorefile" accept="application/json,.json" data-testid="restore-file">
       <button id="restore" data-testid="restore">Restore</button>
     </div>
+    <small class="err" id="restoreerr" role="alert" data-testid="restore-error"></small>
   </section>
 
   <section id="system" data-testid="system">
@@ -171,7 +176,7 @@
 
   <details class="minipreview" data-testid="mini-preview">
     <summary>Live</summary>
-    <canvas id="livepreview" width="32" height="32" role="img" aria-label="live panel preview"></canvas>
+    <div class="panel"><canvas id="livepreview" width="32" height="32" role="img" aria-label="live panel preview"></canvas></div>
   </details>
 
   <dialog id="tokdlg" data-testid="token-dialog" aria-labelledby="tokdlg-title" closedby="any">

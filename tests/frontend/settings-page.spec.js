@@ -152,16 +152,18 @@ test('appearance: light theme and an accent color repaint every page', async ({ 
     await page.getByTestId('ui-accent').fill('#1d4ed8');
     await page.getByTestId('save-appearance').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-    const look = () => page.evaluate(() => {
-      const css = getComputedStyle(document.documentElement);
-      return [css.getPropertyValue('--accent').trim(), css.getPropertyValue('--on-accent').trim(), getComputedStyle(document.body).backgroundColor];
-    });
-    expect(await look()).toEqual(['#1d4ed8', '#ffffff', 'rgb(244, 244, 242)']);   // white text on a dark accent
+    // the accent is the color for when the board shows nothing colorful; the page's --live comes from the board
+    const look = () => page.evaluate(() => [getComputedStyle(document.documentElement).getPropertyValue('--live').trim(),
+      getComputedStyle(document.body).backgroundColor]);
+    const [live, bg] = await look();
+    expect(live).toMatch(/^rgb\(\d+, \d+, \d+\)$/);   // a registered color computes to rgb()
+    expect(bg).toBe('rgb(255, 255, 255)');
+    expect((await config(request)).ui.accent).toBe('#1d4ed8');
     await page.goto('/');
-    expect(await look()).toEqual(['#1d4ed8', '#ffffff', 'rgb(244, 244, 242)']);
+    expect((await look())[1]).toBe('rgb(255, 255, 255)');
     expect((await request.put('/api/config', { data: { ui: { accent: 'blue' } } })).status()).toBe(400);
   } finally {
-    await request.put('/api/config', { data: { ui: { theme: 'dark', accent: '#fdae84' } } });
+    await request.put('/api/config', { data: { ui: { theme: 'dark', accent: '#ff9a2e' } } });
   }
 });
 
@@ -284,7 +286,7 @@ test('Default puts the accent color back without saving', async ({ page, request
   const before = (await config(request)).ui;
   await page.getByTestId('ui-accent').fill('#123456');
   await page.getByTestId('ui-default').click();
-  await expect(page.getByTestId('ui-accent')).toHaveValue('#fdae84');
+  await expect(page.getByTestId('ui-accent')).toHaveValue('#ff9a2e');
   expect((await config(request)).ui).toEqual(before);
 });
 
@@ -410,4 +412,14 @@ test('a holiday you added can be deleted', async ({ page, request }) => {
   } finally {
     await request.put('/api/config', { data: { themes: { hemisphere: 'north', off: [], custom: [] } } });
   }
+});
+
+test('save errors show next to what failed, not only in a toast', async ({ page }) => {
+  await page.getByTestId('restore').click();                        // no file picked
+  await expect(page.getByTestId('restore-error')).toHaveText('Pick a settings file first');
+  await page.getByTestId('allowed-hosts').fill('not a host name!');
+  await page.getByTestId('save-hosts').click();
+  await expect(page.getByTestId('hosts-error')).not.toBeEmpty();
+  await expect(page.getByTestId('hosts-error')).toHaveAttribute('role', 'alert');
+  page.errors = page.errors.filter((e) => !e.includes('400'));     // the refused save
 });

@@ -112,7 +112,7 @@ function pluginSection(p, open) {
   if (keys.length) {
     kids.push(el('div', {className: 'pmeta'}, el('span', {className: 'stat', textContent: 'Data'}),
       el('div', {}, ...keys.map(k => el('div', {className: 'stat mono', textContent:
-        `POST /api/data/${k} · ` + (k in (S.data || {}) ? `last received ${ago(S.data[k])}` : 'nothing received yet') + ` · fresh for ${p.data[k]} min`})))));
+        `POST /api/data/${k}: ` + (k in (S.data || {}) ? `last received ${ago(S.data[k])}` : 'nothing received yet') + `, fresh for ${p.data[k]} min`})))));
   }
   const crashed = (p.tasks || []).filter(t => t.crashes);
   if (crashed.length) kids.push(el('p', {className: 'stat warn', textContent: `⚠ task ${crashed[0].name} crashed: ${crashed[0].last_error}`}));
@@ -131,7 +131,7 @@ function pluginSection(p, open) {
   foot.push(...(EXTRAS[p.name] ? EXTRAS[p.name](p, read) : []));
   if (foot.length) kids.push(el('div', {className: 'foot'}, ...foot));
   const summary = el('summary', {}, title, el('small', {textContent: p.description}),
-    ...(p.source !== 'built-in' || p.version ? [el('small', {textContent: [p.source, p.version && 'v' + p.version].filter(Boolean).join(' · ')})] : []));
+    ...(p.source !== 'built-in' || p.version ? [el('small', {textContent: [p.source, p.version && 'v' + p.version].filter(Boolean).join(' ')})] : []));
   return el('details', {className: 'psection' + (p.enabled ? '' : ' off'), open, id: 'plugin-' + p.name},
     summary, el('div', {className: 'ptoggle'}, toggle), ...kids);
 }
@@ -217,8 +217,8 @@ $('#saverules').onclick = async () => {
     if (r.action === 'playlist') out.rotation = r.rotation;
     return out;
   });
-  try { C = await api('/api/config', 'PUT', {schedule: clean}); } catch (e) { return toast(e.message); }
-  toast('Schedule saved'); load();
+  try { C = await api('/api/config', 'PUT', {schedule: clean}); } catch (e) { return showError('#schederr', e.message); }
+  showError('#schederr', ''); toast('Schedule saved'); load();
 };
 
 // --- playback --------------------------------------------------------------------
@@ -315,7 +315,7 @@ $('#cleartoken').onclick = async () => {
   rememberToken(null); toast('Token turned off'); load();
 };
 $('#savehosts').onclick = () => api('/api/config', 'PUT', {allowed_hosts: $('#hosts').value.split('\n').map(x => x.trim()).filter(Boolean)})
-  .then(c => { C = c; toast('Saved'); drawAccess(); }, e => toast(e.message));
+  .then(c => { C = c; showError('#hostserr', ''); toast('Saved'); drawAccess(); }, e => showError('#hostserr', e.message));
 
 // --- backup -------------------------------------------------------------------------------
 
@@ -329,11 +329,11 @@ $('#download').onclick = async () => {
 };
 $('#restore').onclick = async () => {
   const f = $('#restorefile').files[0];
-  if (!f) return toast('Pick a settings file first');
+  if (!f) return showError('#restoreerr', 'Pick a settings file first');
   let doc;
-  try { doc = JSON.parse(await f.text()); } catch (e) { return toast('That file is not JSON'); }
-  try { await api('/api/restore', 'POST', doc); } catch (e) { return toast(e.message); }
-  $('#restorefile').value = ''; toast('Settings restored'); load();
+  try { doc = JSON.parse(await f.text()); } catch (e) { return showError('#restoreerr', "That file isn't a settings file (it's not JSON)"); }
+  try { await api('/api/restore', 'POST', doc); } catch (e) { return showError('#restoreerr', e.message); }
+  showError('#restoreerr', ''); $('#restorefile').value = ''; toast('Settings restored'); load();
 };
 
 // --- system ---------------------------------------------------------------------------------
@@ -393,7 +393,7 @@ $('#onlyproblems').onchange = () => { if (!$('#logs').hidden) loadLogs(); };
 // --- holidays and seasons ----------------------------------------------------------
 
 let customs = [];
-const DEFAULT_ACCENT = '#fdae84';
+const DEFAULT_ACCENT = '#ff9a2e';   // livecolor.LIVE_DEFAULT
 
 function drawHolidays() {
   const t = C.themes || {};
@@ -429,7 +429,8 @@ $('#saveholidays').onclick = async () => {
     dates: c.text != null ? parseRanges(c.text) : c.dates}));
   const off = [...document.querySelectorAll('#builtins input')].filter(b => !b.checked).map(b => b.value);
   try { C = await api('/api/config', 'PUT', {themes: {hemisphere: $('#hemi').value, off, custom}}); }
-  catch (e) { return toast(e.message); }
+  catch (e) { return showError('#holerr', e.message); }
+  showError('#holerr', '');
   S = await api('/api/state');
   drawHolidays(); toast('Holidays saved');
 };

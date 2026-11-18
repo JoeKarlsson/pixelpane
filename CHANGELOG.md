@@ -183,6 +183,17 @@ and the project uses [semantic versioning](https://semver.org/).
   your uploads and saved GIFs, a Hidden filter, and three thumbnail sizes.
 
 ### Changed
+- A new look for every page, "lit pixels": the page is the panel. True black like an
+  unlit LED, white Mona Sans type, and one color, which is whatever the board is
+  showing right now; it fades to the next scene's color as the board changes. The
+  Control page writes the scene's name in the board's own 5x7 dot font, the previews
+  draw every pixel as a round lamp, and the progress bar is a row of 32 lamps. The
+  terminal windows, prompt headings, mono labels, pills and gradient wordmark are
+  gone. On/off switches look different from the one main button in each area. The
+  light theme still works. The Appearance setting's color is now the one pages use
+  when the board is off or shows nothing colorful.
+- Settings shows schedule, holiday, host name and restore errors next to the field,
+  not only in a toast.
 - Now Playing shows the album cover spinning on a CD (center hole, hub ring, a still
   glint) instead of flat and full screen. Paused, the disc stops and dims.
 - Draw and Animate have one board button beside the preview: Show on board puts

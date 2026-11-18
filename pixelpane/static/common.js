@@ -121,10 +121,14 @@ window.addEventListener('unhandledrejection', e => toast(e.reason?.message || 'S
 const ago = s => s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)}m ago` : `${Math.round(s / 3600)}h ago`;
 // "until" from the API is local wall time, "2026-10-16T07:00": show it as 7:00 AM
 const clockTime = iso => iso ? new Date(iso).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}) : '';
-// The header's status pill and the footer's version, from /api/state or /api/health.
+// The page's one color is whatever the board is showing (live_color, sampled on the board);
+// CSS crossfades --live, so a new scene re-tints the page.
+function applyLive(color) { if (color) document.documentElement.style.setProperty('--live', color); }
+// The header's status, the footer's version and the page color, from /api/state or /api/health.
 function showStatus(S) {
+  applyLive(S.live_color);
   $('#stat').textContent = [S.temp_c ? S.temp_c.toFixed(0) + '°C' : null, S.throttled && S.throttled !== '0x0' ? `throttled ${S.throttled}` : null,
-    `up ${Math.round(S.uptime_s / 3600)}h`].filter(Boolean).join(' · ');   // the version is in the footer
+    `up ${Math.round(S.uptime_s / 3600)}h`].filter(Boolean).join(', ');   // the version is in the footer
   const v = document.getElementById('footver');
   if (v) v.textContent = S.version ? `version ${S.version}` : '';
 }

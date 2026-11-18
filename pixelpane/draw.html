@@ -8,22 +8,22 @@
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <meta name="theme-color" content="#0a0a0a">
-<link rel="preload" href="/static/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/static/fonts/mona-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
 <a class="skip" href="#content">Skip to content</a>
 <main>
   <header>
-    <h1 class="brand"><a href="/" aria-label="PixelPane home"><img src="/static/favicon.svg" alt=""><span class="px">PIXEL</span><span class="pn" id="brandword">draw</span></a></h1>
+    <h1 class="brand"><a href="/" aria-label="PixelPane home">PixelPane</a></h1>
+    <span class="pill" id="stat">connecting…</span>
     <div class="row">
-      <span class="pill" id="stat">connecting…</span>
       <nav class="row" aria-label="Pages"><a class="navlink" href="/" data-testid="home-link">Control</a><a class="navlink" href="/draw" data-testid="draw-link">Draw</a><a class="navlink" href="/animate" data-testid="animate-link">Animate</a><a class="navlink" href="/library" data-testid="library-link">GIFs</a><a class="navlink" href="/settings" data-testid="settings-link">Settings</a></nav>
     </div>
   </header>
 
   <section id="content" tabindex="-1" class="studio-draw">
-    <div class="titlebar" id="drawtitle">pixelpane@board: draw</div>
+    <h2 id="drawtitle">Draw</h2>
     <div class="tools" role="group" aria-label="Drawing tools">
       <div class="row" id="toolrow">
         <button data-tool="pen" data-testid="tool-pen" class="on" title="Pen (B)">Pen</button>
@@ -49,7 +49,7 @@
       <div class="canvaswrap grid" id="wrap"><canvas id="canvas" width="32" height="32" data-testid="draw-canvas" role="img" aria-label="Drawing canvas: draw with a mouse, pen or finger"></canvas></div>
       <div class="side">
         <div class="stat">On the board now</div>
-        <div class="panel" style="--led:5px"><canvas id="preview" style="width:160px" width="32" height="32" role="img" aria-label="live panel preview" data-testid="preview"></canvas></div>
+        <div class="panel"><canvas id="preview" width="32" height="32" role="img" aria-label="live panel preview" data-testid="preview"></canvas></div>
         <label class="toggle"><input type="checkbox" id="live" checked data-testid="draw-live"> Live on the board</label>
         <div class="row"><button id="board" class="on" data-testid="board-toggle" title="Put it on the board, or take it off">Show on board</button></div>
         <div class="stat" id="livestat" role="status" data-testid="draw-status"></div>

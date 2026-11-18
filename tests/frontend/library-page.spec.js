@@ -171,7 +171,7 @@ test('GIF library pages through big libraries', async ({ page, request }) => {
   const cards = page.getByTestId('gif-card');
   await page.getByTestId('page-size').selectOption('60');
   await expect(cards).toHaveCount(60);
-  await expect(page.locator('#gpage')).toHaveText(new RegExp(`^Page 1 of 2 · 1-60$`));
+  await expect(page.locator('#gpage')).toHaveText(new RegExp(`^Page 1 of 2, 1 to 60$`));
   await expect(page.locator('#gprev')).toBeDisabled();
   await page.locator('#gnext').click();
   await expect(cards).toHaveCount(total - 60);

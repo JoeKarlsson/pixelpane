@@ -7,13 +7,13 @@ async function refresh() {
   S = await api('/api/state');
   const sch = S.schedule || {};
   setLabel($('#power'), !S.power ? 'Power: OFF' : sch.off ? 'Power: OFF (schedule)' : 'Power: ON');   // keeps its width
-  $('#power').className = S.on ? 'on' : '';
+  setPressed($('#power'), S.on);   // a switch: lit outline when on
   $('#power').title = sch.off ? 'Quiet hours: press to turn on anyway until they end' : '';
   $('#sched').hidden = !(sch.rules || []).length;
   $('#sched').textContent = sch.off ? `Scheduled off until ${clockTime(sch.until)}`
     : sch.overridden ? `On anyway, quiet hours end ${clockTime(sch.until)}`
     : [sch.brightness != null ? `Dimmed to ${sch.brightness}` : null, sch.playlist ? 'Scheduled playlist' : null]
-        .filter(Boolean).join(' · ') || `Schedule: ${sch.rules?.join(', ')}`;
+        .filter(Boolean).join(', ') || `Schedule: ${sch.rules?.join(', ')}`;
   if (document.activeElement !== $('#bright')) $('#bright').value = S.brightness;
   $('#bv').textContent = S.brightness;
   // only for a pin: the Now line below already names the scene, and updates faster
@@ -21,11 +21,7 @@ async function refresh() {
   $('#scene').textContent = S.pinned ? `pinned: ${S.pinned.scene}` : '';
   const onAir = S.pinned?.scene === 'on_air', airBtn = document.querySelector('[data-pin=on_air]');
   airBtn.classList.toggle('on', onAir); airBtn.setAttribute('aria-pressed', onAir);
-  if (S.panel) {   // preview takes the panel's shape; the LED grid matches its pixels
-    const [cols, rows] = S.panel, w = cols >= rows ? 256 : Math.round(256 * cols / rows);
-    $('#preview').style.width = w + 'px';
-    $('.panel').style.setProperty('--led', (w / cols) + 'px');
-  }
+  if (S.panel) $('.panel').style.setProperty('--led', `calc(100% / ${S.panel[0]})`);   // one round lamp per panel pixel
   showStatus(S);
   $('#themes').replaceChildren(...S.themes.map(t => { const s = document.createElement('span'); s.className = 'pill'; s.textContent = S.theme_names[t] || t; return s; }));
 }
@@ -77,7 +73,7 @@ function drawPlugins() {
       el('strong', {textContent: nice}));
     const info = el('div', {}, link, el('small', {textContent: p.description}));
     const crashed = (p.tasks || []).filter(t => t.crashes);
-    if (p.source !== 'built-in' || p.version) info.append(el('small', {textContent: [p.source, p.version && 'v' + p.version].filter(Boolean).join(' · ')}));
+    if (p.source !== 'built-in' || p.version) info.append(el('small', {textContent: [p.source, p.version && 'v' + p.version].filter(Boolean).join(' ')}));
     if (crashed.length) info.append(el('small', {className: 'warn', textContent: `⚠ task crashed: ${crashed[0].last_error}`}));
     const toggle = btn(p.enabled ? 'On' : 'Off', () =>
       api('/api/config', 'PUT', {plugins: {[p.name]: {enabled: !p.enabled}}})
@@ -176,15 +172,48 @@ async function pollNow() {
   $('#nowsrc').textContent = (SOURCE[n.source] || (() => n.source || '…'))(n);
   const name = n.source === 'notification' ? `Notification · ${n.text || ''}` : prettyScene(h.scene, n.entry);
   const shown = $('#nowscene').textContent;
+  applyLive(h.live_color);
   if (shown !== name) {   // a new scene fades in (opacity only: fine under reduced motion), not the first fill on load
-    $('#nowscene').textContent = name; $('#nowscene').title = name;
-    if (shown !== '…') $('#nowscene').animate([{opacity: .001}, {opacity: 1}], {duration: 180, easing: 'cubic-bezier(.22, 1, .36, 1)'});
+    const parts = name.split(' · ');   // the name itself in the board's dots; what kind of scene it is underneath
+    $('#nowscene').textContent = name;
+    drawLed($('#nowdots'), parts.at(-1));
+    $('#nowkind').textContent = parts.slice(0, -1).join(', ');
+    if (shown !== '…') $('#nowdots').animate([{opacity: .001}, {opacity: 1}], {duration: 180, easing: 'cubic-bezier(.22, 1, .36, 1)'});
   }
   const pct = n.seconds ? Math.min(100, 100 * (n.elapsed || 0) / n.seconds) : (n.source === 'pinned' ? 100 : 0);
   setBar(n, pct);
   $('#nownext').textContent = n.next ? `Up next in the playlist: ${sceneLabel(n.next)}` : '';
   document.querySelectorAll('#rot li').forEach(li =>
     li.classList.toggle('current', n.source === 'playlist' && +li.dataset.index === n.index));
+}
+
+// A title drawn the way the panel draws text: the board's own 5x7 font (led5x7.js) as
+// round lamps, lit in --live. Words wrap onto a second line; past that it's cut with "...".
+// The dots grow to fill the width but stop at 10px, so a short name doesn't turn huge.
+function drawLed(svg, text, perLine = 14) {
+  const lines = [];
+  for (const word of String(text).split(/\s+/).filter(Boolean)) {
+    const last = lines.at(-1);
+    if (last != null && (last + ' ' + word).length <= perLine) lines[lines.length - 1] = last + ' ' + word;
+    else lines.push(word.length > perLine ? word.slice(0, perLine - 1) + '.' : word);
+  }
+  if (lines.length > 2) { lines.length = 2; lines[1] = lines[1].slice(0, perLine - 3) + '...'; }
+  if (!lines.length) lines.push(' ');
+  const cell = 8, cols = Math.max(...lines.map(l => l.length)) * 5, rows = lines.length * 8 - 1;
+  const ns = 'http://www.w3.org/2000/svg', dots = [];
+  lines.forEach((line, li) => [...line].forEach((ch, ci) => {
+    const g = LED_FONT[ch] || LED_FONT['?'];
+    for (let i = 0; i < 35; i++) {
+      const c = document.createElementNS(ns, 'circle');
+      c.setAttribute('cx', (ci * 5 + i % 5) * cell + cell / 2); c.setAttribute('cy', (li * 8 + Math.floor(i / 5)) * cell + cell / 2);
+      c.setAttribute('r', cell * .4);
+      if (g[i] === '1') c.setAttribute('class', 'lit');
+      dots.push(c);
+    }
+  }));
+  svg.setAttribute('viewBox', `0 0 ${cols * cell} ${rows * cell}`);
+  svg.style.width = `min(100%, ${cols * 10}px)`;
+  svg.replaceChildren(...dots);
 }
 
 // The bar glides to the end on the board's own clock and only resyncs on a new scene or
