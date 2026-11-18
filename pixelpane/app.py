@@ -238,6 +238,40 @@ def _now(state):
     return now
 
 
+LIVE_DEFAULT = "#ff9a2e"   # warm amber for the page when the board shows nothing colorful
+_live = {"frame": None, "color": LIVE_DEFAULT}
+
+
+def _luminance(rgb):
+    def ch(c):
+        c /= 255
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+    r, g, b = (ch(c) for c in rgb)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def readable_on_black_text(rgb):
+    """rgb lightened toward white until black text on it passes 4.5:1 (luminance >= 0.175)."""
+    rgb = tuple(rgb)
+    while _luminance(rgb) < 0.175:
+        rgb = tuple(min(255, round(c + (255 - c) * 0.1)) for c in rgb)
+    return rgb
+
+
+def live_color(frame, on=True):
+    """The web pages' one color: the most vivid color the board is showing, as hex.
+    Cached per frame object, since the board makes a new one for every frame it shows."""
+    if not on or frame is None:
+        return LIVE_DEFAULT
+    if _live["frame"] is frame:
+        return _live["color"]
+    from .plugins.now_playing import art_palette
+    picks = art_palette(frame.convert("RGB"))
+    color = "#%02x%02x%02x" % readable_on_black_text(picks[0]) if picks else LIVE_DEFAULT
+    _live.update(frame=frame, color=color)
+    return color
+
+
 def health(state):
     try:
         temp = int(open("/sys/class/thermal/thermal_zone0/temp").read()) / 1000
@@ -258,7 +292,8 @@ def health(state):
             "scene": state.label, "now": _now(state), "pinned": state.active_pin(), "themes": state.themes(),
             "on": state.effective_power(), "schedule": state.schedule_status(),
             "temp_c": temp, "throttled": _throttled["v"], "uptime_s": int(time.time() - state.started),
-            "version": version, "date": date.today().isoformat()}
+            "version": version, "date": date.today().isoformat(),
+            "live_color": live_color(state.last_frame, state.effective_power())}
 
 
 def drop_privileges(user="pixelpane"):
