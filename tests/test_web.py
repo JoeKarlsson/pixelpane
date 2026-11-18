@@ -76,7 +76,7 @@ class WebTest(unittest.TestCase):
                 return r.headers.get("Cache-Control", "")
         self.assertIn("max-age=31536000", cache(css))
         self.assertNotIn("max-age=31536000", cache("/static/app.css"))      # no cache key: ask each time
-        self.assertIn("max-age=31536000", cache("/static/fonts/inter-latin.woff2"))
+        self.assertIn("max-age=31536000", cache("/static/fonts/mona-sans-latin.woff2"))
 
     def test_state_is_gzipped_when_asked(self):
         r = self.client.get("/api/state", headers={"Accept-Encoding": "gzip"})

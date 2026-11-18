@@ -18,6 +18,7 @@ from werkzeug.utils import secure_filename
 
 from . import generate, gfx, logbuf, plugin, schema, seasons, sketch
 from .display import compose, panel_size
+from .livecolor import LIVE_DEFAULT, live_color
 from .plugin import PICKERS, SCENES
 from .state import VAR, _read, convert_upload
 from .state import now as local_now
@@ -26,7 +27,7 @@ from .thumbs import Thumbs
 PAGES = {name: Path(__file__).with_name(f"{name}.html") for name in ("index", "library", "settings", "draw", "404")}
 STATIC = Path(__file__).with_name("static")
 ASSET = re.compile(r'"/static/([\w./-]+\.(?:css|js|svg|png))"')   # page assets that get a ?v= cache key
-THEME_COLOR = {"dark": "#0a0a0a", "light": "#f4f4f2"}
+THEME_COLOR = {"dark": "#000000", "light": "#ffffff"}
 NOTIFY_STYLES = ["classic", "banner", "burst", "ticker"]   # pixelpane.plugins.alerts.STYLES
 MAX_STREAMS = 6   # live previews at once; each one costs the Pi a little CPU
 # Reads that give away more than the board's status: when a token is set they need it too.
@@ -73,12 +74,6 @@ def host_allowed(host, extra=()):
         pass
     env = {h.strip().lower() for h in os.environ.get("PIXELPANE_ALLOWED_HOSTS", "").split(",") if h.strip()}
     return name.rstrip(".") in local_names() | env | {h.lower() for h in extra}
-
-
-def on_accent(hex_color):
-    """Text color that reads on the accent: near-black on a light accent, white on a dark one."""
-    r, g, b = gfx.hex_color(hex_color)
-    return "#0a0a0a" if 0.2126 * r + 0.7152 * g + 0.0722 * b > 140 else "#ffffff"
 
 
 def still_gif(data):
@@ -186,11 +181,10 @@ def create_app(state, gifs, health, restart=_exit_soon, poweroff=_request_powero
         """A page with the look from config["ui"] on <html>, so it paints in the right
         colors at once. Both values were validated (a theme name, a #rrggbb color)."""
         ui = state.config.get("ui") or {}
-        accent = ui.get("accent") or "#fdae84"
         theme = ui.get("theme") or "dark"
-        html = PAGES[name].read_text().replace(
-            '<html lang="en">', f'<html lang="en" data-theme="{theme}" '
-                                f'style="--accent:{accent};--on-accent:{on_accent(accent)}">', 1)
+        live = live_color(state.last_frame, state.effective_power(), ui.get("accent") or LIVE_DEFAULT)
+        html = PAGES[name].read_text().replace(   # the first --live, so the page paints in the board's color at once
+            '<html lang="en">', f'<html lang="en" data-theme="{theme}" style="--live:{live}">', 1)
         # the browser's own bar and form controls follow the theme too
         metas = (f'<meta name="color-scheme" content="light dark">'
                  f'<meta name="theme-color" content="{THEME_COLOR["light"]}" media="(prefers-color-scheme: light)">'
