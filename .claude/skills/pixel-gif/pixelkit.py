@@ -7,7 +7,7 @@ import urllib.request
 
 from PIL import Image, ImageDraw
 
-BOARD = os.environ.get("PIXELPANE_URL", "http://192.168.30.47")
+BOARD = os.environ.get("PIXELPANE_URL", "http://pixelpane.local")
 TOKEN = os.environ.get("PIXELPANE_TOKEN")   # the board's Settings > Access token; writes need it
 
 
