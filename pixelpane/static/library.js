@@ -11,13 +11,15 @@ async function refresh() {
 
 async function init() {
   await refresh();
+  // phones: a shorter page (120 GIFs in two columns was 24,000px tall)
+  if (!init.sized && matchMedia('(pointer: coarse)').matches) $('#gsize').value = '30';
+  init.sized = true;
   $('#gtheme').replaceChildren(new Option('all year', 'all'), ...Object.entries(S.theme_names).map(([k, v]) => new Option(v, k)));
   const gen = S.plugins.find(p => p.name === 'generator');
   const ready = gen && gen.enabled && gen.settings.base_url && gen.settings.model;
   ['#gprompt', '#ggo', '#gsurprise'].forEach(s => $(s).disabled = !ready || generating);
   $('#gsetup').hidden = !!ready;
-  loadDrafts();
-  loadGifs();
+  await Promise.all([loadDrafts(), loadGifs()]);
 }
 
 async function loadGifs() {
@@ -60,18 +62,22 @@ async function loadGifs() {
       d.onclick = e => togglePick(g, e.shiftKey);
       d.onkeydown = e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); togglePick(g, e.shiftKey); } };
     }
-    const cap = document.createElement('div'); cap.className = 'stat'; cap.style.fontSize = '11px';
-    cap.style.overflowWrap = 'anywhere'; cap.textContent = g.name.replace(/\.gif$/i, '');
+    const stem = g.name.replace(/\.gif$/i, '');
+    d.dataset.name = stem;
+    // "film-battle-of-algiers-casbah" reads as "battle of algiers casbah": the category is on the line below
+    const [first, ...rest] = stem.split('-');
+    const readable = (rest.length && (first === g.category || first === g.default_category) ? rest : [first, ...rest]).join(' ');
+    const cap = el('div', {className: 'gname', textContent: readable, title: g.name});
     const img = document.createElement('img'); img.loading = 'lazy'; img.src = '/gif/' + encodeURI(g.id) + stillGifs(); img.alt = '';   // the caption names it
     const r = document.createElement('div'); r.className = 'row';
-    const title = g.name.replace(/\.gif$/i, '');
-    r.append(btn('▶', () => api('/api/play', 'POST', {scene:'gif', params:{id:g.id}}).then(() => toast('Up next')), '', '', `Play next: ${title}`),
+    const title = readable;
+    r.append(btn(icon('play'), () => api('/api/play', 'POST', {scene:'gif', params:{id:g.id}}).then(() => toast('Up next')), '', '', `Play next: ${title}`),
       btn(g.hidden ? 'show' : 'hide', () => api('/api/gifs/hide', 'POST', {id:g.id, hidden:!g.hidden}).then(loadGifs), '', '',
         `${g.hidden ? 'Show' : 'Hide'} ${title}`),
-      btn('✎', () => openClassify([g]), '', 'classify', `Move ${title} to a category or theme`));
-    if (g.upload) r.append(btn('🗑', e => confirmDelete(g, e.currentTarget), '', 'delete', `Delete ${title}`));
+      btn(icon('edit'), () => openClassify([g]), '', 'classify', `Move ${title} to a category or theme`));
+    if (g.upload) r.append(btn(icon('trash'), e => confirmDelete(g, e.currentTarget), '', 'delete', `Delete ${title}`));
     d.append(img, cap, el('span', {className: 'cat' + (g.moved ? ' moved' : ''),
-      textContent: g.category + (g.plays ? ` · ▶${g.plays}` : ''),
+      textContent: g.category.replace(/_/g, ' ') + (g.plays ? ` · ${g.plays} play${g.plays === 1 ? '' : 's'}` : ''),
       title: g.moved ? `moved here from ${g.default_category}, ${g.default_theme.replace('_', ' ')}` : 'category'}));
     if (g.theme !== 'all') {
       const tag = document.createElement('span'); tag.className = 'pill theme'; tag.textContent = g.theme.replace('_', ' ');
@@ -120,7 +126,7 @@ function drawPicked() {
   $('#gselcount').textContent = picked.size
     ? `${picked.size} selected` + (here < picked.size ? ` (${here} on this page)` : '') : 'Click GIFs to pick them';
   const whole = gifShown.length && here === gifShown.length;
-  $('#gselall').textContent = whole ? 'Unselect page' : 'Select page';
+  setLabel($('#gselall'), whole ? 'Unselect page' : 'Select page');
   $('#gmove').disabled = $('#gclear').disabled = !picked.size;
 }
 
@@ -238,7 +244,7 @@ function showDraft(d) {
   $('#sdtheme').replaceChildren(new Option('all year', 'all'), ...Object.entries(S.theme_names).map(([k, v]) => new Option(v, k)));
   $('#sdchange').value = '';
   $('#sdsaved').textContent = d.saved ? `In the library as ${d.saved.split('/').pop()}` : '';
-  $('#sdsave').textContent = d.saved ? 'Save another copy' : 'Save to library';
+  setLabel($('#sdsave'), d.saved ? 'Save another copy' : 'Save to library');
   document.querySelectorAll('#sdrafts .draft-thumb').forEach(t => t.classList.toggle('current', t.dataset.id === d.id));
 }
 
@@ -292,7 +298,7 @@ function confirmDelete(g, b) {
   if (!b.classList.contains('armed')) {
     const name = b.getAttribute('aria-label');
     b.classList.add('armed'); setLabel(b, 'Delete?'); b.setAttribute('aria-label', `Confirm ${name.toLowerCase()}`);
-    setTimeout(() => { b.classList.remove('armed'); setLabel(b, '🗑'); b.setAttribute('aria-label', name); }, 3000);
+    setTimeout(() => { b.classList.remove('armed'); setLabel(b, icon('trash')); b.setAttribute('aria-label', name); }, 3000);
     return;
   }
   api('/api/gifs/' + encodeURI(g.id), 'DELETE').then(() => { toast('Deleted ' + g.name); loadGifs(); });
@@ -325,4 +331,5 @@ $('#gup').onclick = async () => {
 
 // The status pill only needs /api/health (under 1 KB), not the whole state (36 KB).
 setInterval(() => { if (!document.hidden) api('/api/health').then(showStatus).catch(() => {}); }, 10000);
-init().catch(e => $('#stat').textContent = 'error: ' + e.message);
+init().catch(e => $('#stat').textContent = 'error: ' + e.message)
+  .finally(() => $('main').removeAttribute('aria-busy'));   // reveal once drafts and GIFs are in: nothing shifts

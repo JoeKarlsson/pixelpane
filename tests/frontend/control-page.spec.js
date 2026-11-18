@@ -31,12 +31,15 @@ test.beforeEach(async ({ page, request }) => {
   page.on('pageerror', (e) => page.errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && page.errors.push(m.text()));
   await page.goto('/');
-  await expect(page.locator('#stat')).toContainText('dev');
+  await expect(page.locator('#footver')).toContainText('dev');
 });
 
 test.afterEach(async ({ page }) => {
   expect(page.errors, 'browser errors').toEqual([]);
 });
+
+// how the page names a playlist entry (sceneLabel in common.js)
+const label = (s) => (s === 'gif' ? 'GIFs' : s.startsWith('gif:') ? 'GIFs: ' + s.slice(4).replace(/_/g, ' ') : s.replace(/_/g, ' '));
 
 test('page loads with status, themes and a live preview', async ({ page, request }) => {
   const h = await health(request);
@@ -139,10 +142,10 @@ test('playlist editor adds, reorders, removes and saves', async ({ page, request
   await page.locator('#addsel').selectOption('gif:space');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(rows).toHaveCount(original.length + 1);
-  await expect(rows.last()).toContainText('gif:space');
+  await expect(rows.last()).toContainText('GIFs: space');
   await expect(page.getByTestId('playlist-unsaved')).toBeVisible();
   await rows.last().getByRole('button', { name: 'Move up' }).click();
-  await expect(rows.nth(original.length - 1)).toContainText('gif:space');
+  await expect(rows.nth(original.length - 1)).toContainText('GIFs: space');
   await rows.first().getByRole('button', { name: 'Remove' }).click();
   await page.getByRole('button', { name: 'Save playlist' }).click();
   await expect(page.locator('#toast')).toContainText('Playlist saved');
@@ -172,7 +175,7 @@ test('playlist entries reorder by drag and drop', async ({ page, request }) => {
   const original = (await config(request)).rotation;
   const rows = page.locator('#rot li');
   await rows.nth(2).dragTo(rows.nth(0));
-  await expect(rows.nth(0)).toContainText(original[2]);
+  await expect(rows.nth(0)).toContainText(label(original[2]));
   await expect(page.getByTestId('playlist-unsaved')).toBeVisible();
   const asked = [];
   page.on('dialog', (d) => { asked.push(d.type()); d.accept(); });   // leaving with unsaved edits asks first
@@ -217,7 +220,7 @@ test('live view shows what is on, where it came from, and highlights the playlis
 
   const original = (await config(request)).rotation;
   await request.put('/api/config', { data: { rotation: ['clock', 'gif:retro'], dwell: { clock: 3, gif: 3 } } });
-  await page.getByRole('button', { name: 'Skip ⏭' }).click();   // leave the requested scene now
+  await page.getByRole('button', { name: 'Skip', exact: true }).click();   // leave the requested scene now
   await expect(page.locator('#toast')).toContainText('Skipped');
   await expect(page.locator('#nowsrc')).toHaveText(/^Playlist [12]\/2$/, { timeout: 15_000 });
   const current = page.locator('#rot li.current');
@@ -391,7 +394,7 @@ test('Skip moves on to the next scene', async ({ page, request }) => {
   await request.post('/api/pin', { data: { scene: 'clock' } });
   await request.delete('/api/pin');
   const skipped = page.waitForResponse((r) => r.url().endsWith('/api/skip') && r.request().method() === 'POST');
-  await page.getByRole('button', { name: 'Skip ⏭' }).click();
+  await page.getByRole('button', { name: 'Skip', exact: true }).click();
   expect((await skipped).ok()).toBeTruthy();
   await expect(page.locator('#toast')).toContainText('Skipped');
 });
@@ -411,8 +414,8 @@ test('playlist Move down moves an entry later', async ({ page, request }) => {
   const original = (await config(request)).rotation;
   const rows = page.locator('#rot li');
   await rows.first().getByRole('button', { name: 'Move down' }).click();
-  await expect(rows.nth(0)).toContainText(original[1]);
-  await expect(rows.nth(1)).toContainText(original[0]);
+  await expect(rows.nth(0)).toContainText(label(original[1]));
+  await expect(rows.nth(1)).toContainText(label(original[0]));
   await page.locator('#saverot').click();
   await expect.poll(async () => (await config(request)).rotation.slice(0, 2)).toEqual([original[1], original[0]]);
   await request.put('/api/config', { data: { rotation: original } });

@@ -168,7 +168,7 @@ function ruleRow(r, i, live) {
   label.oninput = () => r.label = label.value;
   const on = el('label', {}, el('input', {type: 'checkbox', checked: r.enabled !== false}), ' on');
   on.firstChild.onchange = () => { r.enabled = on.firstChild.checked; row.classList.toggle('off', !r.enabled); };
-  const del = btn('✕', () => { rules.splice(i, 1); drawRules(); }, '', 'delete-rule', `Delete rule ${r.label || i + 1}`);
+  const del = btn(icon('x'), () => { rules.splice(i, 1); drawRules(); }, '', 'delete-rule', `Delete rule ${r.label || i + 1}`);
 
   const days = el('div', {className: 'days'}, ...DAYS.map((d, n) => {
     const b = btn(d, () => {
@@ -417,7 +417,7 @@ function drawCustoms() {
     const dates = el('textarea', {rows: 2, value: rangesText(c.dates || []), placeholder: '11-08 to 11-12', ariaLabel: 'Dates, one range per line'});
     dates.oninput = () => c.text = dates.value;
     const row = el('div', {className: 'rule'}, el('div', {className: 'row'}, name,
-      btn('✕', () => { customs.splice(i, 1); drawCustoms(); }, '', 'delete-holiday', 'Delete this holiday')), dates);
+      btn(icon('x'), () => { customs.splice(i, 1); drawCustoms(); }, '', 'delete-holiday', `Delete holiday ${c.name || i + 1}`)), dates);
     row.dataset.testid = 'holiday';
     return row;
   }) : [el('div', {className: 'stat', textContent: 'None yet.'})]));

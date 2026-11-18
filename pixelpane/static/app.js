@@ -37,7 +37,7 @@ async function init() {
   const cats = S.categories.map(c => 'gif:' + c);
   drawPlayNow(cats);
   $('#nicon').replaceChildren(...S.icons.map(i => new Option(i, i)));
-  $('#addsel').replaceChildren(...[...(S.scenes.widget||[]), 'gif', ...cats, 'seasonal', 'generative', 'ambient'].map(s => new Option(s, s)));
+  $('#addsel').replaceChildren(...[...(S.scenes.widget||[]), 'gif', ...cats, 'seasonal', 'generative', 'ambient'].map(s => new Option(sceneLabel(s), s)));
   drawRot(); drawPlugins(); pollNow(); pluginFromHash();
 }
 
@@ -107,10 +107,10 @@ function drawRot() {
     li.ondragleave = () => li.classList.remove('over');
     li.ondrop = e => { e.preventDefault(); moveRot(+e.dataTransfer.getData('text/plain'), i); };
     const grip = el('span', {className: 'grip', textContent: '⠿', ariaHidden: 'true'});
-    const span = el('span', {className: 'name', textContent: `${i+1}. ${s}`});
-    li.append(grip, span, btn('↑', () => moveRot(i, i - 1), '', '', `Move up: ${s}`),
-      btn('↓', () => moveRot(i, i + 1), '', '', `Move down: ${s}`),
-      btn('✕', () => { rotation.splice(i, 1); rotIds.splice(i, 1); drawRot(); }, '', '', `Remove ${s}`));
+    const nice = sceneLabel(s), span = el('span', {className: 'name', textContent: `${i+1}. ${nice}`});
+    li.append(grip, span, btn(icon('up'), () => moveRot(i, i - 1), '', '', `Move up: ${nice}`),
+      btn(icon('down'), () => moveRot(i, i + 1), '', '', `Move down: ${nice}`),
+      btn(icon('x'), () => { rotation.splice(i, 1); rotIds.splice(i, 1); drawRot(); }, '', '', `Remove ${nice}`));
     return li;
   }));
   // Edits stay in the page until Save playlist, so say when there are some.
@@ -168,7 +168,7 @@ async function pollNow() {
   }
   const pct = n.seconds ? Math.min(100, 100 * (n.elapsed || 0) / n.seconds) : (n.source === 'pinned' ? 100 : 0);
   setBar(n, pct);
-  $('#nownext').textContent = n.next ? `Up next in the playlist: ${n.next.replace('_', ' ')}` : '';
+  $('#nownext').textContent = n.next ? `Up next in the playlist: ${sceneLabel(n.next)}` : '';
   document.querySelectorAll('#rot li').forEach(li =>
     li.classList.toggle('current', n.source === 'playlist' && +li.dataset.index === n.index));
 }

@@ -13,7 +13,7 @@ test.beforeEach(async ({ page, request }) => {
   page.on('pageerror', (e) => page.errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && page.errors.push(m.text()));
   await page.goto('/settings');
-  await expect(page.locator('#stat')).toContainText('dev');
+  await expect(page.locator('#footver')).toContainText('dev');
 });
 
 test.afterEach(async ({ page, request }) => {

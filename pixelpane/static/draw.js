@@ -318,7 +318,7 @@ let player = null;
 function stopPlaying() {
   if (!player) return;
   clearInterval(player.timer); player = null;
-  setLabel($('#play'), '▶ Play'); render();
+  setLabel($('#play'), 'Play'); render();
 }
 $('#play').onclick = () => {
   if (player) return stopPlaying();
@@ -326,7 +326,7 @@ $('#play').onclick = () => {
     player.i = (player.i + 1) % frames.length;
     render(player.i, false);
   }, ms)};
-  setLabel($('#play'), '■ Stop');
+  setLabel($('#play'), 'Stop');
 };
 
 // --- the board ---------------------------------------------------------------------

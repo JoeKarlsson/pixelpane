@@ -286,11 +286,11 @@ test('Animate: frame buttons and keys step, add, copy, delete, move, change spee
   const canvas = () => page.evaluate(() => $('#canvas').toDataURL());           // play / stop
   const still = await canvas();
   await page.getByTestId('anim-play').click();
-  await expect(page.getByTestId('anim-play')).toHaveAccessibleName('■ Stop');
+  await expect(page.getByTestId('anim-play')).toHaveAccessibleName('Stop');
   await expect.poll(canvas).not.toEqual(still);
   await blur(page);
   await page.keyboard.press(' ');
-  await expect(page.getByTestId('anim-play')).toHaveAccessibleName('▶ Play');
+  await expect(page.getByTestId('anim-play')).toHaveAccessibleName('Play');
   expect(page.errors).toEqual([]);
 });
 

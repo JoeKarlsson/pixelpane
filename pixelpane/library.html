@@ -10,10 +10,11 @@
 <meta name="theme-color" content="#0a0a0a">
 <link rel="preload" href="/static/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/static/app.css">
+<noscript><style>main[aria-busy="true"] > section ~ section { visibility: visible; }</style></noscript>
 </head>
 <body>
 <a class="skip" href="#content">Skip to content</a>
-<main>
+<main aria-busy="true">
   <header>
     <h1 class="brand"><a href="/" aria-label="PixelPane home"><img src="/static/favicon.svg" alt=""><span class="px">PIXEL</span><span class="pn">gifs</span></a></h1>
     <div class="row">
@@ -39,7 +40,7 @@
         <div class="title" id="sdtitle"></div>
         <div class="stat" id="sdmeta"></div>
         <div class="row">
-          <button id="sdplay" data-testid="draft-play">▶ Show on the panel</button>
+          <button id="sdplay" data-testid="draft-play">Show on the panel</button>
           <button id="sdagain" data-testid="draft-again">Try again</button>
           <button id="sddiscard" data-testid="draft-discard">Discard</button>
         </div>
@@ -101,7 +102,7 @@
       <span class="stat" id="gpage"></span>
       <button id="gnext" aria-label="Next page">Next ›</button>
       <label>per page <select id="gsize" data-testid="page-size">
-        <option value="60">60</option><option value="120" selected>120</option><option value="300">300</option>
+        <option value="30">30</option><option value="60">60</option><option value="120" selected>120</option><option value="300">300</option>
       </select></label>
     </div>
   </section>

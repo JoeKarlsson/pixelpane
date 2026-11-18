@@ -59,10 +59,31 @@ const toast = t => {
 function el(tag, props = {}, ...kids) {
   const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e;
 }
+// Icons for buttons that show only a symbol: drawn here, so they don't depend on which
+// fonts the phone has (arrows and emoji fell back to faint hooks or color emoji).
+const ICONS = {
+  up: 'M8 13V3M4 7l4-4 4 4', down: 'M8 3v10M4 9l4 4 4-4', x: 'M4 4l8 8M12 4l-8 8',
+  edit: 'M3 13l1-3.5 7-7 2.5 2.5-7 7z', trash: 'M2.5 4h11M6 4V2h4v2M4 4l1 10h6l1-10',
+  undo: 'M4 7h6a3 3 0 010 6H7M6.5 4L3.5 7l3 3', redo: 'M12 7H6a3 3 0 000 6h3M9.5 4l3 3-3 3',
+  play: 'F M5 3l8 5-8 5z', prev: 'F M11 3L5 8l6 5z', next: 'F M5 3l6 5-6 5z',
+};
+function icon(name) {
+  const ns = 'http://www.w3.org/2000/svg', d = ICONS[name], filled = d.startsWith('F ');
+  const svg = document.createElementNS(ns, 'svg'), path = document.createElementNS(ns, 'path');
+  svg.setAttribute('viewBox', '0 0 16 16'); svg.setAttribute('width', '16'); svg.setAttribute('height', '16');
+  svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('class', 'icon'); svg.dataset.icon = name;
+  path.setAttribute('d', filled ? d.slice(2) : d);
+  path.setAttribute('fill', filled ? 'currentColor' : 'none');
+  if (!filled) { path.setAttribute('stroke', 'currentColor'); path.setAttribute('stroke-width', '1.75'); path.setAttribute('stroke-linejoin', 'round'); }
+  svg.append(path);
+  return svg;
+}
+// What people call a playlist entry: "gif:film" is "GIFs: film", "now_playing" is "now playing".
+const sceneLabel = s => s === 'gif' ? 'GIFs' : s.startsWith('gif:') ? 'GIFs: ' + s.slice(4).replace(/_/g, ' ') : s.replace(/_/g, ' ');
 // label: what the button shows; name: what it's called for screen readers and on
 // hover, for buttons that show only a symbol (↑, ✕, 🗑).
 function btn(label, fn, cls, testid, name) {
-  const b = document.createElement('button'); b.textContent = label; b.onclick = busy(fn);
+  const b = document.createElement('button'); b.append(label); b.onclick = busy(fn);
   if (cls) b.className = cls; if (testid) b.dataset.testid = testid;
   if (name) { b.setAttribute('aria-label', name); b.title = name; }
   return b;
@@ -72,16 +93,18 @@ function setPressed(b, on) { b.setAttribute('aria-pressed', on); b.classList.tog
 // A button whose label changes (Play/Stop, Select/Done) crossfades between two labels
 // stacked in one grid cell, so the button keeps its width and doesn't jump. The hidden
 // one is aria-hidden, so the button's accessible name is only the shown label.
-function setLabel(b, text) {
+// The label is text or an icon().
+function setLabel(b, label) {
   let [a, z] = b.querySelectorAll(':scope > .swap > span');
   if (!a) {
-    const was = b.textContent; b.textContent = '';
-    a = el('span', {textContent: was}); z = el('span'); z.setAttribute('aria-hidden', 'true');
+    a = el('span', {}, ...b.childNodes); z = el('span'); z.setAttribute('aria-hidden', 'true');
     b.append(el('span', {className: 'swap'}, a, z));
   }
   const shown = a.hasAttribute('aria-hidden') ? z : a, other = shown === a ? z : a;
-  if (shown.textContent === text) return;
-  other.textContent = text;
+  const same = typeof label === 'string' ? shown.textContent === label && !shown.querySelector('svg')
+    : shown.firstElementChild?.dataset.icon === label.dataset.icon;
+  if (same) return;
+  other.replaceChildren(label);
   other.removeAttribute('aria-hidden'); shown.setAttribute('aria-hidden', 'true');
 }
 // Wraps a click handler: while the promise it returns runs, its button is disabled, so a
@@ -101,7 +124,7 @@ const clockTime = iso => iso ? new Date(iso).toLocaleTimeString([], {hour: 'nume
 // The header's status pill and the footer's version, from /api/state or /api/health.
 function showStatus(S) {
   $('#stat').textContent = [S.temp_c ? S.temp_c.toFixed(0) + '°C' : null, S.throttled && S.throttled !== '0x0' ? `throttled ${S.throttled}` : null,
-    `up ${Math.round(S.uptime_s / 3600)}h`, S.version].filter(Boolean).join(' · ');
+    `up ${Math.round(S.uptime_s / 3600)}h`].filter(Boolean).join(' · ');   // the version is in the footer
   const v = document.getElementById('footver');
   if (v) v.textContent = S.version ? `version ${S.version}` : '';
 }

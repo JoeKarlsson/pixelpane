@@ -214,6 +214,20 @@ and the project uses [semantic versioning](https://semver.org/).
 - The homelab dashboard skips its Plex page while nobody is streaming.
 
 ### Fixed
+- Phones: Draw and Animate put the canvas first with the tools under it (it used to
+  start below the first screen), playlist arrows, palette colors, Undo/Redo, weekday
+  buttons and checkboxes are full 44px targets, the Settings preview docks bottom-left
+  instead of covering the plugins' On/Off buttons, all five nav links fit one row, and
+  the GIFs page shows 30 per page instead of a 24,000px scroll.
+- Names read like words: GIF cards say "battle of algiers casbah" (the category is on
+  the line below, with "3 plays"), playlist rows say "GIFs: film" and "now playing",
+  plugin cards say "room light".
+- Icon-only buttons (playlist arrows, remove, play, edit, delete, Undo/Redo, frame
+  steps) are drawn icons, so they no longer fall back to faint hooks or color emoji on
+  phones without those glyphs; buttons that had a symbol beside a word just say the word.
+- The header's status pill no longer carries the build version (it's in the footer),
+  the GIFs page no longer shifts while drafts load, and with JavaScript off the
+  control, GIFs and Settings pages no longer hide everything below the first card.
 - A wrong address gets a not-found page with the nav instead of the server's bare
   error, and a trailing slash (/library/) opens the page.
 - Less work for the Pi: /api/state is gzipped (36 KB down to a few), the GIFs page

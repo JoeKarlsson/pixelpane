@@ -26,10 +26,10 @@
     <div class="titlebar" id="drawtitle">pixelpane@board: draw</div>
     <div class="tools" role="group" aria-label="Drawing tools">
       <div class="row" id="toolrow">
-        <button data-tool="pen" data-testid="tool-pen" class="on" title="Pen (B)">✎ Pen</button>
-        <button data-tool="eraser" data-testid="tool-eraser" title="Eraser (E)">⌫ Eraser</button>
-        <button data-tool="fill" data-testid="tool-fill" title="Fill (F)">▧ Fill</button>
-        <button data-tool="picker" data-testid="tool-picker" title="Pick a color (I)">⊙ Pick</button>
+        <button data-tool="pen" data-testid="tool-pen" class="on" title="Pen (B)">Pen</button>
+        <button data-tool="eraser" data-testid="tool-eraser" title="Eraser (E)">Eraser</button>
+        <button data-tool="fill" data-testid="tool-fill" title="Fill (F)">Fill</button>
+        <button data-tool="picker" data-testid="tool-picker" title="Pick a color (I)">Pick</button>
       </div>
       <div class="row">
         <label>Size <select id="size" aria-label="Brush size" data-testid="size"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="5">5</option></select></label>
@@ -40,8 +40,8 @@
       </div>
       <div class="row palette" id="palette" role="group" aria-label="Colors"></div>
       <div class="row"><input type="color" id="color" value="#ff004d" aria-label="Color" data-testid="draw-color">
-        <button id="undo" data-testid="undo" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
-        <button id="redo" data-testid="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">↷</button>
+        <button id="undo" data-testid="undo" title="Undo (Ctrl+Z)" aria-label="Undo"><svg class="icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 7h6a3 3 0 010 6H7M6.5 4L3.5 7l3 3" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg></button>
+        <button id="redo" data-testid="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg class="icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M12 7H6a3 3 0 000 6h3M9.5 4l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg></button>
         <button id="clear" data-testid="draw-clear">Clear</button></div>
     </div>
     <div class="row examples" id="examples" hidden data-testid="examples"><span class="stat">Start from an example:</span></div>
@@ -60,9 +60,9 @@
       <h2>Frames</h2>
       <div class="strip" id="strip"></div>
       <div class="row">
-        <button id="fprev" aria-label="Previous frame" title="Previous frame (←)" data-testid="frame-prev">◀</button>
+        <button id="fprev" aria-label="Previous frame" title="Previous frame (←)" data-testid="frame-prev"><svg class="icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M11 3L5 8l6 5z" fill="currentColor"/></svg></button>
         <span class="stat" id="fpos" data-testid="frame-pos"></span>
-        <button id="fnext" aria-label="Next frame" title="Next frame (→)" data-testid="frame-next">▶</button>
+        <button id="fnext" aria-label="Next frame" title="Next frame (→)" data-testid="frame-next"><svg class="icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M5 3l6 5-6 5z" fill="currentColor"/></svg></button>
         <button id="fadd" title="New blank frame after this one (N)" data-testid="frame-add">+ New</button>
         <button id="fdup" title="Copy this frame (D)" data-testid="frame-dup">Duplicate</button>
         <button id="fdel" title="Delete this frame" data-testid="frame-del">Delete</button>
@@ -73,7 +73,7 @@
         <label><input type="checkbox" id="onion" checked data-testid="onion"> onion skin</label>
         <label for="fps">Speed <span id="fpsv"></span></label>
         <input type="range" id="fps" min="1" max="24" value="8" style="width:140px" aria-label="Frames per second" data-testid="fps">
-        <button id="play" data-testid="anim-play" title="Play it here (space)">▶ Play</button>
+        <button id="play" data-testid="anim-play" title="Play it here (space)">Play</button>
       </div>
     </div>
 

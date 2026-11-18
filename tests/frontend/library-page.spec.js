@@ -31,7 +31,7 @@ test.beforeEach(async ({ page, request }) => {
   page.on('pageerror', (e) => page.errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && page.errors.push(m.text()));
   await page.goto('/library');
-  await expect(page.locator('#stat')).toContainText('dev');
+  await expect(page.locator('#footver')).toContainText('dev');
 });
 
 test.afterEach(async ({ page }) => {
@@ -42,8 +42,8 @@ test('GIFs can be moved to another category or theme, one at a time or in bulk',
   const cards = page.getByTestId('gif-card');
   const dlg = page.getByTestId('classify-dialog');
   await page.getByTestId('gif-filter').selectOption('cat:space');
-  await expect(cards.first().locator('.stat')).toHaveText(/^space-/);   // the list has switched
-  const name = await cards.first().locator('.stat').textContent();
+  await expect(cards.first()).toHaveAttribute('data-name', /^space-/);   // the list has switched
+  const name = await cards.first().getAttribute('data-name');
   await cards.first().getByTestId('classify').click();
   await expect(dlg.getByTestId('classify-category')).toHaveValue('space');
   await dlg.getByTestId('classify-category').fill('Outer Space');
@@ -54,8 +54,8 @@ test('GIFs can be moved to another category or theme, one at a time or in bulk',
   expect(await find()).toMatchObject({ category: 'outer_space', theme: 'winter', moved: true });
 
   await page.getByTestId('gif-filter').selectOption('winter');
-  const moved = cards.filter({ hasText: name });
-  await expect(moved.locator('.cat')).toHaveText(/^outer_space\b/);   // plus a play count, if the playlist played it
+  const moved = page.locator(`[data-testid=gif-card][data-name="${name}"]`);
+  await expect(moved.locator('.cat')).toHaveText(/^outer space\b/);   // plus a play count, if the playlist played it
   await expect(moved.locator('.cat')).toHaveClass(/moved/);
   await moved.getByTestId('classify').click();
   await dlg.getByTestId('classify-reset').click();
@@ -63,7 +63,7 @@ test('GIFs can be moved to another category or theme, one at a time or in bulk',
 
   // bulk: select the page, give every GIF a new category, then rename it back
   await page.getByTestId('gif-filter').selectOption('cat:retro');
-  await expect(cards.first().locator('.stat')).toHaveText(/^retro-/);
+  await expect(cards.first()).toHaveAttribute('data-name', /^retro-/);
   const n = await cards.count();
   await page.getByTestId('select-mode').click();
   await expect(page.getByTestId('bulk-bar')).toBeVisible();
@@ -82,7 +82,7 @@ test('GIFs can be moved to another category or theme, one at a time or in bulk',
   await cards.nth(0).click();
   await cards.nth(n - 1).click({ modifiers: ['Shift'] });
   await expect(count).toHaveText(`${n} selected`);
-  await expect(page.getByTestId('select-page')).toHaveText('Unselect page');
+  await expect(page.getByTestId('select-page')).toHaveAccessibleName('Unselect page');
   await page.getByTestId('select-page').click();
   await expect(count).toHaveText('Click GIFs to pick them');
   await page.getByTestId('select-page').click();
@@ -125,16 +125,16 @@ test('GIF library filters by category and theme, hides and plays', async ({ page
 
   await page.getByTestId('gif-filter').selectOption('cat:retro');
   await expect(cards).toHaveCount(all.filter((g) => g.category === 'retro' && g.theme === 'all').length);
-  const names = await cards.locator('.stat').allTextContents();
+  const names = await cards.evaluateAll((els) => els.map((e) => e.dataset.name));
   expect(names.every((n) => n.startsWith('retro-'))).toBeTruthy();
 
   await page.getByTestId('gif-filter').selectOption('halloween');
   await expect(cards).toHaveCount(all.filter((g) => g.theme === 'halloween').length);
 
   await page.getByTestId('gif-filter').selectOption('cat:space');
-  await expect(cards.first().locator('.stat')).toHaveText(/^space-/);   // the list has switched
+  await expect(cards.first()).toHaveAttribute('data-name', /^space-/);   // the list has switched
   const card = cards.first();
-  const name = await card.locator('.stat').textContent();
+  const name = await card.getAttribute('data-name');
   await card.getByRole('button', { name: 'hide' }).click();
   await expect(cards.first()).toHaveClass(/hidden/);
   await expect.poll(async () => (await config(request)).hidden_gifs).toContain(`repo/${name}.gif`);
@@ -155,7 +155,7 @@ test('upload to a theme, then delete it', async ({ page, request }) => {
   await expect(page.locator('#toast')).toContainText('Uploaded');
 
   await page.getByTestId('gif-filter').selectOption('winter');
-  const mine = page.getByTestId('gif-card').filter({ hasText: 'test-sprite' });
+  const mine = page.locator('[data-testid=gif-card][data-name="test-sprite"]');
   await expect(mine).toHaveCount(1);
   await expect.poll(() => mine.locator('img').evaluate((img) => img.naturalWidth)).toBe(32); // converted
   await mine.getByRole('button', { name: 'Delete' }).click();   // the first click only arms it
@@ -242,7 +242,7 @@ test('Make a GIF: drafts are previewed, refined, saved or discarded', async ({ p
     // the saved one shows up first in the library (newest first) and under Mine
     await page.getByTestId('gif-filter').selectOption('mine');
     await expect(page.getByTestId('gif-card')).toHaveCount(1);
-    await expect(page.getByTestId('gif-card').first()).toContainText('toys-blue-ball');
+    await expect(page.getByTestId('gif-card').first()).toHaveAttribute('data-name', 'toys-blue-ball');
     await request.delete('/api/gifs/upload/winter/toys-blue-ball.gif');
   } finally {
     for (const d of await (await request.get('/api/drafts')).json()) await request.delete(`/api/drafts/${d.id}`);
@@ -253,7 +253,7 @@ test('Make a GIF: drafts are previewed, refined, saved or discarded', async ({ p
 
 test('library sorts, searches, filters and resizes', async ({ page, request }) => {
   const cards = page.getByTestId('gif-card');
-  const names = async () => (await cards.locator('.stat').allTextContents());
+  const names = async () => cards.evaluateAll((els) => els.map((e) => e.dataset.name));
   await page.getByTestId('gif-sort').selectOption('name');
   await expect.poll(async () => (await names())[0]).toBe('abstract-dot-00');
   await page.getByTestId('gif-sort').selectOption('namedesc');
@@ -270,8 +270,8 @@ test('library sorts, searches, filters and resizes', async ({ page, request }) =
   const gifs = await (await request.get('/api/gifs')).json();
   expect(gifs.find((g) => g.name === 'space-purple-blink.gif').plays).toBeGreaterThan(0);
   const top = Math.max(...gifs.map((g) => g.plays));
-  await expect(cards.first().locator('.cat')).toContainText(`▶${top}`);         // most played first, once it re-sorts
-  const firstName = await cards.first().locator('.stat').textContent();
+  await expect(cards.first().locator('.cat')).toContainText(`${top} play`);         // most played first, once it re-sorts
+  const firstName = await cards.first().getAttribute('data-name');
   expect(gifs.find((g) => g.name === firstName + '.gif').plays).toBe(top);
   // search by words in the name, category or theme
   await page.getByTestId('gif-search').fill('purple');
@@ -297,7 +297,7 @@ test('Cancel closes the move and rename dialogs without changing anything', asyn
   const before = (await config(request)).gif_meta;
   await page.getByTestId('gif-filter').selectOption('cat:space');
   const cards = page.getByTestId('gif-card');
-  await expect(cards.first().locator('.stat')).toHaveText(/^space-/);
+  await expect(cards.first()).toHaveAttribute('data-name', /^space-/);
   await cards.first().getByTestId('classify').click();
   const dlg = page.getByTestId('classify-dialog');
   await expect(dlg).toBeVisible();
@@ -325,7 +325,7 @@ test('upload with smooth on fills the panel instead of fitting it with black bar
       mine = (await (await request.get('/api/gifs')).json()).find((g) => g.upload && g.name.includes('wide-photo'));
       return !!mine;
     }).toBe(true);
-    const card = page.getByTestId('gif-card').filter({ hasText: 'wide-photo' });
+    const card = page.locator('[data-testid=gif-card][data-name="wide-photo"]');
     await expect.poll(() => card.locator('img').evaluate((img) => img.naturalWidth)).toBe(32);
     const bytes = await (await request.get(`/gif/${mine.id}`)).body();
     await request.delete(`/api/gifs/${mine.id}`);
