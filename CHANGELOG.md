@@ -10,7 +10,7 @@ and the project uses [semantic versioning](https://semver.org/).
 - Album art is downloaded the moment Home Assistant pushes its link, never later. A Home Assistant
   art link stops working when Home Assistant restarts, and fetching an old one logged a failed
   login there ("Login attempt or request with invalid authentication"). Plugins get
-  `ctx.data_age(key)`.
+  `ctx.data_pushed_at(key)`.
 
 ### Removed
 

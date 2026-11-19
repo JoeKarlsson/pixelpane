@@ -56,8 +56,8 @@ class Ctx:
     def data(self, key):
         return self.state.get_data(key)
 
-    def data_age(self, key):
-        return self.state.data_age(key)
+    def data_pushed_at(self, key):
+        return self.state.data_pushed_at(key)
 
     def next_gif(self, category=None):
         return self.gifs.next(category)

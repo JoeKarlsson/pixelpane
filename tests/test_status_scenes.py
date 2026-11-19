@@ -12,7 +12,7 @@ support.load_plugins()
 from pixelpane import gfx, kit  # noqa: E402
 from pixelpane.plugin import SCENES  # noqa: E402
 from pixelpane.plugins.homelab import lab_pages  # noqa: E402
-from pixelpane.plugins.now_playing import ART_FRESH_FOR, ArtCache, album_art, cd_frame, prefetch_pushed_art  # noqa: E402
+from pixelpane.plugins.now_playing import ArtCache, album_art, cd_frame, prefetch_new_art  # noqa: E402
 from pixelpane.plugins.weather import WEATHER_ICON  # noqa: E402
 
 LAB = {"alerts": 0, "warnings": 0, "checks_total": 159, "checks_passing": 158,
@@ -118,10 +118,10 @@ class AlbumArtTest(unittest.TestCase):
     def test_pushed_art_is_fetched_once_and_shrunk(self):
         ctx = support.ctx_with({"now_playing": {"title": "Song", "art": self.URL}})
         calls = self.cache(ctx)
-        prefetch_pushed_art(ctx)
+        prefetch_new_art(ctx, None)
         img = self.wait(ctx, self.URL)
         self.assertEqual(img.size, (32, 32))
-        prefetch_pushed_art(ctx)
+        prefetch_new_art(ctx, None)
         self.assertIs(album_art(ctx, self.URL), img)
         self.assertEqual(calls, [self.URL])
 
@@ -134,12 +134,11 @@ class AlbumArtTest(unittest.TestCase):
         time.sleep(0.1)
         self.assertEqual(calls, [])
 
-    def test_an_old_push_is_not_fetched(self):
+    def test_a_push_from_before_the_start_is_not_fetched(self):
         ctx = support.ctx_with({"now_playing": {"title": "Song", "art": self.URL}})
         calls = self.cache(ctx)
-        pushed, payload = ctx.state.data["now_playing"]
-        ctx.state.data["now_playing"] = (pushed - ART_FRESH_FOR - 1, payload)
-        prefetch_pushed_art(ctx)
+        seen = ctx.data_pushed_at("now_playing")   # what prefetch_art notes when it starts
+        self.assertEqual(prefetch_new_art(ctx, seen), seen)
         time.sleep(0.1)
         self.assertEqual(calls, [])
 
@@ -148,20 +147,20 @@ class AlbumArtTest(unittest.TestCase):
         calls = self.cache(ctx)
         for url in ("http://evil.example/x.png", "file:///etc/passwd", None, 42):
             ctx.state.put_data("now_playing", {"art": url})
-            prefetch_pushed_art(ctx)
+            prefetch_new_art(ctx, None)
         time.sleep(0.1)
         self.assertEqual(calls, [])
 
     def test_bad_art_means_no_art(self):
         ctx = support.ctx_with({"now_playing": {"art": self.URL}})
         self.cache(ctx, data=b"not an image")
-        prefetch_pushed_art(ctx)
+        prefetch_new_art(ctx, None)
         self.assertIsNone(self.wait(ctx, self.URL))
 
     def test_now_playing_shows_the_art_first(self):
         ctx = support.ctx_with({"now_playing": {"title": "Song", "state": "playing", "art": self.URL}})
         self.cache(ctx)
-        prefetch_pushed_art(ctx)
+        prefetch_new_art(ctx, None)
         self.wait(ctx, self.URL)
         first, _ = next(SCENES["now_playing"](ctx, 10))
         self.assertEqual(first.getpixel((8, 8)), cd_frame(album_art(ctx, self.URL), 0).getpixel((8, 8)))

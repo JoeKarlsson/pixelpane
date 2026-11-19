@@ -43,7 +43,6 @@ plugin = Plugin(
              "text": "Show it every few minutes, not just at its turn"}])
 
 PAUSED_FOR = 15 * 60   # a paused song stays on the board this long, dimmed
-ART_FRESH_FOR = 60     # seconds: an art link is fetched only this soon after it's pushed
 
 
 class ArtCache:
@@ -305,18 +304,22 @@ def album_art(ctx, url):
     return _art_cache(ctx).peek(url)
 
 
-def prefetch_pushed_art(ctx):
-    """Start fetching the pushed art link if it was pushed in the last ART_FRESH_FOR seconds."""
-    age = ctx.data_age("now_playing")
-    if age is not None and age <= ART_FRESH_FOR:
+def prefetch_new_art(ctx, seen):
+    """Start fetching the art link if now_playing was pushed since `seen` (a push time).
+    Returns the latest push time, to pass back next time."""
+    pushed = ctx.data_pushed_at("now_playing")
+    if pushed != seen:
         _art_cache(ctx).get((ctx.data("now_playing") or {}).get("art"))
+    return pushed
 
 
 @plugin.task
 def prefetch_art(ctx, stop):
     """Fetch album art as soon as its link is pushed, never later. A link can carry a token
     that expires: Home Assistant's media_player_proxy links stop working when it restarts,
-    and fetching a stale one logs a failed login there. So the board fetches each link
-    while it's new; a link it missed (pushed before a board restart) waits for the next push."""
+    and fetching a stale one logs a failed login there. A push from before this start is
+    skipped (its link may be dead) and waits for the next push. Push times are compared,
+    not aged against the clock: the Pi has no clock battery and can boot with the wrong time."""
+    seen = ctx.data_pushed_at("now_playing")
     while not stop.wait(1):
-        prefetch_pushed_art(ctx)
+        seen = prefetch_new_art(ctx, seen)
