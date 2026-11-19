@@ -95,6 +95,7 @@ not silently swapped in. Load errors show on the control page and in Settings, S
 | | |
 |-|-|
 | `ctx.data(key)` | the latest pushed data for `key`, or `None` if missing or stale |
+| `ctx.data_age(key)` | seconds since `key` was last pushed, or `None` if it never was |
 | `ctx.settings(name)` | a plugin's settings (defaults plus config) |
 | `ctx.now()` | the current local time (use it instead of `datetime.now()` so tests can freeze time) |
 | `ctx.rng` | a `random.Random` |

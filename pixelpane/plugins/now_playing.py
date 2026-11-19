@@ -43,6 +43,7 @@ plugin = Plugin(
              "text": "Show it every few minutes, not just at its turn"}])
 
 PAUSED_FOR = 15 * 60   # a paused song stays on the board this long, dimmed
+ART_FRESH_FOR = 60     # seconds: an art link is fetched only this soon after it's pushed
 
 
 class ArtCache:
@@ -72,6 +73,11 @@ class ArtCache:
         u = _origin(url)
         return bool(u) and any((a := _origin(h)) and u[:3] == a[:3] and u[3].startswith(a[3])
                                for h in self.hosts() or [])
+
+    def peek(self, url):
+        """The 32x32 image if it was fetched, else None. Never fetches."""
+        with self.lock:
+            return self.images.get(url)
 
     def get(self, url):
         """The 32x32 image if ready; otherwise start fetching it and return None."""
@@ -286,9 +292,31 @@ def _pause_sign(d, x, y):
     d.rectangle((x + 4, y, x + 5, y + 6), fill=(230, 230, 230))
 
 
-def album_art(ctx, url):
-    """The 32x32 cover for url once fetched (None until then, or if not allowed)."""
+def _art_cache(ctx):
     store = ctx.store("now_playing")
     if "art" not in store:
-        store["art"] = ArtCache(lambda: ctx.settings("now_playing").get("art_hosts"))
-    return store["art"].get(url)
+        store.setdefault("art", ArtCache(lambda: ctx.settings("now_playing").get("art_hosts")))
+    return store["art"]
+
+
+def album_art(ctx, url):
+    """The 32x32 cover for url if prefetch_art already fetched it, else None.
+    Drawing never fetches: see prefetch_art."""
+    return _art_cache(ctx).peek(url)
+
+
+def prefetch_pushed_art(ctx):
+    """Start fetching the pushed art link if it was pushed in the last ART_FRESH_FOR seconds."""
+    age = ctx.data_age("now_playing")
+    if age is not None and age <= ART_FRESH_FOR:
+        _art_cache(ctx).get((ctx.data("now_playing") or {}).get("art"))
+
+
+@plugin.task
+def prefetch_art(ctx, stop):
+    """Fetch album art as soon as its link is pushed, never later. A link can carry a token
+    that expires: Home Assistant's media_player_proxy links stop working when it restarts,
+    and fetching a stale one logs a failed login there. So the board fetches each link
+    while it's new; a link it missed (pushed before a board restart) waits for the next push."""
+    while not stop.wait(1):
+        prefetch_pushed_art(ctx)

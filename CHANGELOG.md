@@ -5,6 +5,13 @@ and the project uses [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Album art is downloaded the moment Home Assistant pushes its link, never later. A Home Assistant
+  art link stops working when Home Assistant restarts, and fetching an old one logged a failed
+  login there ("Login attempt or request with invalid authentication"). Plugins get
+  `ctx.data_age(key)`.
+
 ### Removed
 
 - The API token is gone: no more token prompts, no Settings field for it, and a token saved in an old config is dropped on start. The board is LAN only; cross-site writes and other host names are still refused.

@@ -193,6 +193,12 @@ class State:
             self.data[key] = (time.time(), payload)
             _atomic_write(self.data_path, self.data)
 
+    def data_age(self, key):
+        """Seconds since key was last pushed, or None if it never was."""
+        with self.lock:
+            item = self.data.get(key)
+        return None if not item else time.time() - item[0]
+
     def get_data(self, key):
         with self.lock:
             item = self.data.get(key)

@@ -12,7 +12,7 @@ support.load_plugins()
 from pixelpane import gfx, kit  # noqa: E402
 from pixelpane.plugin import SCENES  # noqa: E402
 from pixelpane.plugins.homelab import lab_pages  # noqa: E402
-from pixelpane.plugins.now_playing import ArtCache, album_art, cd_frame  # noqa: E402
+from pixelpane.plugins.now_playing import ART_FRESH_FOR, ArtCache, album_art, cd_frame, prefetch_pushed_art  # noqa: E402
 from pixelpane.plugins.weather import WEATHER_ICON  # noqa: E402
 
 LAB = {"alerts": 0, "warnings": 0, "checks_total": 159, "checks_passing": 158,
@@ -115,33 +115,53 @@ class AlbumArtTest(unittest.TestCase):
                 return ctx.art_cache.images[url]
             time.sleep(0.02)
 
-    def test_art_is_fetched_once_and_shrunk(self):
-        ctx = support.ctx_with()
+    def test_pushed_art_is_fetched_once_and_shrunk(self):
+        ctx = support.ctx_with({"now_playing": {"title": "Song", "art": self.URL}})
         calls = self.cache(ctx)
-        self.assertIsNone(album_art(ctx, self.URL))   # starts the fetch
+        prefetch_pushed_art(ctx)
         img = self.wait(ctx, self.URL)
         self.assertEqual(img.size, (32, 32))
+        prefetch_pushed_art(ctx)
         self.assertIs(album_art(ctx, self.URL), img)
         self.assertEqual(calls, [self.URL])
+
+    def test_drawing_never_fetches(self):
+        # A Home Assistant art link dies when HA restarts; fetching it while drawing
+        # (maybe long after the push) logged a failed login on HA.
+        ctx = support.ctx_with({"now_playing": {"title": "Song", "art": self.URL}})
+        calls = self.cache(ctx)
+        self.assertIsNone(album_art(ctx, self.URL))
+        time.sleep(0.1)
+        self.assertEqual(calls, [])
+
+    def test_an_old_push_is_not_fetched(self):
+        ctx = support.ctx_with({"now_playing": {"title": "Song", "art": self.URL}})
+        calls = self.cache(ctx)
+        pushed, payload = ctx.state.data["now_playing"]
+        ctx.state.data["now_playing"] = (pushed - ART_FRESH_FOR - 1, payload)
+        prefetch_pushed_art(ctx)
+        time.sleep(0.1)
+        self.assertEqual(calls, [])
 
     def test_only_home_assistant_urls_are_fetched(self):
         ctx = support.ctx_with()
         calls = self.cache(ctx)
         for url in ("http://evil.example/x.png", "file:///etc/passwd", None, 42):
-            self.assertIsNone(album_art(ctx, url))
+            ctx.state.put_data("now_playing", {"art": url})
+            prefetch_pushed_art(ctx)
         time.sleep(0.1)
         self.assertEqual(calls, [])
 
     def test_bad_art_means_no_art(self):
-        ctx = support.ctx_with()
+        ctx = support.ctx_with({"now_playing": {"art": self.URL}})
         self.cache(ctx, data=b"not an image")
-        album_art(ctx, self.URL)
+        prefetch_pushed_art(ctx)
         self.assertIsNone(self.wait(ctx, self.URL))
 
     def test_now_playing_shows_the_art_first(self):
         ctx = support.ctx_with({"now_playing": {"title": "Song", "state": "playing", "art": self.URL}})
         self.cache(ctx)
-        album_art(ctx, self.URL)
+        prefetch_pushed_art(ctx)
         self.wait(ctx, self.URL)
         first, _ = next(SCENES["now_playing"](ctx, 10))
         self.assertEqual(first.getpixel((8, 8)), cd_frame(album_art(ctx, self.URL), 0).getpixel((8, 8)))
